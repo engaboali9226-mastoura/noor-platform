@@ -431,11 +431,14 @@ body:has(.np-r322-modal[data-open="true"],.np-r322-appointments-overlay[data-ope
   font-size:12px; line-height:1.5; font-weight:600; max-width:100%;
 }
 .np-r328-total-duration strong { font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.np-page .np-r323-header.np-topbar { isolation:isolate; }
-.np-page .np-r323-header.np-topbar::before {
-  content:"NOOR Personal"; position:absolute; inset:0; pointer-events:none;
-  display:grid; place-items:center; z-index:-1; direction:ltr;
+.np-page .np-r323-header.np-topbar { position:relative; isolation:isolate; }
+.np-page .np-r323-header .np-r328-personal-watermark {
+  position:absolute; inset:0; pointer-events:none; display:flex; align-items:center;
+  justify-content:center; gap:.22em; z-index:-1; direction:ltr;
   font-family:inherit; font-weight:750; font-size:clamp(30px,9vw,80px);
-  letter-spacing:-.035em; color:#345a4d; opacity:.085; white-space:nowrap;
+  letter-spacing:-.035em; color:#345a4d; opacity:.13; white-space:nowrap;
 }
-.np-page[data-appearance="dark"] .np-r323-header.np-topbar::before {color:#d4e6df;opacity:.09;}
+.np-page .np-r323-header .np-r328-personal-watermark .noor-wordmark > span::after {
+  border-bottom-color:#b58922;
+}
+.np-page[data-appearance="dark"] .np-r323-header .np-r328-personal-watermark {color:#d4e6df;opacity:.13;}
