@@ -27,7 +27,7 @@ test("R231 root and /personal auth-required share identical premium Noor login s
  for(const view of [root,personalEntry]){
   assert.match(view,/class="[^"]*\bnoor-welcome-gateway-r231\b[^"]*"/u);
   assert.match(view,/class="noor-welcome-panel"/u);
-  assert.match(view,/src="\/noor-brand-r328\.svg"/u);
+  assert.match(view,/src="\/brand\/platform-header\.webp"/u);
   assert.match(view,/مرحبا بك في منصة نور/u);
   assert.match(view,/name="email"/u);
   assert.match(view,/name="password"/u);
@@ -41,7 +41,7 @@ test("R231 sign-in invalid/retry and success gateway retain brand without reveal
  const invalid=markup({kind:"authentication-required",application:personal,authenticationState:"invalid-credentials"});
  assert.match(invalid,/role="alert"/u);
  assert.match(invalid,/غير صحيحة/u);
- assert.match(invalid,/src="\/noor-brand-r328\.svg"/u);
+ assert.match(invalid,/src="\/brand\/platform-header\.webp"/u);
  const unavailable=markup({kind:"authentication-required",application:personal,authenticationState:"unavailable"});
  assert.match(unavailable,/تعذر الاتصال بخدمة الدخول/u);
  const waiting=markup({kind:"authentication-required",application:personal,authenticationState:"submitting"});
@@ -72,7 +72,7 @@ test("R231 protected access errors remain truthful but use branded styling",()=>
 test("R231 first-paint refresh is branded before React even on a deep link",()=>{
  assert.match(html,/#root:empty::before/u);
  assert.match(html,/#root:empty::after/u);
- assert.match(html,/\/noor-brand-r328\.svg/u);
+ assert.match(html,/\/brand\/platform-logo\.webp/u);
  assert.match(html,/مرحبا بك في منصة نور/u);
  assert.match(html,/background: #f7f5ef/u);
  assert.match(main,/import "\.\/noor-welcome-gateway-r231\.css";/u);

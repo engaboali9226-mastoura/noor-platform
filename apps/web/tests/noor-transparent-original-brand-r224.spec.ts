@@ -52,10 +52,10 @@ test("R224 transparent icon assets derive solely from original branded PNGs, no 
  ] as const)inspect(readFileSync(new URL(filename,PUBLIC)),size);
 });
 
-test("R224 installed PWA uses versioned transparent logo icons, preserving installability",()=>{
+test("R224 installed PWA uses the approved glass Platform icons, preserving installability",()=>{
  for(const size of [192,512])assert.ok(manifest.icons.some((x:any)=>
-   x.src==="/noor-icon-transparent-r224-"+size+".png" && x.sizes===size+"x"+size && x.type==="image/png"));
- assert.match(html,/rel="apple-touch-icon" sizes="180x180" href="\/noor-apple-touch-expanded-r230\.png"/u);
+   x.src==="/brand/icon-"+size+".png" && x.sizes===size+"x"+size && x.type==="image/png"));
+ assert.match(html,/rel="apple-touch-icon" sizes="180x180" href="\/brand\/icon-180\.png"/u);
  assert.match(html,/rel="manifest" href="\/noor\.webmanifest"/u);
  assert.equal(manifest.display,"standalone");
 });

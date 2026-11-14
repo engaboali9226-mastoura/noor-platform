@@ -43,12 +43,12 @@ test("R103 logo is visibly larger and exactly aligned in both loading states", (
 
 test("R103 shared Noor image, accessibility and welcome copy are intact", () => {
   for (const html of [route, personal]) {
-    assert.match(html, /src="\/noor-brand-r328\.svg"/u);
+    assert.match(html, /src="\/brand\/personal-logo\.webp"/u);
     assert.match(html, /alt="شعار نور"/u);
     assert.match(html, /مرحبا بك في منصة نور/u);
     assert.match(html, /جارٍ تجهيز مساحتك الشخصية/u);
     assert.match(html, /aria-busy="true"/u);
   }
   const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(index, /rel="preload" as="image" type="image\/svg\+xml" href="\/noor-brand-r328\.svg"/u);
+  assert.match(index, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
 });

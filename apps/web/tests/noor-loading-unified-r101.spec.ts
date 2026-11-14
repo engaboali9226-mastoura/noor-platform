@@ -21,18 +21,18 @@ const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 for (const [label, markup] of [["route", entry], ["Personal", waiting]] as const) {
   test(`R101 ${label} waits with the shared Noor logo before welcome and status`, () => {
-    assert.match(markup, /src="\/noor-brand-r328\.svg"/u);
+    assert.match(markup, /src="\/brand\/personal-logo\.webp"/u);
     assert.match(markup, /alt="شعار نور"/u);
     assert.match(markup, /decoding="sync"/u);
     assert.match(markup, /loading="eager"/u);
     assert.match(markup, /مرحبا بك في منصة نور/u);
     assert.match(markup, /جارٍ تجهيز مساحتك الشخصية/u);
-    assert.ok(markup.indexOf("/noor-brand-r328.svg") < markup.indexOf("مرحبا بك في منصة نور"));
+    assert.ok(markup.indexOf("/brand/personal-logo.webp") < markup.indexOf("مرحبا بك في منصة نور"));
     assert.match(markup, /aria-busy="true"/u);
   });
 }
 test("R101 logo is preloaded by the application HTML before module startup", () => {
-  assert.match(html, /rel="preload" as="image" type="image\/svg\+xml" href="\/noor-brand-r328\.svg"/u);
+  assert.match(html, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
   const knownEntries = ['src="/src/main.tsx"', 'src="/src/main.noor-lab.tsx"'];
   const matches = knownEntries.filter(entry => html.includes(entry));
   assert.equal(matches.length, 1, "Exactly one recognized application entrypoint must be present");
@@ -43,7 +43,7 @@ test("R101 subsequent Personal loading does not replay entrance animation", () =
   assert.match(waiting, /np-entry-loading-content/u);
   assert.match(waiting, /animation:none/u);
   assert.match(entry, /noor-entry-logo/u);
-  assert.ok(entry.indexOf("/noor-brand-r328.svg") < entry.indexOf('class="noor-entry-title"'));
+  assert.ok(entry.indexOf("/brand/personal-logo.webp") < entry.indexOf('class="noor-entry-title"'));
 });
 test("R101 retains real failed states instead of masking them as loading", () => {
   const failed = renderToStaticMarkup(createElement(PlatformShell, {
