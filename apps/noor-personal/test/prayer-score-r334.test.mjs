@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
-const {prayerDayScoreR334,combinePrayerAchievementR334,prayerDueKeysFromContextR334,prayerScoreFromTrustedDayR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+const {prayerDayScoreR334,combinePrayerAchievementR334,prayerDueKeysFromContextR334,prayerScoreFromTrustedDayR334,projectPrayerAchievementPeriodR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
 // Synthetic coefficients only. These are deliberately not production defaults.
 const snapshot={policyId:"fixture-v1",effectiveFromDate:"2026-11-15",weights:{fajr:101,dhuhr:102,asr:103,maghrib:104,isha:105},shares:{group:{ontime:1,late:.4},excused:{ontime:.9,late:.3},unexcused:{ontime:.6,late:.2}},legacyHabitKeys:{"old-fajr":"fajr","duplicate-fajr":"fajr","old-isha":"isha"}};
 const base={date:"2026-11-15",currentDate:"2026-11-15",dueKeys:["fajr","dhuhr"],records:[],snapshot};
@@ -60,4 +60,24 @@ test("R334 trusted day scoring enforces owner scope and never counts a future re
  assert.equal(prayerScoreFromTrustedDayR334({...input,userId:"other"}),null);
  assert.equal(prayerScoreFromTrustedDayR334({...input,snapshot:null}),null);
  assert.equal(prayerScoreFromTrustedDayR334({...input,evaluatedAt:"2026-11-15T07:00:00Z"}),null);
+});
+
+test("R334 period totals use frozen raw weights, preserve old days and exclude future days",()=>{
+ const p=prayerDayScoreR334({...base,dueKeys:["fajr"],records:[record("fajr")]});
+ const row=(definitionId,weight,credit)=>({definitionId,kind:"Habit",weight,credit});
+ const days=[
+  {date:"2026-11-14",ordinary:[row("old-fajr",25,1),row("old-other",75,0)],prayer:null},
+  {date:"2026-11-15",ordinary:[row("old-fajr",25,0),row("walk",1,0)],prayer:p},
+  {date:"2026-11-16",ordinary:[row("future",1000,1)],prayer:null}
+ ];
+ const args={startDate:"2026-11-14",endDate:"2026-11-20",currentDate:"2026-11-15",days};
+ const result=projectPrayerAchievementPeriodR334(args);
+ assert.deepEqual(result.days.map(d=>[d.date,d.weight,d.earnedWeight,d.prayerApplied]),[["2026-11-14",100,25,false],["2026-11-15",102,101,true]]);
+ assert.equal(result.weight,202);assert.equal(result.earnedWeight,126);assert.equal(result.rate,62);
+ assert.equal(projectPrayerAchievementPeriodR334({...args,days:[...days,days[0]]}),null);
+ assert.equal(projectPrayerAchievementPeriodR334({...args,days:[]}).rate,null);
+});
+test("R334 rejects a timestamp recorded before its trusted prayer start",()=>{
+ const input={userId:"u",day:{...day,prayerRecordsR331:[{...record("fajr"),recordedAt:"2026-11-15T01:59:59Z"}]},context,currentDate:"2026-11-15",evaluatedAt:"2026-11-15T10:00:00Z",snapshot};
+ assert.equal(prayerScoreFromTrustedDayR334(input),null);
 });

@@ -115,6 +115,44 @@ export function prayerScoreFromTrustedDayR334(input:Readonly<{
 }>):PrayerDayScoreR334|null{
  if(input.userId!==input.day.userId)return null;
  const records=input.day.prayerRecordsR331??[];
- if(records.some(record=>!validPrayerRecordR331(record)||Date.parse(record.recordedAt)>Date.parse(input.evaluatedAt)))return null;
+ if(records.some(record=>!validPrayerRecordR331(record)||Date.parse(record.recordedAt)>Date.parse(input.evaluatedAt)||!input.context||Date.parse(record.recordedAt)<Date.parse(input.context.prayerTimes[record.key])))return null;
  return prayerDayScoreR334({date:input.day.boundary.localDate,currentDate:input.currentDate,dueKeys:prayerDueKeysFromContextR334(input),records,snapshot:input.snapshot});
+}
+
+// Unified daily/range projection. Sum raw weighted totals, never rounded daily rates.
+// Supplied ordinary rows have already passed the existing eligibility rules.
+// A missing prayer projection preserves legacy achievement rather than fabricating
+// past obligations or excluding existing habits.
+export type PrayerAchievementPeriodDayR334=Readonly<{
+ date:string;
+ ordinary:Parameters<typeof combinePrayerAchievementR334>[0];
+ prayer:PrayerDayScoreR334|null;
+}>;
+export function projectPrayerAchievementPeriodR334(input:Readonly<{
+ startDate:string;
+ endDate:string;
+ currentDate:string;
+ days:readonly PrayerAchievementPeriodDayR334[];
+}>):Readonly<{
+ days:readonly Readonly<{date:string;weight:number;earnedWeight:number;rate:number|null;prayerApplied:boolean}>[];
+ weight:number;
+ earnedWeight:number;
+ rate:number|null;
+}>|null{
+ const {startDate,endDate,currentDate}=input;
+ if(![startDate,endDate,currentDate].every(validCivilR334)||startDate>endDate)return null;
+ const seen=new Set<string>();
+ const days:{date:string;weight:number;earnedWeight:number;rate:number|null;prayerApplied:boolean}[]=[];
+ for(const day of input.days){
+  if(!validCivilR334(day.date)||seen.has(day.date))return null;
+  seen.add(day.date);
+  if(day.date<startDate||day.date>endDate||day.date>currentDate)continue;
+  const totals=combinePrayerAchievementR334(day.ordinary,day.prayer);
+  if(!totals)return null;
+  days.push({date:day.date,...totals,prayerApplied:day.prayer!==null});
+ }
+ days.sort((a,b)=>a.date.localeCompare(b.date));
+ const weight=days.reduce((n,d)=>n+d.weight,0),earnedWeight=days.reduce((n,d)=>n+d.earnedWeight,0);
+ if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight))return null;
+ return {days,weight,earnedWeight,rate:weight?Math.round(earnedWeight/weight*100):null};
 }

@@ -13,3 +13,8 @@ No production merge or deploy until numeric base/prayer mode/timing coefficients
 - Added owner-scoped trusted-day scoring adapter: exact start instant, matching civil date and context identity, ordered five timestamps, no fabricated missing context, no future entries.
 - Added read-only in-account weight audit under existing control center: actual configured active/paused definition maxima, potential exact prayer-name aliases and stored weights. Title matching is informational only; no automatic mapping or weight changes.
 - No production records inspected. The audit becomes visible only after approved code deployment. Additional functional tests are synthetic, not policy authorization.
+
+## Unified period projection
+- The pure daily/range adapter combines existing eligible execution rows with explicit prayer-day projections. Week/month/year totals use unrounded weighted points, not averages of daily percentages.
+- Legacy days without a prayer policy stay unchanged. Future dates are ignored, duplicate dates fail closed, and a prayer record preceding its authoritative start is rejected.
+- This is a reusable calculation layer, not an activated production view. The actual persisted policy issuance/approval and runtime integration remain gated.
