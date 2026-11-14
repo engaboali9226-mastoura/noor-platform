@@ -213,23 +213,23 @@ function SmartGateway({
               {mode === "register" ? "إنشاء حساب" : mode === "reset" ? "استعادة كلمة المرور" : "تعيين كلمة مرور جديدة"}
             </h2>
           )}
-          <div className="noor-r323-auth-card"><form className="noor-welcome-form" onSubmit={event=>{void submit(event);}}>
-            {mode==="register"?<label className="noor-welcome-field">
+          <div className="noor-r323-auth-card noor-r332-auth"><form className="noor-welcome-form" onSubmit={event=>{void submit(event);}}>
+            {mode==="register"?<label className="noor-welcome-field noor-r332-field">
               <span>الاسم</span>
               <input name="name" type="text" minLength={2} maxLength={120} autoComplete="name"
                 required disabled={submitting} placeholder="اسمك"/>
             </label>:null}
-            {mode!=="recovery"?<label className="noor-welcome-field">
+            {mode!=="recovery"?<label className="noor-welcome-field noor-r332-field">
               <span>{mode==="login"?"البريد الإلكتروني أو اسم المستخدم":"البريد الإلكتروني"}</span>
               <input name="email" type={mode==="login"?"text":"email"} dir="ltr" inputMode="email" autoCapitalize="none" spellCheck={false}
-                autoComplete="username" required disabled={submitting} placeholder={mode==="login"?"البريد أو اسم المستخدم":"أدخل بريدك الإلكتروني"} />
+                autoComplete="username" required disabled={submitting} placeholder={mode==="login"?"البريد أو اسم المستخدم":"name@example.com"} />
             </label>:null}
-            {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className="noor-welcome-field">
+            {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className="noor-welcome-field noor-r332-field">
               <span>{mode==="recovery"?"كلمة المرور الجديدة":"كلمة المرور"}</span>
               <input name="password" type={showPassword?"text":"password"} dir="ltr" minLength={mode==="login"?undefined:mode==="register"?12:8}
-                autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder="أدخل كلمة المرور" />
+                autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder="••••••••" />
             </label><button type="button" className="noor-r328-password-toggle" onClick={()=>setShowPassword(x=>!x)} aria-pressed={showPassword} aria-label={showPassword?"إخفاء كلمة المرور":"إظهار كلمة المرور"}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>{showPassword?<path d="m3 3 18 18"/>:null}</svg></button></div>:null}
-            {mode==="register"||mode==="recovery"?<label className="noor-welcome-field">
+            {mode==="register"||mode==="recovery"?<label className="noor-welcome-field noor-r332-field">
               <span>تأكيد كلمة المرور</span>
               <input name="passwordConfirm" type="password" dir="ltr" autoComplete="new-password"
                 minLength={mode==="register"?12:8} required disabled={submitting} placeholder="••••••••" />

@@ -146,3 +146,69 @@
 @media(min-width:800px){.np-page .np-r332-week{gap:14px!important}.np-page .np-r332-week .np-week-value{width:min(100%,58px)!important}.np-r332-week-overview{max-width:680px;width:100%;margin:auto}.np-page .np-r332-week .np-week-day{grid-template-rows:68px auto auto auto auto!important}.np-page .np-r332-week .np-week-day .np-week-value{height:68px!important}}
 @media(max-width:360px){.np-page .np-r332-week .np-week-navigation{gap:3px}.np-page .np-r332-week .np-week-navigation button{min-width:28px;width:28px;height:28px;min-height:28px}.np-r332-week-counts>div{padding:5px;gap:4px}.np-r332-week-counts small{display:none}.np-page .np-r332-week .np-week-days{gap:2px}}
 @media(prefers-reduced-motion:reduce){.np-r332-ring-fill{transition:none}}
+
+/* R332: responsive normal flow; remove conflicting legacy row assignments. */
+.np-page[data-appearance] .np-wrap>.np-r331-home-grid{position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:none!important;grid-auto-rows:auto!important;grid-auto-flow:row!important;height:auto!important;max-height:none!important;min-height:0!important;gap:10px!important;margin:0 0 12px!important;transform:none!important}
+.np-page[data-appearance] .np-wrap>.np-r331-home-grid> :is(.np-r331-board,.np-prayer-card,.np-caffeine-card-r299){position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:1/-1!important;align-self:stretch!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;transform:none!important;min-width:0!important}
+.np-page[data-appearance] .np-wrap> :is(.np-day-achievement,.np-r332-week){position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:auto!important;float:none!important;clear:both!important;height:auto!important;max-height:none!important;min-height:0!important;transform:none!important;margin:0 0 12px!important;box-sizing:border-box}
+@media(min-width:800px){.np-page[data-appearance] .np-wrap>.np-r331-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.np-page[data-appearance] .np-wrap>.np-r331-home-grid> :is(.np-prayer-card,.np-caffeine-card-r299){grid-column:auto!important}}
+.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;justify-self:end!important;flex:0 0 auto!important;width:76px!important;height:76px!important;min-width:76px!important;min-height:76px!important;max-width:76px!important;max-height:76px!important;aspect-ratio:1!important;border-radius:50%!important;padding:5px!important;border-width:4px!important;text-align:center!important;gap:0!important}
+.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295 strong{font-size:11px!important;line-height:1.25!important}
+@media(max-width:360px){.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295{width:66px!important;height:66px!important;min-width:66px!important;min-height:66px!important;max-width:66px!important;max-height:66px!important}}
+/* A single feathered header artwork, no second copy behind it. */
+.np-page[data-appearance] .np-r323-header .np-brand:before,.np-page[data-appearance] .np-r323-header .np-brand:after{display:none!important;content:none!important}
+.np-page[data-appearance] .np-r323-header .np-brand .noor-r329-brand-header{position:relative!important;height:clamp(105px,32vw,208px);background:none!important}
+.np-page[data-appearance] .np-r323-header .np-brand .noor-r329-brand-header>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;mask-image:radial-gradient(ellipse 69% 82% at 50% 40%,#000 50%,transparent 100%);-webkit-mask-image:radial-gradient(ellipse 69% 82% at 50% 40%,#000 50%,transparent 100%)}
+.np-page[data-appearance] .np-r323-header .np-header-calendar,.np-page[data-appearance] .np-r323-header .np-header-status{background:transparent!important;box-shadow:none!important;border:0!important}
+/* Apple-inspired authentication controls: no inner competing focus outline. */
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth{background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;padding:4px 0 8px!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-welcome-form{gap:9px!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r332-field{box-sizing:border-box;display:grid!important;gap:1px!important;min-height:61px!important;padding:8px 44px 7px 13px!important;border-radius:18px!important;background:var(--ng-card)!important;box-shadow:0 2px 10px #355c7c13,inset 0 1px 0 #fff9!important;border:1px solid var(--ng-line)!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r332-field>span{font-size:11px!important;font-weight:600!important;color:var(--ng-muted)!important;line-height:1.4;text-align:right}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r332-field input{background:transparent!important;border:0!important;box-shadow:none!important;outline:none!important;min-height:24px!important;padding:0!important;font-size:17px!important;line-height:1.4;color:var(--ng-ink)!important;text-align:start!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r332-field:focus-within{border-color:var(--ng-focus)!important;box-shadow:0 0 0 2px var(--ng-focus)!important;outline:none!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r332-field:before{width:21px;height:21px;right:13px;color:var(--ng-accent)!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r328-password-wrap .noor-r332-field{padding-left:51px!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r328-password-toggle{height:44px;width:44px;left:5px;border:0;background:transparent;box-shadow:none}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-welcome-submit{height:49px!important;min-height:49px!important;border-radius:17px!important}
+@media(max-height:550px){.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-r332-field{min-height:48px!important;padding-block:4px!important}.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-welcome-form{gap:5px!important}.noor-r323-gateway[data-auth-mode] .noor-r332-auth .noor-welcome-submit{height:44px!important;min-height:44px!important}}
+/* True floating schedule, portal removes containing-block constraints. */
+.np-r332-schedule-overlay[data-open=false]{display:none!important}
+.np-r332-schedule-overlay[data-open=true]{position:fixed!important;inset:0!important;z-index:100100!important;display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100dvh!important;box-sizing:border-box;padding:16px 12px max(16px,env(safe-area-inset-bottom));background:#18344966;backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
+.np-r332-schedule-overlay .np-r332-schedule-sheet{box-sizing:border-box;width:min(100%,620px)!important;max-height:calc(100dvh - 40px)!important;overflow:auto!important;overscroll-behavior:contain;border:1px solid var(--ng-line)!important;border-radius:26px!important;padding:16px!important;background:linear-gradient(145deg,var(--ng-bg),var(--ng-glow))!important;color:var(--ng-ink)!important;box-shadow:0 20px 60px #102e5a38;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,sans-serif;position:relative!important;transform:none!important}
+.np-r332-schedule-sheet .np-r322-sheet-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:0 0 12px}
+.np-r332-schedule-sheet .np-r322-sheet-head h2{font-size:21px;margin:0;color:var(--ng-ink)}.np-r332-schedule-sheet .np-r322-sheet-head p{font-size:12px;margin:3px 0;color:var(--ng-muted)}
+.np-r332-schedule-sheet .np-r322-sheet-head button{width:40px;height:40px;border-radius:50%;border:1px solid var(--ng-line);color:var(--ng-ink);background:var(--ng-card);font-size:23px;cursor:pointer}
+.np-r332-schedule-sheet .np-r324-schedule-filters{display:flex;background:var(--ng-sub);border-radius:15px;padding:3px;gap:3px}
+.np-r332-schedule-sheet .np-r324-schedule-filters button{flex:1;background:transparent;border:0;border-radius:12px;color:var(--ng-muted);min-height:42px;cursor:pointer;font:inherit;font-size:12px}
+.np-r332-schedule-sheet .np-r324-schedule-filters button[aria-pressed=true]{background:var(--ng-card);color:var(--ng-ink);box-shadow:0 2px 8px #284b7622}
+.np-r332-schedule-sheet .np-r324-schedule-hero{display:grid;justify-items:center;background:var(--ng-card);border:1px solid var(--ng-line);box-shadow:var(--ng-shadow);border-radius:20px;padding:14px;gap:5px;margin:10px 0}
+.np-r332-schedule-sheet .np-r324-schedule-hero>span{font-size:11px;color:var(--ng-muted)}
+.np-r332-schedule-sheet .np-r324-schedule-hero b{color:var(--ng-accent);font-size:clamp(23px,6vw,34px);font-variant-numeric:tabular-nums}
+.np-r332-schedule-sheet .np-r324-schedule-hero small,.np-r332-schedule-sheet .np-r324-schedule-note{color:var(--ng-muted);font-size:11px}
+.np-r332-schedule-sheet .np-r324-schedule-list h3{color:var(--ng-muted);font-size:12px;margin:14px 0 6px}
+.np-r332-schedule-sheet .np-r324-event-row{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:8px;align-items:center;min-height:60px;margin:5px 0;padding:8px;border-radius:15px;border:1px solid var(--ng-line);background:var(--ng-card);color:var(--ng-ink)}
+.np-r332-event-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:11px;background:var(--ng-sub);color:var(--ng-accent)}.np-r332-event-icon svg{width:20px;height:20px}
+.np-r332-event-copy,.np-r332-event-countdown{display:grid;gap:3px;min-width:0}.np-r332-event-copy strong{font-size:13px;overflow-wrap:anywhere}.np-r332-event-copy small,.np-r332-event-countdown small{font-size:10px;color:var(--ng-muted)}
+.np-r332-event-countdown{text-align:center;min-width:76px}.np-r332-event-countdown b{font-size:12px;color:var(--ng-accent2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.np-r332-schedule-sheet .np-r324-add-event{background:var(--ng-card);color:var(--ng-accent2);border:1px solid var(--ng-line);border-radius:12px;cursor:pointer;width:100%;min-height:44px}
+/* Real task cards, with separated status, progress, and action row. */
+.np-page[data-appearance] .np-main-grid .np-r332-task.np-activity-item{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:9px!important;padding:12px!important;margin:0 0 8px!important;border-radius:20px!important;border:1px solid var(--ng-line)!important;background:var(--ng-card)!important;box-shadow:0 4px 12px #23476812!important;min-height:0!important}
+.np-page[data-appearance] .np-main-grid .np-r332-task .np-item-main{position:relative;display:grid;gap:7px;min-width:0;padding-inline-start:44px}
+.np-r332-task-icon{position:absolute;inset-inline-start:0;top:0;width:35px;height:35px;border-radius:12px;display:grid;place-items:center;background:var(--ng-sub);color:var(--ng-accent)}
+.np-r332-task-icon svg{width:21px;height:21px}
+.np-page[data-appearance] .np-main-grid .np-r332-task .np-item-title{font-size:15px!important;font-weight:750;color:var(--ng-ink)!important;line-height:1.5!important}
+.np-page[data-appearance] .np-main-grid .np-r332-task .np-item-meta{display:flex;flex-wrap:wrap;gap:5px!important;font-size:11px!important}
+.np-r332-task .np-kind-badge,.np-r332-task-category,.np-r332-task-status{padding:3px 7px;border-radius:8px;background:var(--ng-sub);color:var(--ng-muted);font-size:10px;line-height:1.4}
+.np-r332-task .np-r332-task-status{color:var(--ng-accent2);font-weight:700}
+.np-r332-task.is-completed .np-r332-task-status{background:#d2e9df;color:#20563d}
+.np-page .np-r332-task .np-progress-copy{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center;color:var(--ng-muted)}
+.np-r332-task-percent{color:var(--ng-accent);font-weight:750;direction:ltr}
+.np-page .np-r332-task progress{grid-column:1/-1;appearance:none;width:100%;height:7px;border:0;border-radius:8px;overflow:hidden;background:var(--ng-sub);accent-color:var(--ng-accent)}
+.np-page .np-r332-task progress::-webkit-progress-bar{background:var(--ng-sub);border-radius:8px}.np-page .np-r332-task progress::-webkit-progress-value{background:var(--ng-accent);border-radius:8px}
+.np-page[data-appearance] .np-main-grid .np-r332-task>.np-activity-actions{grid-column:1/-1!important;display:flex!important;justify-content:flex-start;align-items:center;flex-wrap:wrap;gap:6px!important;min-height:0;border-top:1px solid var(--ng-line);padding-top:8px}
+.np-page[data-appearance] .np-main-grid .np-r332-task .np-activity-actions .np-btn{box-sizing:border-box;display:inline-flex!important;align-items:center;justify-content:center;width:auto!important;min-width:0!important;min-height:40px!important;padding:6px 10px!important;height:auto!important;font-size:11px!important;border-radius:12px!important;background:var(--ng-sub)!important;color:var(--ng-ink)!important;border:1px solid var(--ng-line)!important;gap:5px}
+.np-page[data-appearance] .np-main-grid .np-r332-task .np-activity-actions .np-r331-task-done{background:var(--ng-accent)!important;color:white!important}
+.np-page[data-appearance] .np-main-grid .np-r332-task .np-activity-actions .np-btn.complete{margin-inline-start:auto;background:transparent!important;color:var(--ng-muted)!important}
+@media(max-width:360px){.np-r332-schedule-sheet .np-r324-event-row{grid-template-columns:26px minmax(0,1fr) auto;gap:5px;padding:6px}.np-r332-event-countdown{min-width:64px}.np-r332-event-countdown b{font-size:10px}.np-r332-schedule-overlay .np-r332-schedule-sheet{padding:12px!important}}
