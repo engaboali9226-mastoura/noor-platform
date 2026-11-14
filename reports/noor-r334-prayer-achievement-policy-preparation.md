@@ -18,3 +18,8 @@ No production merge or deploy until numeric base/prayer mode/timing coefficients
 - The pure daily/range adapter combines existing eligible execution rows with explicit prayer-day projections. Week/month/year totals use unrounded weighted points, not averages of daily percentages.
 - Legacy days without a prayer policy stay unchanged. Future dates are ignored, duplicate dates fail closed, and a prayer record preceding its authoritative start is rejected.
 - This is a reusable calculation layer, not an activated production view. The actual persisted policy issuance/approval and runtime integration remain gated.
+
+## Read-model integration
+- Runtime now supplies trusted server evaluation time to the owner-scoped workspace. Only an explicitly persisted valid day policy snapshot with one matching Islamic context produces a separate prayer projection.
+- Frontend joins authorized prayer rows for weighted day/week/month/overall statistics, using a distinct Prayer kind and explicit mapped habit IDs. Raw execution rows continue to power mutable activities and reminders.
+- Legacy accounts have no policy snapshot, so no production prayer score is enabled by these changes. Policy issuance and explicit approval remain required.
