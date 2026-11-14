@@ -201,8 +201,8 @@ function SmartGateway({
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
         <div className="noor-welcome-logo-frame">
-          <img className="noor-welcome-logo" src={isAuth?"/brand/platform-header.webp":"/brand/platform-logo.webp"}
-            alt="NOOR Platform — شعار منصة نور" width={isAuth?1800:1024} height={isAuth?600:1024} fetchPriority="high" decoding="async" />
+          <img className="noor-welcome-logo" src={NOOR_BRAND.platform.header}
+            alt="NOOR Platform — شعار منصة نور" width={1800} height={600} fetchPriority="high" decoding="async" />
         </div>
         <div className="noor-r323-brand-label">منصة نور</div><p className="noor-welcome-eyebrow" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
         <h1 id="noor-welcome-title" className="glass-title">مرحبا بك في منصة نور</h1>
