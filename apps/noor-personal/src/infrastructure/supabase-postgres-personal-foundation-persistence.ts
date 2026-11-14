@@ -1,3 +1,4 @@
+import {validPrayerScoreSnapshotR334,type PrayerScoreSnapshotR334} from "../domain/completion-r331.js";
 import { emptyFinanceLedger, financeSummary, type FinanceLedger } from "../domain/model.js";
 import type {
   SupabaseClient,
@@ -103,6 +104,7 @@ export interface NoorPersonalFoundationDatabase {
 }
 
 interface FoundationState {
+  prayerScorePolicyR334?: PrayerScoreSnapshotR334;
   fridayMosqueVisits?: FridayMosqueVisit[];
   categories?: string[];
   finance?: FinanceLedger;
@@ -203,7 +205,7 @@ FoundationState {
   const actualKeys =
     Object.keys(
       value,
-    ).filter(key=>key!=="finance" && key!=="categories" && key!=="fridayMosqueVisits").sort();
+    ).filter(key=>key!=="finance" && key!=="categories" && key!=="fridayMosqueVisits" && key!=="prayerScorePolicyR334").sort();
 
   if (
     actualKeys.length
@@ -240,6 +242,7 @@ FoundationState {
   }
 
 
+  if(value.prayerScorePolicyR334!==undefined&&!validPrayerScoreSnapshotR334(value.prayerScorePolicyR334))throw new ProductionAdapterError("PersistenceCorruptRecord","Invalid prayer scoring policy.");
   // Optional, backwards-compatible field within the existing owner-scoped JSONB row.
   // Never accept fabricated hours, duplicate dates or unrelated free-form data.
   if(value.fridayMosqueVisits!==undefined){
@@ -426,6 +429,8 @@ FoundationTransaction {
         state.fridayMosqueVisits=visits;
       }
     },
+    getPrayerScorePolicyR334:(userId)=>{if(userId!==owner)throw new Error("PRAYER_POLICY_OWNER_MISMATCH");return clone(state.prayerScorePolicyR334??null);},
+    savePrayerScorePolicyR334:(userId,policy)=>{if(userId!==owner||!validPrayerScoreSnapshotR334(policy))throw new Error("PRAYER_POLICY_INVALID");state.prayerScorePolicyR334=clone(policy);},
     getCategories:(userId)=>{if(userId!==owner)throw new Error("CATEGORY_OWNER_MISMATCH");return state.categories?clone(state.categories):undefined;},
     saveCategories:(userId,categories)=>{if(userId!==owner)throw new Error("CATEGORY_OWNER_MISMATCH");state.categories=[...categories];},
     getFinance:(userId)=>{if(userId!==owner || state.finance && state.finance.userId!==owner)throw new Error("FINANCE_OWNER_MISMATCH");return clone(state.finance ?? emptyFinanceLedger(owner));},
@@ -761,6 +766,12 @@ implements PersonalFoundationOperation {
 
     this.snapshot =
       Object.freeze({
+        getPrayerScorePolicyR334:(userId:string)=>{this.assertUser(userId);return clone(this.loaded.state.prayerScorePolicyR334??null);},
+        listDailyIslamicContexts:(userId:string)=>{
+          this.assertUser(userId);
+          const ids=new Set(this.loaded.state.personalDays.filter(day=>day.userId===userId).map(day=>day.id));
+          return clone(this.loaded.state.islamicContexts.filter(context=>ids.has(context.personalDayId)));
+        },
         listFridayMosqueVisits:(userId:string)=>{this.assertUser(userId);return clone(this.loaded.state.fridayMosqueVisits??[]);},
         getCategories:(userId:string)=>{this.assertUser(userId);return this.loaded.state.categories?clone(this.loaded.state.categories):undefined;},
         getFinance:(userId:string)=>{this.assertUser(userId);const f=this.loaded.state.finance;if(f && f.userId!==userId)throw new Error("FINANCE_OWNER_MISMATCH");return clone(f ?? emptyFinanceLedger(userId));},

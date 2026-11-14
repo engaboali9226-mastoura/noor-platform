@@ -85,6 +85,8 @@ export interface IslamicHistoryCatalogPort {
 }
 
 export interface FoundationTransaction {
+    getPrayerScorePolicyR334?(userId:string):import("./domain/completion-r331.js").PrayerScoreSnapshotR334|null;
+    savePrayerScorePolicyR334?(userId:string,policy:import("./domain/completion-r331.js").PrayerScoreSnapshotR334):void;
     getFridayMosqueVisit?(userId:string,localDate:string):FridayMosqueVisit|null;
     saveFridayMosqueVisit?(userId:string,localDate:string,hour:FridayMosqueHour|null):void;
     /** R241: exclusively owner-scoped CAS. The request never supplies the user id. */
@@ -170,6 +172,8 @@ export interface LocalTransactionPort {
 }
 
 export interface PersonalFoundationSnapshotPort {
+    getPrayerScorePolicyR334?(userId:string):import("./domain/completion-r331.js").PrayerScoreSnapshotR334|null;
+    listDailyIslamicContexts?(userId:string):readonly DailyIslamicContext[];
     listFridayMosqueVisits?(userId:string):readonly FridayMosqueVisit[];
     getCategories?(userId:string): readonly string[] | undefined;
     getFinance?(userId:string): FinanceLedger;

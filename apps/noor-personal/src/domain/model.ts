@@ -130,6 +130,8 @@ export interface DayBoundarySnapshot {
 }
 
 export interface PersonalDay {
+    /** Only issued by an approved, explicit policy transition; absent on legacy days. */
+    readonly prayerScoreSnapshotR334?: import("./completion-r331.js").PrayerScoreSnapshotR334;
     readonly prayerRecordsR331?: readonly import("./completion-r331.js").PrayerRecordR331[];
     readonly id: string;
     readonly userId: string;

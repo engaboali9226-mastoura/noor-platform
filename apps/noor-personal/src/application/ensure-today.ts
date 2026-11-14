@@ -1,3 +1,4 @@
+import {validPrayerScoreSnapshotR334} from "../domain/completion-r331.js";
 import type {
     AutomationOutboxEvent,
     DailyExecutionInstance,
@@ -351,7 +352,9 @@ export class EnsureTodayService {
                         === null;
 
                     if (!personalDay) {
+                        const prayerScorePolicyR334=transaction.getPrayerScorePolicyR334?.(userId);
                         personalDay = {
+                            ...(validPrayerScoreSnapshotR334(prayerScorePolicyR334)&&resolved.boundary.localDate>=prayerScorePolicyR334.effectiveFromDate?{prayerScoreSnapshotR334:structuredClone(prayerScorePolicyR334)}:{}),
                             id:
                                 this.#dependencies
                                     .idGenerator
