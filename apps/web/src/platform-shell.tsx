@@ -197,7 +197,7 @@ function SmartGateway({
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
         <div className="noor-welcome-logo-frame">
-          <img className="noor-welcome-logo" src="/noor-platform-logo.jpeg" srcSet="/noor-r323-brand.webp"
+          <img className="noor-welcome-logo" src="/noor-brand-r328.svg"
             alt="شعار منصة نور" width="104" height="104" fetchPriority="high" decoding="async" />
         </div>
         <div className="noor-r323-brand-label">منصة نور</div><p className="noor-welcome-eyebrow" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
@@ -218,14 +218,13 @@ function SmartGateway({
             {mode!=="recovery"?<label className="noor-welcome-field">
               <span>{mode==="login"?"البريد الإلكتروني أو اسم المستخدم":"البريد الإلكتروني"}</span>
               <input name="email" type={mode==="login"?"text":"email"} dir="ltr" inputMode="email" autoCapitalize="none" spellCheck={false}
-                autoComplete="username" required disabled={submitting} placeholder={mode==="login"?"البريد أو الاسم قبل @":"أدخل بريدك الإلكتروني"} />
+                autoComplete="username" required disabled={submitting} placeholder={mode==="login"?"البريد أو اسم المستخدم":"أدخل بريدك الإلكتروني"} />
             </label>:null}
-            {mode==="login"||mode==="register"||mode==="recovery"?<label className="noor-welcome-field">
+            {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className="noor-welcome-field">
               <span>{mode==="recovery"?"كلمة المرور الجديدة":"كلمة المرور"}</span>
               <input name="password" type={showPassword?"text":"password"} dir="ltr" minLength={mode==="login"?undefined:mode==="register"?12:8}
                 autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder="أدخل كلمة المرور" />
-            </label>:null}
-            {mode==="login"||mode==="register"||mode==="recovery"?<button type="button" className="noor-r322-visibility" onClick={()=>setShowPassword(x=>!x)} aria-pressed={showPassword}>{showPassword?"إخفاء كلمة المرور":"إظهار كلمة المرور"}</button>:null}
+            </label><button type="button" className="noor-r328-password-toggle" onClick={()=>setShowPassword(x=>!x)} aria-pressed={showPassword} aria-label={showPassword?"إخفاء كلمة المرور":"إظهار كلمة المرور"}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>{showPassword?<path d="m3 3 18 18"/>:null}</svg></button></div>:null}
             {mode==="register"||mode==="recovery"?<label className="noor-welcome-field">
               <span>تأكيد كلمة المرور</span>
               <input name="passwordConfirm" type="password" dir="ltr" autoComplete="new-password"
@@ -595,7 +594,7 @@ export function PlatformShell(
               }
             `}</style>
             <div className="noor-entry-content">
-              <img className="noor-entry-logo" src="/noor-platform-logo.jpeg" alt="شعار نور" decoding="sync" loading="eager" />
+              <img className="noor-entry-logo" src="/noor-brand-r328.svg" alt="شعار نور" decoding="sync" loading="eager" />
               <h1 className="noor-entry-title">مرحبا بك في منصة نور</h1>
               <p className="noor-entry-status" role="status" aria-live="polite">
                 جارٍ تجهيز مساحتك الشخصية…
