@@ -32,7 +32,10 @@ test("R296: daily drink card is compact by default, with quick-add buttons and n
 
 test("R296: date history remains read-only, open on demand, and preserves count/event metadata",()=>{
  const html=renderToStaticMarkup(createElement(NoorBeverageTrackerR294,{rows:[row],localDate:"2026-11-11",busy:false,historical:true,onCommand:async()=>true}));
- assert.match(html,/<details class="np-caffeine-details-r296" open/);
+ assert.match(html,/<details class="np-caffeine-details-r296">/);
+ assert.doesNotMatch(html,/<details class="np-caffeine-details-r296" open/);
+ assert.match(html,/تفاصيل المشروبات/);
+ assert.doesNotMatch(html,/التفاصيل والإعدادات/);
  assert.match(html,/مشروبات اليوم المحدد/);
  assert.doesNotMatch(html,/\+ قهوة/);
  assert.doesNotMatch(html,/حفظ وقت النوم/);
