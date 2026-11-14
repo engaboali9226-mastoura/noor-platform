@@ -217,8 +217,8 @@ export function NoorBeverageTrackerR294({rows,allNames=[],localDate,busy,onComma
    <label>حجم الحصة بالملليلتر (اختياري)<input type="number" inputMode="numeric" min="1" max="2000" value={newMl} onChange={e=>setNewMl(e.currentTarget.value)}/></label>
    <button type="submit" disabled={busy||saving}>إضافة العداد</button>
   </form>:null}
-  <details className="np-caffeine-details-r296" open={historical}>
-   <summary>التفاصيل والإعدادات</summary>
+  <details key={localDate} className="np-caffeine-details-r296">
+   <summary>{historical?"تفاصيل المشروبات":"التفاصيل والإعدادات"}</summary>
    {!historical?<div className="np-caffeine-bedtime-settings-r296">
     <label className="np-caffeine-bedtime-r295">وقت النوم المعتاد
      <input aria-label="وقت النوم المعتاد" type="time" value={bedtime} onChange={e=>setBedtime(e.currentTarget.value)}
@@ -227,7 +227,7 @@ export function NoorBeverageTrackerR294({rows,allNames=[],localDate,busy,onComma
     <button type="button" className="np-caffeine-bedtime-save-r295" onClick={()=>{void saveBedtime();}}
      disabled={busy||saving||!rows.length||rows[0]?.plan.sleepTime===bedtime}>حفظ وقت النوم</button>
    </div>:<small>وقت النوم المستخدم: {summary.bedtime}</small>}
-  {rows.length===0?<p className="np-beverages-empty-r294">لم تُضف مشروبات بعد. ابدأ بـ «+ قهوة» أو «+ شاي»، ثم سجّل وقت كل كوب.</p>:
+  {rows.length===0?<p className="np-beverages-empty-r294">{historical?"لا توجد مشروبات مسجلة لهذا اليوم.":"لم تُضف مشروبات بعد. ابدأ بـ «+ قهوة» أو «+ شاي»، ثم سجّل وقت كل كوب."}</p>:
    <div className="np-beverages-list-r294">{rows.map(row=>{
     const count=beverageCountR294(row.log,row.executionId),completed=count>=row.plan.targetServings;
     return <div className="np-beverage-row-r294" key={row.id} data-testid={"r294-beverage-row-"+row.id}>

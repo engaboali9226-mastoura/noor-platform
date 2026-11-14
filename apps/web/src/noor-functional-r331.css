@@ -132,7 +132,7 @@
 .np-r332-week-ring svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .np-r332-ring-track{stroke:var(--ng-sub)}.np-r332-ring-fill{stroke:#359b83;filter:drop-shadow(0 2px 2px #266f6c30);transition:stroke-dasharray 180ms ease}
 .np-r332-week-ring>div{display:grid;gap:2px;text-align:center;z-index:1}.np-r332-week-ring strong{font-size:clamp(23px,6vw,32px);font-weight:780;color:var(--ng-ink);font-variant-numeric:tabular-nums;direction:ltr}.np-r332-week-ring small{font-size:10px;color:var(--ng-muted)}
-.np-page .np-r332-week .np-week-days{direction:ltr;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.np-page .np-r332-week .np-week-days{direction:rtl;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
 .np-page .np-r332-week .np-week-cell{min-width:0}
 .np-page .np-r332-week button.np-week-day{direction:rtl;display:grid;grid-template-rows:54px auto auto auto auto;justify-items:center;align-items:center;gap:3px;min-height:0;width:100%;padding:3px 1px;border:1px solid transparent;border-radius:12px!important;background:transparent;color:var(--ng-ink);box-sizing:border-box}
 .np-page .np-r332-week button.np-week-day.is-selected,.np-page .np-r332-week button.np-week-day.is-today{background:var(--ng-sub);border-color:var(--ng-line)}
@@ -142,7 +142,6 @@
 .np-page .np-r332-week .np-r332-day-rate{font-size:12px;font-weight:730;direction:ltr;color:var(--ng-ink);min-height:17px}
 .np-page .np-r332-week .np-week-day time{font-size:9px!important;color:var(--ng-muted)}.np-page .np-r332-week .np-week-day>small{min-height:10px;font-size:9px}
 .np-page .np-r332-week .is-future .np-week-value{background:var(--ng-sub)!important;opacity:.45}
-.np-r332-week-note{font-size:10px;line-height:1.65;margin:0;color:var(--ng-muted);text-align:center}
 @media(min-width:800px){.np-page .np-r332-week{gap:14px!important}.np-page .np-r332-week .np-week-value{width:min(100%,58px)!important}.np-r332-week-overview{max-width:680px;width:100%;margin:auto}.np-page .np-r332-week .np-week-day{grid-template-rows:68px auto auto auto auto!important}.np-page .np-r332-week .np-week-day .np-week-value{height:68px!important}}
 @media(max-width:360px){.np-page .np-r332-week .np-week-navigation{gap:3px}.np-page .np-r332-week .np-week-navigation button{min-width:28px;width:28px;height:28px;min-height:28px}.np-r332-week-counts>div{padding:5px;gap:4px}.np-r332-week-counts small{display:none}.np-page .np-r332-week .np-week-days{gap:2px}}
 @media(prefers-reduced-motion:reduce){.np-r332-ring-fill{transition:none}}
@@ -212,3 +211,28 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-main-grid .np-r332-task .np-activity-actions .np-r331-task-done{background:var(--ng-accent)!important;color:white!important}
 .np-page[data-appearance] .np-main-grid .np-r332-task .np-activity-actions .np-btn.complete{margin-inline-start:auto;background:transparent!important;color:var(--ng-muted)!important}
 @media(max-width:360px){.np-r332-schedule-sheet .np-r324-event-row{grid-template-columns:26px minmax(0,1fr) auto;gap:5px;padding:6px}.np-r332-event-countdown{min-width:64px}.np-r332-event-countdown b{font-size:10px}.np-r332-schedule-overlay .np-r332-schedule-sheet{padding:12px!important}}
+
+/* R333: right-to-left civil-week order, compact card and unclipped approved scope artwork. */
+.np-page .np-r332-week.np-card{gap:8px!important;padding:clamp(10px,1.5vw,16px)!important}
+.np-page .np-r332-week .np-week-days{direction:rtl!important}
+.np-page .np-r332-week .np-week-day>small:empty{display:none}
+.np-page .np-r332-week .np-week-day{grid-template-rows:48px auto auto auto auto!important}
+.np-page .np-r332-week .np-week-day .np-week-value{height:48px!important}
+.np-page[data-appearance] .np-r323-header .np-brand .noor-r329-brand-header{height:auto!important;width:min(100%,360px)!important;aspect-ratio:3/1;box-shadow:none!important;background:transparent!important}
+.np-page[data-appearance] .np-r323-header .np-brand .noor-r329-brand-header>img,.nw-root>.noor-r329-brand-header>img{position:static!important;width:100%!important;height:auto!important;object-fit:contain!important;mask-image:none!important;-webkit-mask-image:none!important}
+.nw-root>.noor-r329-brand-header{width:min(100%,360px)!important;background:transparent!important;box-shadow:none!important}
+.noor-r323-gateway[data-auth-mode]{box-sizing:border-box;min-height:100dvh!important;justify-content:flex-start!important;padding: max(10px,env(safe-area-inset-top,0px)) 16px max(10px,env(safe-area-inset-bottom,0px))!important}
+.noor-r323-gateway[data-auth-mode] .noor-welcome-panel{box-sizing:border-box;width:min(100%,560px)!important;min-height:calc(100dvh - 20px)!important;padding-block:clamp(4px,2dvh,18px) 0!important;justify-content:flex-start!important}
+.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{width:min(100%,280px)!important;height:auto!important;aspect-ratio:3/1;background:transparent!important}
+.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame .noor-welcome-logo{aspect-ratio:auto!important;width:100%!important;height:100%!important;object-fit:contain!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-auth{width:100%;box-sizing:border-box;margin-top:clamp(6px,3dvh,24px)!important}
+.noor-r323-gateway[data-auth-mode] .noor-r332-field input{min-width:0!important;width:100%!important;font-size:16px!important;scroll-margin-block:12px}
+.na315-page{box-sizing:border-box;min-height:100dvh!important;max-width:100%;align-items:flex-start!important}
+.na315-panel{box-sizing:border-box;max-width:100%;max-height:calc(var(--noor-admin-viewport,100dvh) - 20px)!important;overflow-y:auto!important;overscroll-behavior:contain}
+.na315-panel input{box-sizing:border-box;max-width:100%;min-width:0;font-size:16px!important;scroll-margin-block:12px}
+@media(max-height:550px){.noor-r323-gateway[data-auth-mode] .noor-welcome-panel{min-height:0!important}.noor-r323-gateway[data-auth-mode] .noor-r332-auth{margin-top:4px!important}.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{display:none!important}}
+
+/* R333: the 100% label must fit within the inner diameter of the 50px habit ring. */
+.np-page .np-habits-section .np-habit-category .np-category-progress>span{box-sizing:border-box;inset:9px!important;font-size:12px!important;line-height:1!important;gap:0!important;white-space:nowrap;letter-spacing:-.25px;font-variant-numeric:tabular-nums}
+.np-page .np-habits-section .np-habit-category .np-category-progress>span small{font-size:9px!important;line-height:1!important;margin:0!important;flex-shrink:0}
+.np-page .np-habits-section .np-habit-category .np-category-progress.is-complete>span{font-size:11px!important}
