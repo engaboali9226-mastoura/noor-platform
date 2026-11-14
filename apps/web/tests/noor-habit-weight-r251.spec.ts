@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {proposedHabitWeight,NoorHabitWeightManagerR251,auditPrayerWeightsR334,prayerHabitCandidateR334} from "../src/noor-habit-weight-manager-r251.js";
+import {proposedHabitWeight,NoorHabitWeightManagerR251,NoorPrayerScoreApprovalR334,auditPrayerWeightsR334,prayerHabitCandidateR334} from "../src/noor-habit-weight-manager-r251.js";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
 const h=(title,importance="Supporting")=>({title,category:"عام",importance});
@@ -42,4 +42,14 @@ test("R334 actual configured weights and prayer aliases are only review hints, n
  assert.match(html,/r334-prayer-weight-audit/);
  assert.match(html,/80/);
  assert.match(html,/لا تحفظ أي تغيير/);
+});
+
+test("R334 new policy editor requires explicit numbers and candidate mapping confirmation",()=>{
+ const defs=[{id:"f",revisionId:"r",kind:"Habit",title:"الفجر",category:"العبادات",importance:"Essential",weight:25,state:"Active"}] as const;
+ const markup=renderToStaticMarkup(createElement(NoorPrayerScoreApprovalR334,{definitions:defs,policy:null,busy:false,onCommand:async()=>false}));
+ assert.match(markup,/لم تُعتمد سياسة/);
+ assert.match(markup,/data-testid="r334-prayer-base-weight"[^>]*value=""/);
+ assert.match(markup,/data-testid="r334-share-excused-ontime"[^>]*value=""/);
+ assert.match(markup,/data-testid="r334-policy-save"[^>]*disabled/);
+ assert.match(markup,/اختر صراحة/);
 });

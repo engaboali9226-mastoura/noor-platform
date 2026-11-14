@@ -811,8 +811,8 @@ export class PersonalCommandService {
             transaction => {
 
                 const activePolicy=transaction.getPrayerScorePolicyR334?.(userId);
-                const currentPolicy=transaction.findOpenPersonalDayContaining(userId,now)?.prayerScoreSnapshotR334;
                 const permittedWeight=(id:string,kind:string,weight:number)=>{
+                    const currentPolicy=activePolicy?transaction.findOpenPersonalDayContaining(userId,now)?.prayerScoreSnapshotR334:undefined;
                     if(!ordinaryWeightPermittedR334(activePolicy,id,kind,weight)||!ordinaryWeightPermittedR334(currentPolicy,id,kind,weight))throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                 };
                 if(command.type==="configure-prayer-score-r334"){

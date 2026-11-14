@@ -23,3 +23,9 @@ No production merge or deploy until numeric base/prayer mode/timing coefficients
 - Runtime now supplies trusted server evaluation time to the owner-scoped workspace. Only an explicitly persisted valid day policy snapshot with one matching Islamic context produces a separate prayer projection.
 - Frontend joins authorized prayer rows for weighted day/week/month/overall statistics, using a distinct Prayer kind and explicit mapped habit IDs. Raw execution rows continue to power mutable activities and reminders.
 - Legacy accounts have no policy snapshot, so no production prayer score is enabled by these changes. Policy issuance and explicit approval remain required.
+
+## Explicit account policy approval
+- Approval is a separate authenticated CAS command; all six mode/timing entries are intentional, group/on-time is the normalized 100% reference, and the chosen base weight exceeds every active/paused ordinary item after explicitly chosen legacy mappings. Later weight changes cannot exceed the approved prayer priority.
+- The next newly materialized civil day receives an immutable copy of the approved policy. Current/previous days are not rescaled. No migration or default policy is issued.
+- Account controls show stored values, require manual coefficients and explicit mapping/confirmation, and send no mutation until approval. The server validates ownership and current weights again. Existing account-state revision CAS is reused.
+- Approval UI is opt-in, so code may be tested without assigning real-user values.
