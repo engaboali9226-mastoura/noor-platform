@@ -38,3 +38,22 @@ export function yesterdayAchievement(rows:readonly StatisticRow[],currentDate:st
  const date=shiftStatisticDate(currentDate,-1),items=rows.filter(r=>r.date===date&&statisticEligible(r)),missed=items.filter(r=>r.status!=='Completed');
  return {date,missed,missedWeight:missed.reduce((n,r)=>n+r.weight,0),...summarizeProgress(items)};
 }
+
+/** R332: use only the displayed civil week. Prayer recording is not a score or a
+ * claim of actual attendance; keep it separate from weighted task/habit credit. */
+export function weeklyCardSummaryR332(rows:readonly StatisticRow[],days:readonly {date:string;future:boolean;current:boolean}[],history:readonly {date:string;records:readonly {key:string}[]}[],startedToday:readonly string[]){
+ const elapsed=days.filter(d=>!d.future),dates=new Set(elapsed.map(d=>d.date)),keys=new Set(["fajr","dhuhr","asr","maghrib","isha"]);
+ const weekRows=rows.filter(r=>dates.has(r.date));
+ const recordedSet=new Set<string>();
+ for(const h of history)if(dates.has(h.date))for(const p of h.records)if(keys.has(p.key))recordedSet.add(h.date+":"+p.key);
+ const current=elapsed.find(d=>d.current);
+ const started=new Set(startedToday.filter(k=>keys.has(k)));
+ if(current)for(const key of keys)if(recordedSet.has(current.date+":"+key))started.add(key);
+ const due=elapsed.reduce((sum,d)=>sum+(d.current?started.size:5),0);
+ const first=days[0]?.date;
+ // Keep the existing Saturday–Friday date boundaries. Week label uses the ISO
+ // week number of the start date rather than shifting the stored week.
+ let weekNumber:number|null=null;
+ if(validStatisticDate(first)){const d=new Date(first+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));const jan=new Date(Date.UTC(d.getUTCFullYear(),0,1));weekNumber=Math.ceil(((d.getTime()-jan.getTime())/86400000+1)/7);}
+ return {weekNumber,tasks:summarizeProgress(weekRows.filter(r=>r.kind==="Task")),habits:summarizeProgress(weekRows.filter(r=>r.kind==="Habit")),prayers:{recorded:recordedSet.size,due:current&&startedToday.length===0&&started.size===0&&elapsed.length===1?null:due}};
+}
