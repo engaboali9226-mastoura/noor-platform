@@ -101,7 +101,7 @@ try{
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");
   await expect(visible("[data-testid=r328-night-total-duration]"),"Trusted whole-night duration visibly distinct from the timer");
-  await expect("(()=>{const h=document.querySelector('.np-r323-header'),s=getComputedStyle(h,'::before');return s.content.includes('NOOR Personal')&&Number(s.opacity)>0&&Number(s.opacity)<.2&&s.pointerEvents==='none'})()","Subtle Personal watermark leaves foreground header interactive");
+  await expect("(()=>{const h=document.querySelector('.np-r328-personal-watermark'),s=getComputedStyle(h),oo=h?.querySelector('.noor-wordmark > span'),smile=oo&&getComputedStyle(oo,'::after');return h.textContent==='NOOR Personal'&&Number(s.opacity)>0&&Number(s.opacity)<.2&&s.pointerEvents==='none'&&smile&&parseFloat(smile.borderBottomWidth)>0})()","Translucent Personal watermark keeps the shared smile and foreground interactive");
 
   await expect(visible("[data-testid=prayer-card]"),"Existing prayer card retained");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
