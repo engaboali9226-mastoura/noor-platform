@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
-const {prayerDayScoreR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+const {prayerDayScoreR334,combinePrayerAchievementR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
 // Synthetic coefficients only. These are deliberately not production defaults.
 const snapshot={policyId:"fixture-v1",effectiveFromDate:"2026-11-15",weights:{fajr:101,dhuhr:102,asr:103,maghrib:104,isha:105},shares:{group:{ontime:1,late:.4},excused:{ontime:.9,late:.3},unexcused:{ontime:.6,late:.2}},legacyHabitKeys:{"old-fajr":"fajr","duplicate-fajr":"fajr","old-isha":"isha"}};
 const base={date:"2026-11-15",currentDate:"2026-11-15",dueKeys:["fajr","dhuhr"],records:[],snapshot};
@@ -30,4 +30,15 @@ test("R334 fails closed on future prayer reports, duplicate reports, invalid wei
  for(const records of [[record("isha")],[record("fajr"),record("fajr")],[record("fajr","unknown")]])assert.equal(prayerDayScoreR334({...base,records}),null);
  for(const value of [-1,NaN,Infinity,0])assert.equal(prayerDayScoreR334({...base,snapshot:{...snapshot,weights:{...snapshot.weights,fajr:value}}}),null);
  assert.equal(prayerDayScoreR334({...base,snapshot:{...snapshot,shares:{...snapshot.shares,group:{ontime:2,late:0}}}}),null);
+});
+
+test("R334 combined score preserves legacy frozen rows when disabled and replaces mapped habits exactly once when enabled",()=>{
+ const rows=[{definitionId:"old-fajr",kind:"Habit",weight:25,credit:1},{definitionId:"duplicate-fajr",kind:"Habit",weight:25,credit:1},{definitionId:"old-isha",kind:"Habit",weight:25,credit:0},{definitionId:"reading",kind:"Task",weight:20,credit:.25},{definitionId:"walk",kind:"Habit",weight:10,credit:1}];
+ const before=structuredClone(rows);
+ assert.deepEqual(combinePrayerAchievementR334(rows,null),{weight:105,earnedWeight:65,rate:62});
+ const prayer=prayerDayScoreR334({...base,records:[record("fajr")]});
+ assert.deepEqual(combinePrayerAchievementR334(rows,prayer),{weight:233,earnedWeight:116,rate:50});
+ assert.deepEqual(rows,before);
+ assert.deepEqual(combinePrayerAchievementR334([],null),{weight:0,earnedWeight:0,rate:null});
+ assert.equal(combinePrayerAchievementR334([{definitionId:"x",kind:"Task",weight:1,credit:2}],null),null);
 });

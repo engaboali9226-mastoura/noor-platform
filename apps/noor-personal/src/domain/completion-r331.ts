@@ -70,3 +70,18 @@ export function prayerDayScoreR334(input:Readonly<{
  if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight))return null;
  return {rows,excludedHabitDefinitionIds:aliases.map(([id])=>id),weight,earnedWeight};
 }
+
+// Compose the prayer projection with existing *eligible*, already frozen rows.
+// The caller owns eligibility and session credit; never recompute or mutate those.
+export function combinePrayerAchievementR334(
+ rows:readonly Readonly<{definitionId:string;kind:"Habit"|"Task";weight:number;credit:number}>[],
+ prayer:PrayerDayScoreR334|null,
+):Readonly<{weight:number;earnedWeight:number;rate:number|null}>|null{
+ const excluded=new Set(prayer?.excludedHabitDefinitionIds??[]);
+ const ordinary=rows.filter(r=>r.kind!=="Habit"||!excluded.has(r.definitionId));
+ if(ordinary.some(r=>!Number.isFinite(r.weight)||r.weight<=0||!Number.isFinite(r.credit)||r.credit<0||r.credit>1))return null;
+ const weight=ordinary.reduce((n,r)=>n+r.weight,prayer?.weight??0);
+ const earnedWeight=ordinary.reduce((n,r)=>n+r.weight*r.credit,prayer?.earnedWeight??0);
+ if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight)||earnedWeight<0||earnedWeight>weight)return null;
+ return {weight,earnedWeight,rate:weight?Math.round(earnedWeight/weight*100):null};
+}
