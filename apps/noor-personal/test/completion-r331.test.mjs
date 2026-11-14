@@ -36,3 +36,23 @@ test("R331 recovery persists once with server date, applies decayed score to wor
  await service.execute("u",{type:"correct-historical-execution",executionId:e.id,localDate:due,expectedStatus:"Completed",completed:false});
  assert.equal(store.snapshot().dailyExecution[0].recoveredOnR331,undefined);
 });
+
+test("R331 prayer reporting is day scoped, not allowed before the prayer, and survives durable storage reload",async()=>{
+ const {SupabasePostgresPersonalFoundationPersistence}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+ let now="2026-11-14T12:00:00.000Z";
+ const day={id:"day",userId:"u",boundary:{key:"day-key",localDate:"2026-11-14",startAt:"2026-11-13T21:00:00.000Z",endAt:"2026-11-14T21:00:00.000Z",timeZone:"Asia/Riyadh"},state:"Open",version:1,createdAt:now,updatedAt:now};
+ const context={id:"ctx",key:"context-key",personalDayId:day.id,prayerTimes:{fajr:"2026-11-14T02:00:00.000Z",dhuhr:"2026-11-14T09:00:00.000Z",asr:"2026-11-14T12:30:00.000Z",maghrib:"2026-11-14T14:15:00.000Z",isha:"2026-11-14T15:45:00.000Z"}};
+ let row={user_id:"u",schema_version:1,revision:1,state:{locations:[],prayerPolicies:[],personalDays:[day],islamicContexts:[context],definitions:[],dailyExecution:[],outbox:[]}};
+ const client={from(){return {select(){return {eq(){return {limit:async()=>({data:[structuredClone(row)],error:null})}}}},update(value){const filters={};const q={eq(k,v){filters[k]=v;return q;},async select(){if(filters.user_id!==row.user_id||filters.revision!==row.revision)return {data:[],error:null};row={...row,...structuredClone(value)};return {data:[{revision:row.revision}],error:null};}};return q;}}}};
+ const open=async()=>{const a=new SupabasePostgresPersonalFoundationPersistence(client);await a.initialize();const scope=await a.openOperation("u");return {scope,service:new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:scope.transaction,accountTimeZone:"Asia/Riyadh"})};};
+ const p={type:"record-prayer-r331",localDate:"2026-11-14",key:"fajr",mode:"group",timing:"ontime",expectedRecordedAt:null};
+ let a=await open();await assert.rejects(()=>a.service.execute("other",p));await assert.rejects(()=>a.service.execute("u",{...p,key:"isha"}));await assert.rejects(()=>a.service.execute("u",{...p,localDate:"2026-11-13"}));
+ await a.service.execute("u",p);a=await open();
+ let w=buildPersonalWorkspace("u",a.scope.snapshot);assert.deepEqual(w.prayerHistoryR331,[{date:p.localDate,records:[{key:"fajr",mode:"group",timing:"ontime",recordedAt:now}]}]);assert.deepEqual(w.statistics.rows,[]);
+ await assert.rejects(()=>a.service.execute("u",{...p,mode:"excused"}));
+ const previous=now;now="2026-11-14T12:05:00.000Z";
+ await a.service.execute("u",{...p,mode:"excused",timing:"late",expectedRecordedAt:previous});
+ a=await open();w=buildPersonalWorkspace("u",a.scope.snapshot);assert.equal(w.prayerHistoryR331[0].records[0].mode,"excused");
+ await a.service.execute("u",{...p,mode:null,timing:null,expectedRecordedAt:now});
+ a=await open();assert.deepEqual(buildPersonalWorkspace("u",a.scope.snapshot).prayerHistoryR331,[]);
+});
