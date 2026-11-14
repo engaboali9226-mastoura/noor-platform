@@ -2917,6 +2917,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
 
   return <>
     <div className="np-topbar np-r323-header" data-testid="platform-topbar">
+      <div className="np-r328-personal-watermark" aria-hidden="true" lang="en" dir="ltr"><NoorWordmark /> Personal</div>
       <div className="np-top-actions">
                 <button aria-label="إعادة الاتصال بنور وتحديث البيانات" title="تحديث نور" className="np-icon-btn np-refresh-icon-r296" disabled={busy||reconnecting} onClick={onReconnect} type="button" data-testid="r296-reconnect-button">
           <svg aria-hidden="true" className={reconnecting?"np-refresh-spin-r296":""} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9A7 7 0 0 1 18.2 7L20 12M4 12l1.8 5A7 7 0 0 0 18.5 15"/></svg>
