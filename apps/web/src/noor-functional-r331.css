@@ -89,3 +89,22 @@
 @media(min-width:800px){.np-page[data-appearance] .np-r331-home-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}.np-page[data-appearance] .np-r331-home-grid>.np-prayer-card,.np-page[data-appearance] .np-r331-home-grid>.np-caffeine-card-r299{grid-column:auto!important}.np-r331-board-grid{gap:10px}.np-r331-tile{min-height:99px}}
 
 .np-r331-session-recovery{display:grid;gap:9px;border:1px solid var(--ng-line);background:var(--ng-card);border-radius:16px;padding:12px}.np-r331-session-recovery label{display:grid;gap:5px;font-size:13px}.np-r331-session-recovery :is(input,textarea){box-sizing:border-box;width:100%;font:inherit;font-size:16px;border:1px solid var(--ng-line);border-radius:10px;background:var(--ng-sub);color:var(--ng-ink);padding:9px}.np-r331-session-recovery>div{display:flex;gap:8px}.np-r331-task-done[aria-pressed=true]{background:#d2e9df!important;color:#20563d!important}
+
+/* Actionable remaining sheet: reuse live execution controls and shared theme. */
+.np-r331-actionable-remaining .np-r286-remaining-dialog{box-sizing:border-box;width:min(100%,620px);max-height:calc(100dvh - 24px - env(safe-area-inset-bottom,0px));padding:12px 14px max(14px,env(safe-area-inset-bottom));background:var(--ng-bg);color:var(--ng-ink);border:1px solid var(--ng-line);overscroll-behavior:contain}
+.np-r331-actionable-remaining .np-r286-remaining-dialog>header{position:sticky;top:-12px;z-index:2;background:var(--ng-bg);padding:10px 0;margin:0 0 5px}
+.np-r331-actionable-remaining header small{display:block;font-size:12px;color:var(--ng-muted);margin-top:4px}
+.np-r331-actionable-remaining header button,.np-r331-actionable-remaining .np-r331-recovery-row button{color:var(--ng-ink);background:var(--ng-card);border:1px solid var(--ng-line);border-radius:12px;padding:8px;font:inherit;min-height:44px;cursor:pointer}
+.np-r331-actionable-remaining .np-r331-remaining-content.np-page{display:grid;gap:7px;min-height:0!important;max-width:100%;width:100%;padding:0!important;margin:0!important;background:transparent!important;color:var(--ng-ink);--panel:var(--ng-bg);--panel-soft:var(--ng-sub);--text:var(--ng-ink);--muted:var(--ng-muted);--border:var(--ng-line);--border-strong:var(--ng-focus);--gold:var(--ng-accent)}
+.np-r331-actionable-remaining .np-r331-remaining-content.np-page:before{display:none!important}
+.np-r331-remaining-hint{margin:0 0 4px;font-size:12px;line-height:1.6;color:var(--ng-muted)}
+.np-r331-actionable-remaining .np-activity-item{display:flex!important;flex-wrap:wrap;align-items:center;gap:6px;padding:10px!important;min-width:0;background:var(--ng-card)!important;border:1px solid var(--ng-line)!important;border-radius:15px!important;margin:0!important;box-shadow:none!important}
+.np-r331-actionable-remaining .np-item-main{flex:1;min-width:0}
+.np-r331-actionable-remaining .np-item-title{color:var(--ng-ink)!important;font-size:14px;overflow-wrap:anywhere}
+.np-r331-actionable-remaining .np-activity-actions{flex-shrink:0;gap:5px}
+.np-r331-actionable-remaining .np-activity-actions button{min-height:44px;min-width:40px}
+.np-r331-actionable-remaining .np-habit-check-target{display:grid;place-items:center;width:44px;height:44px}
+.np-r331-actionable-remaining .np-r331-remaining-error{font-size:13px;color:var(--ng-ink);border:1px solid #b96f58;border-radius:10px;padding:8px}
+.np-activity-backdrop.np-r331-remaining-editor{z-index:11002}
+.np-activity-backdrop.np-r331-remaining-editor .np-activity-dialog{background:var(--ng-bg);color:var(--ng-ink);border:1px solid var(--ng-line)}
+.np-activity-backdrop.np-r331-remaining-editor :is(input,textarea,select){background:var(--ng-sub);color:var(--ng-ink);border-color:var(--ng-line);font-size:16px}

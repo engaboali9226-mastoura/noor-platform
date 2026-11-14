@@ -268,3 +268,25 @@ test("R259: returning to Personal refreshes cross-device workspace only after id
  }
 });
 test('r95 classic achievement removes repeated decoration and keeps future days blank',async()=>{const t=installDom(),root=createRoot(t.container);try{await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));const card=t.container.querySelector('[data-achievement-style="classic-r95"]')!;assert.ok(card);assert.equal(card.querySelectorAll('.np-day-ring svg').length,1);assert.equal(card.querySelectorAll('.np-week-ring').length,0);assert.equal(card.querySelectorAll('.np-week-value').length,7);assert.equal(card.querySelectorAll('.np-day-track').length,0);assert.doesNotMatch(card.textContent??'',/خطوة بخطوة، يكتمل يومك/);for(const future of card.querySelectorAll('[data-week-state="future"]'))assert.equal(future.querySelector('strong')!.textContent,'');const style=t.dom.window.getComputedStyle(card);assert.equal(style.backgroundImage,'none');assert.equal(style.boxShadow,'none');assert.equal(style.borderRadius,'14px');}finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}});
+
+test("R331 remaining sheet invokes real habit and daily task completion, updates count in place, and does not finish the recurring task",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const requests:{command:any;resolve:(r:Response)=>void}[]=[];
+ Object.defineProperty(globalThis,"fetch",{configurable:true,writable:true,value:async(url:unknown,init?:RequestInit)=>String(url).includes("/command")?new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(init?.body)),resolve})):new Response("{}",{status:503})});
+ const reply=(habit:boolean,task:boolean)=>new Response(JSON.stringify({workspace:workspace.workspace,executions:[...today.today.tasks.map(e=>({...e,status:task?"Completed":"Planned"})),...today.today.habits.map(e=>({...e,status:habit?"Completed":"Pending"}))],personalDayId:"day",materializationRequired:false}),{status:200});
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>(t.container.querySelector('[data-testid="r286-remaining-trigger"]') as HTMLButtonElement).click());
+  const sheet=()=>t.dom.window.document.querySelector(".np-r286-remaining-dialog")!;
+  assert.equal(sheet().querySelectorAll("[data-testid^=remaining-activity-]").length,2);
+  await act(async()=>(sheet().querySelector('input[aria-label="إتمام عادة المشي اليوم"]') as HTMLInputElement).click());
+  assert.equal(requests[0]?.command.type,"set-execution-completed");assert.equal(requests[0]?.command.executionId,"e2");assert.equal(requests[0]?.command.completed,true);
+  assert.equal(sheet().querySelectorAll("[data-testid^=remaining-activity-]").length,1);
+  await act(async()=>requests[0]!.resolve(reply(true,false)));
+  await act(async()=>(sheet().querySelector(".np-r331-task-done") as HTMLButtonElement).click());
+  assert.equal(requests[1]?.command.type,"set-execution-completed");assert.equal(requests[1]?.command.executionId,"e1");assert.equal(requests[1]?.command.completed,true);
+  await act(async()=>requests[1]!.resolve(reply(true,true)));
+  assert.match(sheet().textContent??"",/اكتملت جميع المهام والعادات/);
+  assert.equal(t.container.querySelector('[data-testid="r286-remaining-trigger"] strong')?.textContent,"0");
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
