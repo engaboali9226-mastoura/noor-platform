@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
-const {prayerDayScoreR334,combinePrayerAchievementR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+const {prayerDayScoreR334,combinePrayerAchievementR334,prayerDueKeysFromContextR334,prayerScoreFromTrustedDayR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
 // Synthetic coefficients only. These are deliberately not production defaults.
 const snapshot={policyId:"fixture-v1",effectiveFromDate:"2026-11-15",weights:{fajr:101,dhuhr:102,asr:103,maghrib:104,isha:105},shares:{group:{ontime:1,late:.4},excused:{ontime:.9,late:.3},unexcused:{ontime:.6,late:.2}},legacyHabitKeys:{"old-fajr":"fajr","duplicate-fajr":"fajr","old-isha":"isha"}};
 const base={date:"2026-11-15",currentDate:"2026-11-15",dueKeys:["fajr","dhuhr"],records:[],snapshot};
@@ -41,4 +41,23 @@ test("R334 combined score preserves legacy frozen rows when disabled and replace
  assert.deepEqual(rows,before);
  assert.deepEqual(combinePrayerAchievementR334([],null),{weight:0,earnedWeight:0,rate:null});
  assert.equal(combinePrayerAchievementR334([{definitionId:"x",kind:"Task",weight:1,credit:2}],null),null);
+});
+
+const day={id:"day",userId:"u",boundary:{localDate:"2026-11-15",startAt:"2026-11-14T21:00:00Z",endAt:"2026-11-15T21:00:00Z"}};
+const context={personalDayId:"day",prayerTimes:{localDate:"2026-11-15",fajr:"2026-11-15T02:00:00Z",dhuhr:"2026-11-15T09:00:00Z",asr:"2026-11-15T12:00:00Z",maghrib:"2026-11-15T14:00:00Z",isha:"2026-11-15T15:30:00Z"}};
+test("R334 trusted day gates each prayer at its exact start and never manufactures missing historical context",()=>{
+ const due=evaluatedAt=>prayerDueKeysFromContextR334({day,context,evaluatedAt});
+ assert.deepEqual(due("2026-11-15T01:59:59Z"),[]);
+ assert.deepEqual(due("2026-11-15T02:00:00Z"),["fajr"]);
+ assert.deepEqual(due("2026-11-15T09:00:00Z"),["fajr","dhuhr"]);
+ assert.deepEqual(due("2026-11-16T00:00:00Z"),["fajr","dhuhr","asr","maghrib","isha"]);
+ const now="2026-11-15T10:00:00Z";
+ for(const bad of [null,{...context,personalDayId:"other"},{...context,prayerTimes:{...context.prayerTimes,localDate:"2026-11-14"}},{...context,prayerTimes:{...context.prayerTimes,asr:"invalid"}},{...context,prayerTimes:{...context.prayerTimes,asr:context.prayerTimes.fajr}}])assert.equal(prayerDueKeysFromContextR334({day,context:bad,evaluatedAt:now}),null);
+});
+test("R334 trusted day scoring enforces owner scope and never counts a future report",()=>{
+ const input={userId:"u",day:{...day,prayerRecordsR331:[record("fajr")]},context,currentDate:"2026-11-15",evaluatedAt:"2026-11-15T10:00:00Z",snapshot};
+ assert.equal(prayerScoreFromTrustedDayR334(input).earnedWeight,101);
+ assert.equal(prayerScoreFromTrustedDayR334({...input,userId:"other"}),null);
+ assert.equal(prayerScoreFromTrustedDayR334({...input,snapshot:null}),null);
+ assert.equal(prayerScoreFromTrustedDayR334({...input,evaluatedAt:"2026-11-15T07:00:00Z"}),null);
 });

@@ -3,9 +3,25 @@ import type {NoorPersonalCommandInput} from "./noor-personal-today-client.js";
 
 export type HabitWeightDefinition=Readonly<{id:string;revisionId:string;kind:"Habit"|"Task";title:string;category:string;importance:string;weight:number;state:string}>;
 type HabitExecution=Readonly<{definitionId:string;kind:"Habit"|"Task";weight:number;status:string}>;
+export type PrayerWeightKeyR334="fajr"|"dhuhr"|"asr"|"maghrib"|"isha";
+export function prayerHabitCandidateR334(raw:string):PrayerWeightKeyR334|null{
+ const title=raw.normalize("NFKC").toLocaleLowerCase("ar").replace(/[\u064b-\u065f\u0670\u0640]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/^\s*[0-9٠-٩۰-۹]+\s*[-–—.]\s*/u,"").trim();
+ const match=title.match(/^(?:(?:صلاه|فرض)\s+)?(?:ال)?(فجر|ظهر|عصر|مغرب|عشاء)$/u);
+ if(match)return ({"فجر":"fajr","ظهر":"dhuhr","عصر":"asr","مغرب":"maghrib","عشاء":"isha"} as const)[match[1] as "فجر"|"ظهر"|"عصر"|"مغرب"|"عشاء"];
+ const english=title.match(/^(fajr|dhuhr|zuhr|asr|maghrib|isha)(?: prayer)?$/iu)?.[1];
+ return english?(english==="zuhr"?"dhuhr":english as PrayerWeightKeyR334):null;
+}
+// Read-only hints from account-owned definitions. Title matches never authorize exclusion.
+export function auditPrayerWeightsR334(definitions:readonly HabitWeightDefinition[]){
+ const active=definitions.filter(d=>["Active","Paused"].includes(d.state));
+ const candidates=active.flatMap(d=>{const key=d.kind==="Habit"?prayerHabitCandidateR334(d.title):null;return key?[{id:d.id,title:d.title,key,weight:d.weight}]:[];});
+ const others=active.filter(d=>!candidates.some(c=>c.id===d.id));
+ const maximum=(rows:readonly HabitWeightDefinition[])=>rows.reduce((n,d)=>Number.isFinite(d.weight)?Math.max(n,d.weight):n,0);
+ return {candidates,highestOtherWeight:maximum(others),highestConfiguredWeight:maximum(active)};
+}
 export function proposedHabitWeight(h:Pick<HabitWeightDefinition,"title"|"importance"|"category">):number{
  const title=h.title.normalize("NFKC").toLocaleLowerCase("ar").replace(/[\u064b-\u065f\u0670\u0640]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/^\s*[0-9٠-٩۰-۹]+\s*[-–—.]\s*/u,"").trim();
- if(/^(?:(?:صلاه|فرض)\s+)?(?:ال)?(?:فجر|ظهر|عصر|مغرب|عشاء)$/u.test(title)||/^(fajr|dhuhr|zuhr|asr|maghrib|isha)(?: prayer)?$/iu.test(title))return 25;
+ if(prayerHabitCandidateR334(h.title))return 25;
  if(/قران|قرءان|qur.?an|quran|تلاوه|حفظ\s+سوره/iu.test(title))return 12;
  if(/اذكار|ذكر|استغفار|dhikr/iu.test(title))return 10;
  if(/دواء|ادويه|علاج|medication|medicine/iu.test(title))return 14;
@@ -25,6 +41,7 @@ export function NoorHabitWeightManagerR251({definitions,executions,busy,onComman
  const [confirm,setConfirm]=useState(false);
  const [saving,setSaving]=useState(false);
  const [feedback,setFeedback]=useState("");
+ const prayerAudit=auditPrayerWeightsR334(definitions);
  const habits=definitions.filter(d=>d.kind==="Habit"&&["Active","Paused"].includes(d.state));
  const rows=habits.map(d=>({...d,recommended:custom[d.id]??proposedHabitWeight(d)}));
  const changes=rows.filter(d=>d.weight!==d.recommended).map(d=>({definitionId:d.id,expectedRevisionId:d.revisionId,weight:d.recommended}));
@@ -43,6 +60,14 @@ export function NoorHabitWeightManagerR251({definitions,executions,busy,onComman
  };
  return <section data-testid="noor-habit-weight-manager-r251" style={{display:"grid",gap:12}}>
   <div className="np-cc-title"><div><h2>أوزان العادات</h2><p>الإنجاز الحقيقي حسب الأهمية، وليس عدد علامات الصح.</p></div></div>
+  <details data-testid="r334-prayer-weight-audit" style={{border:"1px solid var(--border)",borderRadius:12,padding:10}}>
+   <summary>مراجعة أوزان الصلوات قبل الربط</summary>
+   <p className="np-cc-help">معاينة من أوزان حسابك الحالية فقط. لا تحفظ أي تغيير ولا تُفعّل احتساب الصلاة.</p>
+   <p>أعلى وزن محفوظ للعادات والمهام النشطة أو الموقوفة مؤقتًا: <strong>{prayerAudit.highestConfiguredWeight}</strong></p>
+   <p>أعلى وزن خارج عادات الصلاة المحتملة: <strong>{prayerAudit.highestOtherWeight}</strong></p>
+   <p className="np-cc-help">هذه المطابقات بالاسم للمراجعة فقط، ولا تُستبعد من الحساب تلقائيًا.</p>
+   {prayerAudit.candidates.length?<div style={{display:"grid",gap:4}}>{prayerAudit.candidates.map(d=><div key={d.id} style={{display:"flex",justifyContent:"space-between",gap:8}}><span>{d.title}</span><strong>{d.weight}</strong></div>)}</div>:<p>لم تُكتشف مطابقة صريحة بأسماء الصلوات؛ يلزم مراجعة العادات الأخرى عند اعتماد الربط.</p>}
+  </details>
   <p className="np-cc-help">الاقتراح: الصلوات الخمس 25 لكل صلاة، القرآن 12، الأذكار 10، ثم الأساسيات والصحة والتعلم. راجع كل وزن ويمكنك تعديله قبل الحفظ.</p>
   <div style={{display:"flex",flexWrap:"wrap",gap:12,padding:12,borderRadius:12,background:"var(--panel-soft)",border:"1px solid var(--border)"}}>
    <strong>إنجاز العادات الحالي: {percent(currentDone,currentTotal)}٪</strong><strong>بعد التطبيق: {percent(proposedDone,proposedTotal)}٪</strong>

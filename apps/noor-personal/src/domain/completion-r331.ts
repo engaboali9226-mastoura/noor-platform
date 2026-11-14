@@ -85,3 +85,36 @@ export function combinePrayerAchievementR334(
  if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight)||earnedWeight<0||earnedWeight>weight)return null;
  return {weight,earnedWeight,rate:weight?Math.round(earnedWeight/weight*100):null};
 }
+
+// Trusted server context, never a browser-supplied list of already-started prayers.
+export function prayerDueKeysFromContextR334(input:Readonly<{
+ day:Readonly<{id:string;boundary:Readonly<{localDate:string;startAt:string;endAt:string}>}>;
+ context:Readonly<{personalDayId:string;prayerTimes:Readonly<Record<PrayerKeyR331,string>&{localDate:string}>}>|null;
+ evaluatedAt:string;
+}>):readonly PrayerKeyR331[]|null{
+ const {day,context,evaluatedAt}=input;
+ const start=Date.parse(day.boundary.startAt),end=Date.parse(day.boundary.endAt),now=Date.parse(evaluatedAt);
+ if(!context||context.personalDayId!==day.id||context.prayerTimes.localDate!==day.boundary.localDate||!validCivilR334(day.boundary.localDate)||!Number.isFinite(start)||!Number.isFinite(end)||!Number.isFinite(now)||start>=end||now<start)return null;
+ let previous=start-1;
+ const due:PrayerKeyR331[]=[];
+ for(const key of R331_PRAYERS){
+  const at=Date.parse(context.prayerTimes[key]);
+  if(!Number.isFinite(at)||at<=previous||at<start||at>=end)return null;
+  previous=at;
+  if(at<=now)due.push(key);
+ }
+ return due;
+}
+export function prayerScoreFromTrustedDayR334(input:Readonly<{
+ userId:string;
+ day:Readonly<{id:string;userId:string;boundary:Readonly<{localDate:string;startAt:string;endAt:string}>;prayerRecordsR331?:readonly PrayerRecordR331[]}>;
+ context:Parameters<typeof prayerDueKeysFromContextR334>[0]["context"];
+ currentDate:string;
+ evaluatedAt:string;
+ snapshot:PrayerScoreSnapshotR334|null;
+}>):PrayerDayScoreR334|null{
+ if(input.userId!==input.day.userId)return null;
+ const records=input.day.prayerRecordsR331??[];
+ if(records.some(record=>!validPrayerRecordR331(record)||Date.parse(record.recordedAt)>Date.parse(input.evaluatedAt)))return null;
+ return prayerDayScoreR334({date:input.day.boundary.localDate,currentDate:input.currentDate,dueKeys:prayerDueKeysFromContextR334(input),records,snapshot:input.snapshot});
+}

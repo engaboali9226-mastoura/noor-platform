@@ -8,3 +8,8 @@ Baseline R333: f2b55a1742c05658ab2b7818c876777ad1f78376.
 - Visual smoke now covers registration and reset artwork and bounds at normal mobile/desktop sizes. Actual iOS keyboard and approved visual matching remain separate human/device review; no artwork replacement.
 ## Release gates
 No production merge or deploy until numeric base/prayer mode/timing coefficients and activation policy are approved, runtime integration and deduplication are implemented, and functional/visual CI succeeds. Synthetic coefficients in tests are not an approved scoring policy.
+
+## Second-stage preparation
+- Added owner-scoped trusted-day scoring adapter: exact start instant, matching civil date and context identity, ordered five timestamps, no fabricated missing context, no future entries.
+- Added read-only in-account weight audit under existing control center: actual configured active/paused definition maxima, potential exact prayer-name aliases and stored weights. Title matching is informational only; no automatic mapping or weight changes.
+- No production records inspected. The audit becomes visible only after approved code deployment. Additional functional tests are synthetic, not policy authorization.
