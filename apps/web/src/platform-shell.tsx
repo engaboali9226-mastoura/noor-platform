@@ -1,3 +1,4 @@
+import { NoorBrandHeader, NoorBrandLogo, NOOR_BRAND } from "./noor-brand-r329.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {
   Component,
@@ -72,6 +73,7 @@ extends Component<
     if (this.state.failed) {
       return (
         <section aria-labelledby="view-failure-heading">
+          <NoorBrandHeader scope="platform" />
           <h1 id="view-failure-heading">
             Application view unavailable
           </h1>
@@ -197,8 +199,8 @@ function SmartGateway({
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
         <div className="noor-welcome-logo-frame">
-          <img className="noor-welcome-logo" src="/noor-platform-logo.jpeg" srcSet="/noor-r323-brand.webp"
-            alt="شعار منصة نور" width="104" height="104" fetchPriority="high" decoding="async" />
+          <img className="noor-welcome-logo" src="/brand/platform-header.webp"
+            alt="NOOR Platform — شعار منصة نور" width="1800" height="600" fetchPriority="high" decoding="async" />
         </div>
         <div className="noor-r323-brand-label">منصة نور</div><p className="noor-welcome-eyebrow" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
         <h1 id="noor-welcome-title" className="glass-title">مرحبا بك في منصة نور</h1>
@@ -218,14 +220,13 @@ function SmartGateway({
             {mode!=="recovery"?<label className="noor-welcome-field">
               <span>{mode==="login"?"البريد الإلكتروني أو اسم المستخدم":"البريد الإلكتروني"}</span>
               <input name="email" type={mode==="login"?"text":"email"} dir="ltr" inputMode="email" autoCapitalize="none" spellCheck={false}
-                autoComplete="username" required disabled={submitting} placeholder={mode==="login"?"البريد أو الاسم قبل @":"أدخل بريدك الإلكتروني"} />
+                autoComplete="username" required disabled={submitting} placeholder={mode==="login"?"البريد أو اسم المستخدم":"أدخل بريدك الإلكتروني"} />
             </label>:null}
-            {mode==="login"||mode==="register"||mode==="recovery"?<label className="noor-welcome-field">
+            {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className="noor-welcome-field">
               <span>{mode==="recovery"?"كلمة المرور الجديدة":"كلمة المرور"}</span>
               <input name="password" type={showPassword?"text":"password"} dir="ltr" minLength={mode==="login"?undefined:mode==="register"?12:8}
                 autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder="أدخل كلمة المرور" />
-            </label>:null}
-            {mode==="login"||mode==="register"||mode==="recovery"?<button type="button" className="noor-r322-visibility" onClick={()=>setShowPassword(x=>!x)} aria-pressed={showPassword}>{showPassword?"إخفاء كلمة المرور":"إظهار كلمة المرور"}</button>:null}
+            </label><button type="button" className="noor-r328-password-toggle" onClick={()=>setShowPassword(x=>!x)} aria-pressed={showPassword} aria-label={showPassword?"إخفاء كلمة المرور":"إظهار كلمة المرور"}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>{showPassword?<path d="m3 3 18 18"/>:null}</svg></button></div>:null}
             {mode==="register"||mode==="recovery"?<label className="noor-welcome-field">
               <span>تأكيد كلمة المرور</span>
               <input name="passwordConfirm" type="password" dir="ltr" autoComplete="new-password"
@@ -256,14 +257,14 @@ function SmartGateway({
             <a href="/personal" className="noor-welcome-app-card" onClick={event=>{
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/personal");}}>
-              <span className="noor-welcome-app-mark" aria-hidden="true">✦</span>
+              <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="personal" alt="" /></span>
               <span className="noor-welcome-app-copy"><strong>نور الشخصي</strong><small>يومك، عاداتك، وتقدمك</small></span>
               <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
             </a>
             <a href="/work" className="noor-welcome-app-card" onClick={event=>{
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/work");}}>
-              <span className="noor-welcome-app-mark" aria-hidden="true">◈</span>
+              <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="work" alt="" /></span>
               <span className="noor-welcome-app-copy"><strong>نور ورك</strong><small>الجدول والتحضير والطلاب والدرجات</small></span>
               <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
             </a>
@@ -301,6 +302,7 @@ export function PlatformShell(
     case "not-found":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Route not found
           </h1>
@@ -314,6 +316,7 @@ export function PlatformShell(
     case "planned-application":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application planned
           </h1>
@@ -327,6 +330,7 @@ export function PlatformShell(
     case "platform-failed-closed":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application unavailable
           </h1>
@@ -356,6 +360,7 @@ export function PlatformShell(
     case "session-access-unavailable":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Access unavailable
           </h1>
@@ -369,6 +374,7 @@ export function PlatformShell(
     case "authorization-denied":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Access denied
           </h1>
@@ -382,6 +388,7 @@ export function PlatformShell(
     case "authorization-unavailable":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Access unavailable
           </h1>
@@ -395,6 +402,7 @@ export function PlatformShell(
     case "known-view-unavailable":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Known view unavailable
           </h1>
@@ -595,7 +603,7 @@ export function PlatformShell(
               }
             `}</style>
             <div className="noor-entry-content">
-              <img className="noor-entry-logo" src="/noor-platform-logo.jpeg" alt="شعار نور" decoding="sync" loading="eager" />
+              <img className="noor-entry-logo" src={state.application.appKey==="noor-personal"?NOOR_BRAND.personal.logo:state.application.appKey==="noor-work"?NOOR_BRAND.work.logo:NOOR_BRAND.platform.logo} alt="شعار نور" decoding="sync" loading="eager" />
               <h1 className="noor-entry-title">مرحبا بك في منصة نور</h1>
               <p className="noor-entry-status" role="status" aria-live="polite">
                 جارٍ تجهيز مساحتك الشخصية…
@@ -608,6 +616,7 @@ export function PlatformShell(
 
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application unavailable
           </h1>
@@ -621,6 +630,7 @@ export function PlatformShell(
     case "application-view-failure":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application view unavailable
           </h1>

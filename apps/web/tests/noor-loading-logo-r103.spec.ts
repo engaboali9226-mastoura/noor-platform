@@ -41,14 +41,14 @@ test("R103 logo is visibly larger and exactly aligned in both loading states", (
   assert.match(routeCss, /animation: none;/u);
 });
 
-test("R103 original Noor image, accessibility and welcome copy are intact", () => {
+test("R103 shared Noor image, accessibility and welcome copy are intact", () => {
   for (const html of [route, personal]) {
-    assert.match(html, /src="\/noor-platform-logo\.jpeg"/u);
+    assert.match(html, /src="\/brand\/personal-logo\.webp"/u);
     assert.match(html, /alt="شعار نور"/u);
     assert.match(html, /مرحبا بك في منصة نور/u);
     assert.match(html, /جارٍ تجهيز مساحتك الشخصية/u);
     assert.match(html, /aria-busy="true"/u);
   }
   const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(index, /rel="preload" as="image" type="image\/jpeg" href="\/noor-platform-logo\.jpeg"/u);
+  assert.match(index, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
 });

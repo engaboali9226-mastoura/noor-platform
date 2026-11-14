@@ -1,7 +1,7 @@
 {
-  "name": "نور — منصة الحياة الشخصية",
+  "name": "NOOR Platform — منصة نور",
   "short_name": "نور",
-  "description": "منصة نور لإدارة العادات والمهام والتقدم اليومي.",
+  "description": "منصة نور لتطبيقات الحياة الشخصية والعمل.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -16,16 +16,28 @@
   "theme_color": "#21384b",
   "icons": [
     {
-      "src": "/noor-icon-transparent-r224-192.png",
+      "src": "/brand/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/noor-icon-transparent-r224-512.png",
+      "src": "/brand/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/brand/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 126" role="img" aria-label="نور NOOR">
+  <title>نور — NOOR</title>
+  <text x="90" y="37" direction="rtl" text-anchor="middle" font-family="Tahoma,Arial,sans-serif" font-size="43" font-weight="700" fill="#214b40">نور</text>
+  <text x="90" y="87" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="45" text-anchor="middle" textLength="148" lengthAdjust="spacingAndGlyphs" fill="#214b40">NOOR</text>
+  <path d="M58 95 Q90 121 122 95" fill="none" stroke="#c99225" stroke-width="4.5" stroke-linecap="round"/>
+</svg>

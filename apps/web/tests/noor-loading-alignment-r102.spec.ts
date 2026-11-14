@@ -42,9 +42,9 @@ test("R102 route and Personal use byte-identical loading-stage geometry", () => 
   }
 });
 
-test("R102 same original logo, heading and detail appear in both phases", () => {
+test("R102 same shared logo, heading and detail appear in both phases", () => {
   for (const html of [route, personal]) {
-    assert.match(html, /src="\/noor-platform-logo\.jpeg"/u);
+    assert.match(html, /src="\/brand\/personal-logo\.webp"/u);
     assert.match(html, /مرحبا بك في منصة نور/u);
     assert.match(html, /جارٍ تجهيز مساحتك الشخصية/u);
     assert.match(html, /aria-busy="true"/u);
@@ -68,7 +68,7 @@ test("R102 real error states remain errors (no fake loading)", () => {
   assert.doesNotMatch(unavailable, /class="np-page np-page-entry-loading"/u);
 });
 
-test("R102 same preloaded original image remains the sole shared logo asset", () => {
+test("R102 general Platform icon preloads before authentication", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /rel="preload" as="image" type="image\/jpeg" href="\/noor-platform-logo\.jpeg"/u);
+  assert.match(html, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
 });

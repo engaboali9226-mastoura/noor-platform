@@ -1,4 +1,4 @@
-import { NoorWordmark } from "./noor-wordmark.js";
+import { NoorBrandHeader } from "./noor-brand-r329.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 import {NoorPersonalInitialSetupR321} from "./noor-personal-initial-setup-r321.js";
 import {quranQuarterR289,quranQuarterForDateR289,validQuranPlanR289,type QuranHabitPlanR289} from "./noor-quran-quarters-r289.js";
@@ -2575,7 +2575,8 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
         {confirmArchive===selected.id?<div className="np-cc-confirm" role="alert"><p>أرشفة هذا العنصر؟ سيُحفظ تاريخه.</p><button className="np-cc-button danger" disabled={busy} onClick={()=>{void apply({type:"archive-definition",definitionId:selected.id});}} type="button">تأكيد الأرشفة</button><button className="np-cc-button" disabled={busy} onClick={()=>setConfirmArchive(null)} type="button">إلغاء</button></div>:null}
       </div></div>:null}</div>;
   return <div className="np-cc-shell" data-testid="control-center-r65">
-    <header className="np-cc-header"><div className="np-cc-heading"><div className="np-logo-frame np-cc-header-logo"><img alt="شعار نور" className="np-platform-logo" src="/noor-platform-logo.jpeg" srcSet="/noor-r323-brand.webp" /></div><div className="np-cc-heading-copy"><h1 className="np-control-title">مركز التحكم</h1></div></div><div className="np-cc-header-actions"><button aria-label="العودة إلى اليوم" className="np-cc-button" onClick={onClose} type="button">العودة لليوم ←</button><button aria-label="إعادة الاتصال بنور" className="np-cc-button" disabled={busy||reconnecting} onClick={onReconnect} type="button">{reconnecting?"جارٍ الاتصال…":"تحديث ↻"}</button><button aria-label="تسجيل الخروج والعودة إلى شاشة الدخول" className="np-cc-button" disabled={busy||logoutPending} onClick={onLogout} type="button">{logoutPending?"جارٍ الخروج…":"تسجيل الخروج"}</button></div></header>
+    <NoorBrandHeader scope="personal" />
+    <header className="np-cc-header"><div className="np-cc-heading"><div className="np-logo-frame np-cc-header-logo"><img alt="شعار نور" className="np-platform-logo" src="/brand/personal-logo.webp" /></div><div className="np-cc-heading-copy"><h1 className="np-control-title">مركز التحكم</h1></div></div><div className="np-cc-header-actions"><button aria-label="العودة إلى اليوم" className="np-cc-button" onClick={onClose} type="button">العودة لليوم ←</button><button aria-label="إعادة الاتصال بنور" className="np-cc-button" disabled={busy||reconnecting} onClick={onReconnect} type="button">{reconnecting?"جارٍ الاتصال…":"تحديث ↻"}</button><button aria-label="تسجيل الخروج والعودة إلى شاشة الدخول" className="np-cc-button" disabled={busy||logoutPending} onClick={onLogout} type="button">{logoutPending?"جارٍ الخروج…":"تسجيل الخروج"}</button></div></header>
     <section className="np-card np-control np-cc"><div className="np-cc-layout">
       <nav aria-label="أقسام مركز التحكم" className="np-cc-nav">{([["Habit","العادات"],["Task","المهام"],["categories","التصنيفات"],["ordering","الترتيب"],["weights","الأوزان"],["statistics","الإحصائيات"],["reminders","التنبيهات"],["finance","المالية"],["appearance","المظهر"],["location","التوقيت والموقع"],["account","الحساب والأمان"]] as const).filter(([id])=>id!=="account"||import.meta.env?.VITE_NOOR_ACCOUNT_SELF_SERVICE_ENABLED==="true").map(([id,label])=><button aria-current={section===id?"page":undefined} className={`np-cc-nav-item${section===id?" is-selected":""}`} key={id} onClick={event=>{changeSection(id);event.currentTarget.scrollIntoView?.({block:"nearest",inline:"center"});}} type="button">{icon(id)}<span>{label}</span>{(id==="Habit"||id==="Task")?<small>{definitions.filter(d=>d.kind===id&&d.state==="Active").length}</small>:null}</button>)}</nav>
       <main className="np-cc-main">
@@ -2952,7 +2953,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>
 
       <div className="np-brand">
-        <div className="np-logo-frame"><img alt="شعار نور" className="np-platform-logo" src="/noor-platform-logo.jpeg" srcSet="/noor-r323-brand.webp" /></div><div className="np-r323-brand-label">منصة نور<small lang="en"><NoorWordmark /> Personal</small></div>
+        <NoorBrandHeader scope="personal" />
       </div>
     </div>
 
@@ -3093,7 +3094,7 @@ function PersonalEntryLoading(): ReactElement {
       aria-busy="true"
     >
       <div className="np-entry-loading-content">
-        <img className="np-entry-loading-logo" src="/noor-platform-logo.jpeg" alt="شعار نور" decoding="sync" loading="eager" />
+        <img className="np-entry-loading-logo" src="/brand/personal-logo.webp" alt="شعار نور" decoding="sync" loading="eager" />
         <h1 className="np-entry-loading-title">مرحبا بك في منصة نور</h1>
         <p className="np-entry-loading-copy">جارٍ تجهيز مساحتك الشخصية…</p>
         <span className="np-entry-loading-spinner" aria-hidden="true" />
@@ -3103,7 +3104,7 @@ function PersonalEntryLoading(): ReactElement {
 }
 
 function StatePage({ title, copy, onRetry, retrying=false }: { title: string; copy: string; onRetry?:()=>void; retrying?:boolean }): ReactElement {
-  return <section className="np-card np-date-card"><img alt="شعار نور" className="np-state-logo" src="/noor-platform-logo.jpeg" /><h1 className="np-control-title">{title}</h1><p className="np-control-subtitle">{copy}</p>{onRetry?<button type="button" className="np-cc-button np-reconnect-state-r296" data-testid="r296-reconnect-state" disabled={retrying} onClick={onRetry}>{retrying?"جارٍ الاتصال…":"إعادة الاتصال ↻"}</button>:null}</section>;
+  return <section className="np-card np-date-card"><NoorBrandHeader scope="personal" /><img alt="شعار نور" className="np-state-logo" src="/brand/personal-logo.webp" /><h1 className="np-control-title">{title}</h1><p className="np-control-subtitle">{copy}</p>{onRetry?<button type="button" className="np-cc-button np-reconnect-state-r296" data-testid="r296-reconnect-state" disabled={retrying} onClick={onRetry}>{retrying?"جارٍ الاتصال…":"إعادة الاتصال ↻"}</button>:null}</section>;
 }
 
 export function NoorPersonalApplicationView({ initialResult, initialWorkspace }: NoorPersonalApplicationViewProps): ReactElement {

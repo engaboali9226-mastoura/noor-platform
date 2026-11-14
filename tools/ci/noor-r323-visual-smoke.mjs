@@ -66,6 +66,14 @@ try{
   await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=innerHeight","Login controls fit without scrolling");
   await expect("document.querySelector('.noor-welcome-logo').getBoundingClientRect().top<80","Brand begins near the top of the screen");
   await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
+  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Shared login logo");
+  await run("document.querySelector('input[name=email]').focus()");
+  await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='0px'&&s.boxShadow==='none'&&s.outlineStyle==='none'})()","No nested focus border");
+  await run("document.querySelector('.noor-r328-password-toggle').click()");
+  await expect("document.querySelector('input[name=password]').type==='text'","Password visibility works");
+  await run("document.querySelector('.noor-r328-password-toggle').click()");
+  await expect("document.querySelector('input[name=password]').type==='password'","Password can be concealed");
+  await run("document.activeElement.blur()");
   await snap(screen.name+"-login");
   await run("document.querySelector('.noor-r322-secondary-actions button').click()");
   await find("input[name=name]");
@@ -92,6 +100,9 @@ try{
   await cdp("Page.navigate",{url:url+"?screen=personal"});
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");
+  await expect(visible("[data-testid=r328-night-total-duration]"),"Trusted whole-night duration visibly distinct from the timer");
+  await expect("(()=>{const h=document.querySelector('[data-testid=r329-personal-header]');return h&&h.getAttribute('src')==='/brand/personal-header.webp'&&h.naturalWidth>0&&h.getBoundingClientRect().height>0&&!document.querySelector('.np-r328-personal-watermark')})()","Approved Personal glass header decodes, with no obsolete watermark");
+
   await expect(visible("[data-testid=prayer-card]"),"Existing prayer card retained");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
   await expect("document.documentElement.scrollWidth<=innerWidth+2","Dashboard horizontal overflow");

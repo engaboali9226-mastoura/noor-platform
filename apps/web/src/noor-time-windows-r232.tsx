@@ -127,7 +127,7 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
     {currentTimer?<><strong className="np-r322-main-countdown" dir="ltr" role="timer">{currentTimer}</strong><span className="np-r323-time-units" dir="ltr"><span>ساعة</span><span>دقيقة</span><span>ثانية</span></span></>
      :<span className="np-r322-time-unavailable">لا توجد فترة نشطة الآن</span>}
     <span className="np-r322-feature-subtitle">{currentTimer?"متبقٍ حتى نهاية الفترة":"اضغط لعرض مواقيت اليوم"}</span>
-    {currentWindow?<span className="np-r322-range">من {clock(currentWindow.startMs,timeZone)} إلى {clock(currentWindow.endMs,timeZone)} · المدة {duration(currentWindow.durationMs)}</span>
+    {currentWindow?<><span className="np-r328-total-duration" data-testid={nightPreview?"r328-night-total-duration":"r328-day-total-duration"}><span>إجمالي ساعات {currentTitle}</span><strong>{duration(currentWindow.durationMs)}</strong></span><span className="np-r322-range">من {clock(currentWindow.startMs,timeZone)} إلى {clock(currentWindow.endMs,timeZone)}</span></>
      :fallbackToFajr?<span className="np-r322-range">حتى الفجر المؤكد · لم تتوفر بداية الليل لحساب مدته</span>:null}
     </button><button type="button" className="np-r322-expand np-r323-expand" onClick={()=>setDetailsOpen(true)}>اضغط لعرض جميع المؤقتات ‹</button>
  </section>

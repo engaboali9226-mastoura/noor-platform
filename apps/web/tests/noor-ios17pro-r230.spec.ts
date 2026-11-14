@@ -38,7 +38,7 @@ function alphaBounds(file:string){
  }
  return {diameter:Math.max(hiX-loX+1,hiY-loY+1),transparent};
 }
-test("R230 iPhone logo visibly larger within same 180px Home Screen icon",()=>{
+test("R230 historical icon geometry remains valid and the approved iOS icon is selected",()=>{
  execFileSync(process.execPath,[generator.pathname],{stdio:"pipe"});
  const old=alphaBounds("noor-apple-touch-transparent-r224.png");
  const current=alphaBounds("noor-apple-touch-expanded-r230.png");
@@ -47,9 +47,9 @@ test("R230 iPhone logo visibly larger within same 180px Home Screen icon",()=>{
  assert.ok(current.diameter<180*.94,
    "retain breathing room to avoid rounded-square crop");
  assert.ok(current.transparent>180*180*.15,"retain transparent background");
- assert.match(html,/href="\/noor-apple-touch-expanded-r230\.png"/u);
+ assert.match(html,/href="\/brand\/icon-180\.png"/u);
  for(const size of [192,512])assert.ok(manifest.icons.some((x:any)=>
-   x.src==="/noor-icon-transparent-r224-"+size+".png"));
+   x.src==="/brand/icon-"+size+".png"));
 });
 test("R230/R231 single sign-in gateway fits a narrow iPhone with no Safari focus zoom",()=>{
  assert.match(shell,/className="noor-welcome-panel"/u);
