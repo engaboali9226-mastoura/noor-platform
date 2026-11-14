@@ -56,3 +56,15 @@ test("R331 prayer reporting is day scoped, not allowed before the prayer, and su
  await a.service.execute("u",{...p,mode:null,timing:null,expectedRecordedAt:now});
  a=await open();assert.deepEqual(buildPersonalWorkspace("u",a.scope.snapshot).prayerHistoryR331,[]);
 });
+
+test("R331 late scheduled session preserves date and records only delayed increment with immutable decayed share",async()=>{
+ const now="2026-11-14T12:00:00.000Z",due="2026-11-12";
+ const session={id:"s",title:"قراءة",objective:"",target:10,rangeStart:1,rangeEnd:10,scheduledDate:due,order:1,note:"",revision:1,createdAt:now,updatedAt:now,completedAt:null};
+ const def={id:"d",userId:"u",kind:"Task",revisionId:"r",title:"قراءة",category:"التعلم",state:"Active",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-01",importance:"Essential",weight:8,gatePolicy:"NonBlocking",targets:{},measurement:{target:10,unit:"صفحة"},sessionPlan:{distribution:"equal",sessions:[session]},activityLog:[{id:"old",executionId:"exec",taskSessionId:"s",localDate:due,at:"2026-11-12T12:00:00Z",amount:4,note:"",endReason:null,sessionDayCredit:.4}]};
+ const e={id:"exec",userId:"u",personalDayId:"past",definitionId:"d",definitionRevisionId:"r",kind:"Task",title:def.title,materializationKey:"key",scheduleOccurrenceKey:due,status:"Missed",eligibility:{definitionRevisionId:"r",importance:"Essential",weight:8,gatePolicy:"NonBlocking",targets:{}},version:1,createdAt:now,updatedAt:now};
+ const day={id:"today",userId:"u",boundary:{key:"today",localDate:"2026-11-14",startAt:"2026-11-13T21:00:00Z",endAt:"2026-11-14T21:00:00Z",timeZone:"Asia/Riyadh"},state:"Open",version:1,createdAt:now,updatedAt:now};
+ const store=new InMemoryFoundationStore({personalDays:[day],definitions:[def],dailyExecution:[e]});const service=new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:store,accountTimeZone:"Asia/Riyadh"});
+ const c={type:"recover-task-session-r331",executionId:"exec",localDate:due,taskSessionId:"s",entryId:"new",amount:6,note:"تم الباقي"};
+ assert.ok(parsePersonalCommand(c));await assert.rejects(()=>service.execute("u",{...c,amount:7}));await assert.rejects(()=>service.execute("other",c));await service.execute("u",c);await service.execute("u",c);const d=store.snapshot().definitions[0];assert.equal(d.activityLog.length,2);assert.equal(d.activityLog[1].performedOnR331,"2026-11-14");assert.equal(d.activityLog[1].localDate,due);assert.equal(d.activityLog[1].sessionDayCredit,.15);assert.equal(d.sessionPlan.sessions[0].completedAt,now);
+ const w=buildPersonalWorkspace("u",{listDefinitions:()=>[d],listPersonalDays:()=>[day],listDailyExecutionForUser:()=>[e]});assert.ok(Math.abs(w.statistics.rows[0].credit-.55)<1e-9);
+});

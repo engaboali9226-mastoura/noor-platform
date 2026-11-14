@@ -27,6 +27,7 @@ export type NoorPersonalWorkspaceResult =
     };
 
 export type NoorPersonalCommandInput =
+  | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:string;taskSessionId:string;entryId:string;amount:number;note:string}>
   | Readonly<{type:"recover-historical-execution";executionId:string;localDate:string;expectedStatus:"Missed"|"Pending"|"Planned"|"InProgress"}>
   | Readonly<{type:"record-prayer-r331";localDate:string;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null}>
   | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;

@@ -8,7 +8,7 @@ export interface StoredTaskSessionR254 extends NoorTaskSessionDraft {
 export interface StoredTaskSessionPlanR254 {
   distribution:"equal"|"custom"; sessions:readonly StoredTaskSessionR254[];
 }
-export interface SessionEntryR254 {id:string;executionId:string;localDate:string;at:string;note:string;amount:number;taskSessionId?:string;sessionDayCredit?:number}
+export interface SessionEntryR254 {id:string;executionId:string;localDate:string;at:string;note:string;amount:number;taskSessionId?:string;sessionDayCredit?:number;performedOnR331?:string}
 const round=(n:number)=>Math.round(n*1e6)/1e6;
 export function isWholePageUnitR254(unit:string):boolean{
   return /^(?:صفحة|صفحه|صفحات|page|pages)$/iu.test(unit.trim());
@@ -30,7 +30,8 @@ export function sessionFinishedR254(s:StoredTaskSessionR254,log:readonly Session
 export function sessionCompletionDayR293(s:StoredTaskSessionR254,log:readonly SessionEntryR254[]):string|null{
   if(!sessionFinishedR254(s,log))return null;
   const events=log.filter(e=>e.taskSessionId===s.id).sort((a,b)=>a.at.localeCompare(b.at));
-  return (s.completedAt?events.find(e=>e.at===s.completedAt)?.localDate:undefined)??events.at(-1)?.localDate??null;
+  const event=(s.completedAt?events.find(e=>e.at===s.completedAt):undefined)??events.at(-1);
+  return event?.performedOnR331??event?.localDate??null;
 }
 /** R285: exact remaining goal is committed by a single checkbox through existing
  * owner-authorized activity commands. This is not an additional achievement. */

@@ -35,6 +35,7 @@ function orderedDefinitions(definitions:readonly ExecutionDefinition[]):Executio
 function categoryNames(snapshot:Pick<PersonalFoundationSnapshotPort,"getCategories"|"listDefinitions">,userId:string):string[]{return [...new Set([...(snapshot.getCategories?.(userId)??DEFAULT_PERSONAL_CATEGORIES),...snapshot.listDefinitions(userId).map(d=>d.category??"عام")])];}
 
 export type PersonalCommand =
+    | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:LocalDate;taskSessionId:string;entryId:string;amount:number;note:string}>
     | Readonly<{type:"recover-historical-execution";executionId:string;localDate:LocalDate;expectedStatus:ExecutionStatus}>
     | Readonly<{type:"record-prayer-r331";localDate:LocalDate;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null}>
     | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;plan:NoorReminderPlanR314|null}>
@@ -347,6 +348,10 @@ export function parsePersonalCommand(
            !Number.isSafeInteger(value.expectedRevision)||Number(value.expectedRevision)<0 ||
            typeof value.note!=="string"||value.note.length>10000)return null;
         return {type:"edit-task-session-note",definitionId:value.definitionId,taskSessionId:value.taskSessionId,expectedRevision:value.expectedRevision as number,note:value.note.trim()};
+    }
+    if(value.type==="recover-task-session-r331"){
+        if(!exactKeys(value,["type","executionId","localDate","taskSessionId","entryId","amount","note"])||!boundedIdentifier(value.executionId)||!boundedIdentifier(value.taskSessionId)||!boundedIdentifier(value.entryId)||!localDate(value.localDate)||typeof value.amount!=="number"||!sessionQuantity(value.amount)||value.amount<0||typeof value.note!=="string"||value.note.length>2000)return null;
+        return {type:"recover-task-session-r331",executionId:value.executionId,localDate:value.localDate as LocalDate,taskSessionId:value.taskSessionId,entryId:value.entryId,amount:value.amount,note:value.note.trim()};
     }
     if(value.type==="record-task-session-progress"){
         if(!exactKeys(value,["type","executionId","taskSessionId","entryId","amount","note"]) ||
@@ -875,6 +880,34 @@ export class PersonalCommandService {
                     if(session.revision!==command.expectedRevision)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     transaction.saveDefinition({...definition,revisionId:this.dependencies.idGenerator.next("definition-revision"),
                       sessionPlan:{...definition.sessionPlan,sessions:definition.sessionPlan.sessions.map(s=>s.id!==session.id?s:{...s,note:parsed.note,revision:s.revision+1,updatedAt:now})}});
+                    return;
+                }
+                if(command.type==="recover-task-session-r331"){
+                    const p=parsePersonalCommand(command);
+                    if(!p||p.type!=="recover-task-session-r331")throw new Error("TASK_SESSION_INVALID_PROGRESS");
+                    const instance=transaction.findDailyExecutionById(userId,p.executionId);
+                    if(!instance||instance.userId!==userId||instance.kind!=="Task"||instance.scheduleOccurrenceKey!==p.localDate)throw new PersonalControlError("EXECUTION_NOT_FOUND");
+                    const definition=transaction.findDefinitionById(userId,instance.definitionId);
+                    if(!definition?.sessionPlan||definition.userId!==userId)throw new Error("TASK_SESSION_NOT_ENABLED");
+                    const session=definition.sessionPlan.sessions.find(s=>s.id===p.taskSessionId);
+                    if(!session||session.scheduledDate!==p.localDate)throw new Error("TASK_SESSION_NOT_SCHEDULED_TODAY");
+                    const log=definition.activityLog??[],prior=log.find(e=>e.id===p.entryId);
+                    if(prior){
+                        if(prior.taskSessionId!==p.taskSessionId||prior.executionId!==p.executionId||prior.localDate!==p.localDate||prior.amount!==p.amount||prior.note!==p.note||!prior.performedOnR331)throw new Error("TASK_SESSION_ACTIVITY_ID_CONFLICT");
+                        return;
+                    }
+                    const currentDay=activePersonalDay(transaction,userId,now),performedOn=currentDay.boundary.localDate;
+                    if(p.localDate>=performedOn||!["Missed","Pending","Planned","InProgress"].includes(instance.status)||definition.state!=="Active")throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    if(log.length>=10000)throw new Error("ACTIVITY_LIMIT_REACHED");
+                    const creditFactor=recoveryCreditR331(p.localDate,performedOn);
+                    if(creditFactor<=0||sessionStatus(session,log)==="Completed")throw new Error("TASK_SESSION_RECOVERY_UNAVAILABLE");
+                    const previous=sessionProgress(log,session.id),manual=session.target===null;
+                    if(manual?p.amount!==0:p.amount<=0||Math.round((previous+p.amount)*1e6)>Math.round(session.target!*1e6))throw new Error("TASK_SESSION_EXCEEDS_TARGET");
+                    if(definition.measurement&&(isPageUnit(definition.measurement.unit)&&!Number.isSafeInteger(p.amount)||Math.round((log.reduce((sum,e)=>sum+e.amount,0)+p.amount)*1e6)>Math.round(definition.measurement.target*1e6)))throw new Error("PROGRESS_EXCEEDS_TARGET");
+                    const finished=manual||Math.round((previous+p.amount)*1e6)>=Math.round(session.target!*1e6);
+                    const entry={id:p.entryId,executionId:instance.id,taskSessionId:session.id,localDate:p.localDate,performedOnR331:performedOn,at:now,amount:p.amount,note:p.note,endReason:null,
+                      sessionDayCredit:sessionEventCredit(definition.measurement,definition.sessionPlan,session,p.amount,manual)*creditFactor};
+                    transaction.saveDefinition({...definition,activityLog:[...log,entry],sessionPlan:{...definition.sessionPlan,sessions:definition.sessionPlan.sessions.map(s=>s.id!==session.id?s:{...s,updatedAt:now,...(finished?{completedAt:now}:{})})}});
                     return;
                 }
                 if(command.type==="record-task-session-progress"||command.type==="complete-task-session"){

@@ -161,6 +161,7 @@ export interface TargetLevels {
 }
 
 export interface ActivityEntry {
+    readonly performedOnR331?: LocalDate;
     readonly id: string;
     readonly executionId: string;
     readonly localDate: LocalDate;
