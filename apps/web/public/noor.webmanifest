@@ -12,17 +12,17 @@
   "lang": "ar",
   "dir": "rtl",
   "orientation": "any",
-  "background_color": "#f8f5ee",
-  "theme_color": "#21384b",
+  "background_color": "#dce8f4",
+  "theme_color": "#dce8f4",
   "icons": [
     {
-      "src": "/brand/icon-192.png",
+      "src": "/brand/icon-r330-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/brand/icon-512.png",
+      "src": "/brand/icon-r330-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

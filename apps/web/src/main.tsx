@@ -11,6 +11,8 @@ import "./noor-premium-r322.css";
 import "./noor-approved-r323.css";
 import "./noor-unified-r324.css";
 import "./noor-brand-r329.css";
+import "./noor-glass-r330.css";
+import { applyAppearance, readAppearance } from "./appearance-preference-store.js";
 
 import {
   applicationCatalog,
@@ -232,6 +234,8 @@ function ShellFoundation() {
     />
   );
 }
+
+applyAppearance(readAppearance());
 
 const rootElement =
   document.getElementById(
