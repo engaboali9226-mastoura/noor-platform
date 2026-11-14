@@ -1,3 +1,4 @@
+import {validPrayerScoreSnapshotR334,type PrayerScoreSnapshotR334} from "../domain/completion-r331.js";
 import type {
     AutomationOutboxEvent,
     DailyExecutionInstance,
@@ -19,6 +20,7 @@ import type {
 } from "../ports.js";
 
 interface FoundationState {
+    prayerScorePoliciesR334?: {userId:string;policy:PrayerScoreSnapshotR334}[];
     fridayMosqueVisits?: {userId:string;localDate:string;hour:FridayMosqueHour}[];
     categories?: {userId:string;names:string[]}[];
     locations:
@@ -437,6 +439,8 @@ implements
         state: FoundationState,
     ): FoundationTransaction {
         return {
+            getPrayerScorePolicyR334:(userId)=>clone(state.prayerScorePoliciesR334?.find(x=>x.userId===userId)?.policy??null),
+            savePrayerScorePolicyR334:(userId,policy)=>{if(!validPrayerScoreSnapshotR334(policy))throw new Error("PRAYER_POLICY_INVALID");state.prayerScorePoliciesR334=[...(state.prayerScorePoliciesR334??[]).filter(x=>x.userId!==userId),{userId,policy:clone(policy)}];},
             getFridayMosqueVisit:(userId,localDate)=>{const x=state.fridayMosqueVisits?.find(v=>v.userId===userId&&v.localDate===localDate);return x?{localDate:x.localDate,hour:x.hour}:null;},
             saveFridayMosqueVisit:(userId,localDate,hour)=>{
                 const entries=state.fridayMosqueVisits??[];

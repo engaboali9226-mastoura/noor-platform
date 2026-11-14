@@ -169,3 +169,46 @@ export function validPrayerScoreSnapshotR334(value:unknown):value is PrayerScore
  }
  return Object.entries(v.legacyHabitKeys).every(([id,key])=>!!id.trim()&&R331_PRAYERS.includes(key));
 }
+
+export type PrayerScoreApprovalR334=Readonly<{
+ type:"configure-prayer-score-r334";
+ expectedPolicyId:string|null;
+ baseWeight:number;
+ shares:PrayerScoreSnapshotR334["shares"];
+ mappings:readonly Readonly<{definitionId:string;key:PrayerKeyR331}>[];
+ confirm:true;
+}>;
+const plainR334=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v);
+const exactR334=(v:Record<string,unknown>,keys:readonly string[])=>Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
+const idR334=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=200&&v.trim()===v&&!["__proto__","prototype","constructor"].includes(v);
+export function parsePrayerScoreApprovalR334(value:unknown):PrayerScoreApprovalR334|null{
+ if(!plainR334(value)||!exactR334(value,["type","expectedPolicyId","baseWeight","shares","mappings","confirm"])||value.type!=="configure-prayer-score-r334"||value.confirm!==true||!(value.expectedPolicyId===null||idR334(value.expectedPolicyId))||typeof value.baseWeight!=="number"||!Number.isSafeInteger(value.baseWeight)||value.baseWeight<1||value.baseWeight>1000||!plainR334(value.shares)||!exactR334(value.shares,["group","excused","unexcused"])||!Array.isArray(value.mappings)||value.mappings.length>500)return null;
+ const shares=value.shares;
+ for(const mode of ["group","excused","unexcused"] as const){
+  const m=shares[mode];
+  if(!plainR334(m)||!exactR334(m,["ontime","late"]))return null;
+  for(const timing of ["ontime","late"] as const)if(typeof m[timing]!=="number"||!Number.isFinite(m[timing])||Number(m[timing])<0||Number(m[timing])>1)return null;
+  if(Number(m.late)>Number(m.ontime))return null;
+ }
+ const approved=shares as PrayerScoreSnapshotR334["shares"];
+ if(approved.group.ontime!==1||approved.group.ontime<approved.excused.ontime||approved.excused.ontime<approved.unexcused.ontime||approved.group.late<approved.excused.late||approved.excused.late<approved.unexcused.late)return null;
+ const mappings:{definitionId:string;key:PrayerKeyR331}[]=[];
+ for(const m of value.mappings){
+  if(!plainR334(m)||!exactR334(m,["definitionId","key"])||!idR334(m.definitionId)||!R331_PRAYERS.includes(m.key as PrayerKeyR331)||mappings.some(x=>x.definitionId===m.definitionId))return null;
+  mappings.push({definitionId:m.definitionId,key:m.key as PrayerKeyR331});
+ }
+ return {type:"configure-prayer-score-r334",expectedPolicyId:value.expectedPolicyId,baseWeight:value.baseWeight,shares:structuredClone(approved),mappings,confirm:true};
+}
+export function issuePrayerScoreSnapshotR334(input:Readonly<{policyId:string;effectiveFromDate:string;approval:PrayerScoreApprovalR334;definitions:readonly Readonly<{id:string;userId:string;kind:string;state:string;weight:number}>[];userId:string}>):PrayerScoreSnapshotR334|null{
+ const {approval,definitions,userId}=input;
+ if(!parsePrayerScoreApprovalR334(approval)||!validCivilR334(input.effectiveFromDate)||!idR334(input.policyId))return null;
+ const owned=definitions.filter(d=>d.userId===userId);
+ if(approval.mappings.some(m=>!owned.some(d=>d.id===m.definitionId&&d.kind==="Habit"&&["Active","Paused"].includes(d.state))))return null;
+ const aliases=Object.fromEntries(approval.mappings.map(m=>[m.definitionId,m.key])) as Record<string,PrayerKeyR331>;
+ if(owned.some(d=>["Active","Paused"].includes(d.state)&&!Object.hasOwn(aliases,d.id)&&(!Number.isFinite(d.weight)||d.weight>=approval.baseWeight)))return null;
+ const weights=Object.fromEntries(R331_PRAYERS.map(key=>[key,approval.baseWeight])) as Record<PrayerKeyR331,number>;
+ return {policyId:input.policyId,effectiveFromDate:input.effectiveFromDate,weights,shares:structuredClone(approval.shares),legacyHabitKeys:aliases};
+}
+export function ordinaryWeightPermittedR334(policy:PrayerScoreSnapshotR334|null|undefined,id:string,kind:string,weight:number):boolean{
+ return !policy||(kind==="Habit"&&Object.hasOwn(policy.legacyHabitKeys,id))||weight<Math.min(...R331_PRAYERS.map(k=>policy.weights[k]));
+}

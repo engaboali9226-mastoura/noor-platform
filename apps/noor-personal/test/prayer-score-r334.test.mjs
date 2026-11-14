@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
-const {prayerDayScoreR334,combinePrayerAchievementR334,prayerDueKeysFromContextR334,prayerScoreFromTrustedDayR334,projectPrayerAchievementPeriodR334,buildPersonalWorkspace,validPrayerScoreSnapshotR334}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+const {prayerDayScoreR334,combinePrayerAchievementR334,prayerDueKeysFromContextR334,prayerScoreFromTrustedDayR334,projectPrayerAchievementPeriodR334,buildPersonalWorkspace,validPrayerScoreSnapshotR334,parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,PersonalCommandService,SequenceIdGenerator,InMemoryFoundationStore,parsePersonalCommand}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
 // Synthetic coefficients only. These are deliberately not production defaults.
 const snapshot={policyId:"fixture-v1",effectiveFromDate:"2026-11-15",weights:{fajr:101,dhuhr:102,asr:103,maghrib:104,isha:105},shares:{group:{ontime:1,late:.4},excused:{ontime:.9,late:.3},unexcused:{ontime:.6,late:.2}},legacyHabitKeys:{"old-fajr":"fajr","duplicate-fajr":"fajr","old-isha":"isha"}};
 const base={date:"2026-11-15",currentDate:"2026-11-15",dueKeys:["fajr","dhuhr"],records:[],snapshot};
@@ -94,4 +94,29 @@ test("R334 workspace emits trusted owner-specific prayer projection only for an 
  for(const bad of [make([{...personalDay,prayerScoreSnapshotR334:undefined}],[context]),make([personalDay],[]),make([personalDay],[context,context]),make([{...personalDay,userId:"other"}],[context]),make([{...personalDay,prayerScoreSnapshotR334:{}}],[context])])assert.equal(buildPersonalWorkspace("u",bad,now).prayerAchievementR334,undefined);
  assert.equal(buildPersonalWorkspace("u",make([personalDay],[context])).prayerAchievementR334,undefined);
  assert.equal(validPrayerScoreSnapshotR334({policyId:"bad",effectiveFromDate:"2026-11-15"}),false);
+});
+
+test("R334 explicit approval validates coefficients, exact IDs, owner and highest ordinary weight",()=>{
+ const approval={type:"configure-prayer-score-r334",expectedPolicyId:null,baseWeight:25,shares:snapshot.shares,mappings:[{definitionId:"old-fajr",key:"fajr"}],confirm:true};
+ const defs=[{id:"old-fajr",userId:"u",kind:"Habit",state:"Active",weight:25},{id:"walk",userId:"u",kind:"Habit",state:"Active",weight:14}];
+ assert.ok(parsePersonalCommand(approval));
+ const issue=(patch={},definitions=defs)=>issuePrayerScoreSnapshotR334({policyId:"policy-1",effectiveFromDate:"2026-11-16",approval:{...approval,...patch},definitions,userId:"u"});
+ const issued=issue();assert.equal(issued.weights.fajr,25);assert.deepEqual(issued.legacyHabitKeys,{"old-fajr":"fajr"});
+ assert.equal(issue({baseWeight:14}),null);
+ assert.equal(issue({mappings:[{definitionId:"foreign",key:"fajr"}]},[...defs,{id:"foreign",userId:"x",kind:"Habit",state:"Active",weight:1}]),null);
+ assert.equal(parsePrayerScoreApprovalR334({...approval,confirm:false}),null);
+ assert.equal(parsePrayerScoreApprovalR334({...approval,shares:{...approval.shares,group:{ontime:1,late:1.1}}}),null);
+ assert.equal(ordinaryWeightPermittedR334(issued,"walk","Habit",25),false);
+ assert.equal(ordinaryWeightPermittedR334(issued,"old-fajr","Habit",100),true);
+});
+test("R334 authenticated approval applies from the next day, CAS rejects stale approval and preserves today's snapshot",async()=>{
+ const now="2026-11-15T10:00:00Z";
+ const current={...day,boundary:{...day.boundary,key:"personal-day-civil:u:2026-11-15"},state:"Open",version:1,createdAt:now,updatedAt:now};
+ const store=new InMemoryFoundationStore({personalDays:[current]});
+ const service=new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:store});
+ const approval={type:"configure-prayer-score-r334",expectedPolicyId:null,baseWeight:25,shares:snapshot.shares,mappings:[],confirm:true};
+ await assert.rejects(()=>service.execute("other",approval));
+ await service.execute("u",approval);
+ const after=store.snapshot();assert.equal(after.prayerScorePoliciesR334[0].policy.effectiveFromDate,"2026-11-16");assert.deepEqual(after.personalDays,[current]);
+ await assert.rejects(()=>service.execute("u",approval));
 });

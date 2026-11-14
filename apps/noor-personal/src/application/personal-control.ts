@@ -1,4 +1,4 @@
-import { prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
+import { parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
@@ -35,6 +35,7 @@ function orderedDefinitions(definitions:readonly ExecutionDefinition[]):Executio
 function categoryNames(snapshot:Pick<PersonalFoundationSnapshotPort,"getCategories"|"listDefinitions">,userId:string):string[]{return [...new Set([...(snapshot.getCategories?.(userId)??DEFAULT_PERSONAL_CATEGORIES),...snapshot.listDefinitions(userId).map(d=>d.category??"عام")])];}
 
 export type PersonalCommand =
+    | PrayerScoreApprovalR334
     | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:LocalDate;taskSessionId:string;entryId:string;amount:number;note:string}>
     | Readonly<{type:"recover-historical-execution";executionId:string;localDate:LocalDate;expectedStatus:ExecutionStatus}>
     | Readonly<{type:"record-prayer-r331";localDate:LocalDate;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null}>
@@ -114,6 +115,7 @@ export interface PersonalInsights {
 
 export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;}
 export interface PersonalWorkspace {
+    readonly prayerScorePolicyR334?: PrayerScoreSnapshotR334;
     readonly prayerAchievementR334?: readonly Readonly<{date:LocalDate;score:PrayerDayScoreR334}>[];
     readonly prayerHistoryR331: readonly Readonly<{date:LocalDate;records:readonly PrayerRecordR331[]}>[];
     readonly fridayMosqueVisits:readonly FridayMosqueVisit[];
@@ -299,6 +301,7 @@ export function parsePersonalCommand(
         return null;
     }
 
+    if(value.type==="configure-prayer-score-r334")return parsePrayerScoreApprovalR334(value);
     if(value.type==="configure-reminder"){
         if(!exactKeys(value,["type","definitionId","expectedRevisionId","plan"])
           ||!boundedIdentifier(value.definitionId)||!boundedIdentifier(value.expectedRevisionId))return null;
@@ -807,6 +810,22 @@ export class PersonalCommandService {
         await this.dependencies.transaction.runInTransaction(
             transaction => {
 
+                const activePolicy=transaction.getPrayerScorePolicyR334?.(userId);
+                const currentPolicy=transaction.findOpenPersonalDayContaining(userId,now)?.prayerScoreSnapshotR334;
+                const permittedWeight=(id:string,kind:string,weight:number)=>{
+                    if(!ordinaryWeightPermittedR334(activePolicy,id,kind,weight)||!ordinaryWeightPermittedR334(currentPolicy,id,kind,weight))throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                };
+                if(command.type==="configure-prayer-score-r334"){
+                    const parsed=parsePrayerScoreApprovalR334(command);
+                    if(!parsed||!transaction.getPrayerScorePolicyR334||!transaction.savePrayerScorePolicyR334)throw new Error("PRAYER_POLICY_UNAVAILABLE");
+                    if((activePolicy?.policyId??null)!==parsed.expectedPolicyId)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    const current=activePersonalDay(transaction,userId,now);
+                    const next=shiftLocalDate(current.boundary.localDate,1);
+                    const policy=issuePrayerScoreSnapshotR334({userId,policyId:this.dependencies.idGenerator.next("prayer-score-policy"),effectiveFromDate:next,approval:parsed,definitions:transaction.listDefinitions(userId)});
+                    if(!policy)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    transaction.savePrayerScorePolicyR334(userId,policy);
+                    return;
+                }
                 if(command.type==="configure-reminder"){
                     const parsed=parsePersonalCommand(command);
                     if(!parsed||parsed.type!=="configure-reminder")throw new Error("REMINDER_COMMAND_INVALID");
@@ -976,6 +995,7 @@ export class PersonalCommandService {
                          ||!["Active","Paused"].includes(definition.state)
                          ||definition.revisionId!==change.expectedRevisionId)
                             throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                        permittedWeight(definition.id,definition.kind,change.weight);
                         return {definition,weight:change.weight};
                     });
                     const day=transaction.findOpenPersonalDayContaining(userId,now);
@@ -1018,6 +1038,7 @@ export class PersonalCommandService {
                     const definition=transaction.findDefinitionById(userId,command.definitionId);
                     if(!definition)throw new PersonalControlError("DEFINITION_NOT_FOUND");
                     if(definition.revisionId!==command.expectedRevisionId || definition.kind!==command.kind)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    permittedWeight(definition.id,definition.kind,command.weight??definition.weight);
                     const total=(definition.activityLog??[]).reduce((n,e)=>n+e.amount,0);
                     const nextPlan=Object.hasOwn(command,"sessionPlan")
                       ?prepareTaskSessionPlan(definition.sessionPlan,command.sessionPlan??null,definition.activityLog??[],command.measurement,now)
@@ -1261,6 +1282,7 @@ export class PersonalCommandService {
                     return;
                 }
                 if (command.type === "create-definition") {
+                    permittedWeight("",command.kind,command.weight??1);
                     activePersonalDay(
                         transaction,
                         userId,
@@ -1662,7 +1684,9 @@ export function buildPersonalWorkspace(
             if(score)prayerAchievementR334.push({date:day.boundary.localDate,score});
         }
     }
+    const prayerScorePolicyR334=snapshot.getPrayerScorePolicyR334?.(userId);
     return Object.freeze({
+        ...(validPrayerScoreSnapshotR334(prayerScorePolicyR334)?{prayerScorePolicyR334}:{}),
         ...(prayerAchievementR334.length?{prayerAchievementR334}:{}),
         prayerHistoryR331:personalDays.filter(day=>selectedDayIds.has(day.id)&&day.userId===userId&&day.prayerRecordsR331?.length).map(day=>({date:day.boundary.localDate,records:(day.prayerRecordsR331??[]).filter(validPrayerRecordR331)})),
         fridayMosqueVisits:snapshot.listFridayMosqueVisits?.(userId)??[],
