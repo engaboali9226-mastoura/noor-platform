@@ -19,3 +19,54 @@ export function completedShareR331(e:{status:string;scheduleOccurrenceKey:string
  if(e.status!=="Completed")return 0;
  return e.recoveredOnR331===undefined?1:recoveryCreditR331(e.scheduleOccurrenceKey,e.recoveredOnR331);
 }
+
+// R334 preparation: pure scoring only. No default coefficients, activation date,
+// storage mutation or runtime wiring until the policy and legacy mappings are approved.
+export type PrayerScoreSnapshotR334=Readonly<{
+ policyId:string;
+ effectiveFromDate:string;
+ weights:Readonly<Record<PrayerKeyR331,number>>;
+ shares:Readonly<Record<PrayerModeR331,Readonly<Record<PrayerTimingR331,number>>>>;
+ legacyHabitKeys:Readonly<Record<string,PrayerKeyR331>>;
+}>;
+export type PrayerDayScoreR334=Readonly<{
+ rows:readonly Readonly<{key:PrayerKeyR331;weight:number;credit:number;recorded:boolean}>[];
+ excludedHabitDefinitionIds:readonly string[];
+ weight:number;
+ earnedWeight:number;
+}>;
+const validCivilR334=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s+"T00:00:00Z"))&&new Date(s+"T00:00:00Z").toISOString().slice(0,10)===s;
+export function prayerDayScoreR334(input:Readonly<{
+ date:string;
+ currentDate:string;
+ /** Authoritative due keys for this date, as of the evaluation instant.
+  * null means the day has no trusted prayer context; do not invent obligations. */
+ dueKeys:readonly PrayerKeyR331[]|null;
+ records:readonly PrayerRecordR331[];
+ /** Explicit, immutable day snapshot. null means unapproved/unavailable. */
+ snapshot:PrayerScoreSnapshotR334|null;
+}>):PrayerDayScoreR334|null{
+ const {date,currentDate,dueKeys,records,snapshot}=input;
+ if(!snapshot||!snapshot.policyId.trim()||!validCivilR334(date)||!validCivilR334(currentDate)||!validCivilR334(snapshot.effectiveFromDate)||date<snapshot.effectiveFromDate||date>currentDate||dueKeys===null)return null;
+ if(!R331_PRAYERS.every(k=>Number.isFinite(snapshot.weights[k])&&snapshot.weights[k]>0))return null;
+ for(const mode of ["group","excused","unexcused"] as const)for(const timing of ["ontime","late"] as const){
+  const share=snapshot.shares[mode]?.[timing];
+  if(!Number.isFinite(share)||share<0||share>1)return null;
+ }
+ const aliases=Object.entries(snapshot.legacyHabitKeys);
+ if(aliases.some(([id,key])=>!id.trim()||!R331_PRAYERS.includes(key)))return null;
+ if(dueKeys.some(k=>!R331_PRAYERS.includes(k)))return null;
+ const due=new Set(dueKeys);
+ const byKey=new Map<PrayerKeyR331,PrayerRecordR331>();
+ for(const record of records){
+  if(!validPrayerRecordR331(record)||byKey.has(record.key)||!due.has(record.key))return null;
+  byKey.set(record.key,record);
+ }
+ const rows=R331_PRAYERS.filter(key=>due.has(key)).map(key=>{
+  const record=byKey.get(key);
+  return {key,weight:snapshot.weights[key],credit:record?snapshot.shares[record.mode][record.timing]:0,recorded:!!record};
+ });
+ const weight=rows.reduce((n,r)=>n+r.weight,0),earnedWeight=rows.reduce((n,r)=>n+r.weight*r.credit,0);
+ if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight))return null;
+ return {rows,excludedHabitDefinitionIds:aliases.map(([id])=>id),weight,earnedWeight};
+}
