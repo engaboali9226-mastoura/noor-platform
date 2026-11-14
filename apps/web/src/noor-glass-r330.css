@@ -81,3 +81,23 @@
 @media(max-height:630px){.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{width:84px}.noor-r323-gateway[data-auth-mode] .noor-welcome-panel{padding-top:0!important}.noor-r323-gateway[data-auth-mode] .noor-r323-auth-card{margin-top:6px}}
 @media(max-height:500px){.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{display:none}.noor-r323-gateway[data-auth-mode] .noor-welcome-eyebrow{font-size:19px!important;margin:0!important;padding-bottom:2px!important}.noor-r323-gateway[data-auth-mode] .noor-welcome-field{min-height:49px}.noor-r323-gateway[data-auth-mode="login"] .noor-r323-auth-card{padding-block:8px;margin:4px 0}.noor-r323-gateway .noor-welcome-ambient:before{opacity:.35}}
 @media(prefers-reduced-motion:reduce){.noor-r323-gateway *, .np-page *, .nw-root *{scroll-behavior:auto}}
+
+/* R330: override the legacy three-column brand placement explicitly on every screen.
+   The decorative full-bleed background cannot consume the functional information row. */
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,auto) minmax(0,1fr)!important;
+ grid-template-areas:"brand brand brand" "status greeting actions" "calendar calendar calendar"!important;
+ grid-template-rows:auto auto auto!important;align-items:center!important;gap:6px!important;
+ width:100%!important;box-sizing:border-box!important;padding:0 3px 4px!important;background:transparent!important
+}
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-brand{
+ grid-area:brand!important;grid-column:1/-1!important;grid-row:1!important;display:block!important;
+ position:relative!important;inset:auto!important;transform:none!important;justify-self:stretch!important;
+ align-self:start!important;width:100%!important;max-width:none!important;min-width:0!important;
+ padding:0!important;margin:0!important;z-index:0!important
+}
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-r323-greeting{grid-area:greeting!important;grid-column:2!important;grid-row:2!important;position:relative!important;min-width:0;z-index:1}
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-header-status{grid-area:status!important;grid-column:1!important;grid-row:2!important;position:relative!important;inset:auto!important;transform:none!important;min-width:0;z-index:1}
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-top-actions{grid-area:actions!important;grid-column:3!important;grid-row:2!important;position:relative!important;inset:auto!important;transform:none!important;z-index:1}
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-header-calendar{grid-area:calendar!important;grid-column:1/-1!important;grid-row:3!important;position:relative!important;z-index:1}
+.np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]::after{display:none!important}
