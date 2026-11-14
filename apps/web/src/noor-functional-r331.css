@@ -231,3 +231,8 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .na315-panel{box-sizing:border-box;max-width:100%;max-height:calc(var(--noor-admin-viewport,100dvh) - 20px)!important;overflow-y:auto!important;overscroll-behavior:contain}
 .na315-panel input{box-sizing:border-box;max-width:100%;min-width:0;font-size:16px!important;scroll-margin-block:12px}
 @media(max-height:550px){.noor-r323-gateway[data-auth-mode] .noor-welcome-panel{min-height:0!important}.noor-r323-gateway[data-auth-mode] .noor-r332-auth{margin-top:4px!important}.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{display:none!important}}
+
+/* R333: the 100% label must fit within the inner diameter of the 50px habit ring. */
+.np-page .np-habits-section .np-habit-category .np-category-progress>span{box-sizing:border-box;inset:9px!important;font-size:12px!important;line-height:1!important;gap:0!important;white-space:nowrap;letter-spacing:-.25px;font-variant-numeric:tabular-nums}
+.np-page .np-habits-section .np-habit-category .np-category-progress>span small{font-size:9px!important;line-height:1!important;margin:0!important;flex-shrink:0}
+.np-page .np-habits-section .np-habit-category .np-category-progress.is-complete>span{font-size:11px!important}
