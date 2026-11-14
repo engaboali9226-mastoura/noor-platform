@@ -1,3 +1,4 @@
+import { NoorBrandHeader, NoorBrandLogo, NOOR_BRAND } from "./noor-brand-r329.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {
   Component,
@@ -72,6 +73,7 @@ extends Component<
     if (this.state.failed) {
       return (
         <section aria-labelledby="view-failure-heading">
+          <NoorBrandHeader scope="platform" />
           <h1 id="view-failure-heading">
             Application view unavailable
           </h1>
@@ -197,8 +199,8 @@ function SmartGateway({
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
         <div className="noor-welcome-logo-frame">
-          <img className="noor-welcome-logo" src="/noor-brand-r328.svg"
-            alt="شعار منصة نور" width="104" height="104" fetchPriority="high" decoding="async" />
+          <img className="noor-welcome-logo" src="/brand/platform-header.webp"
+            alt="NOOR Platform — شعار منصة نور" width="1800" height="600" fetchPriority="high" decoding="async" />
         </div>
         <div className="noor-r323-brand-label">منصة نور</div><p className="noor-welcome-eyebrow" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
         <h1 id="noor-welcome-title" className="glass-title">مرحبا بك في منصة نور</h1>
@@ -255,14 +257,14 @@ function SmartGateway({
             <a href="/personal" className="noor-welcome-app-card" onClick={event=>{
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/personal");}}>
-              <span className="noor-welcome-app-mark" aria-hidden="true">✦</span>
+              <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="personal" alt="" /></span>
               <span className="noor-welcome-app-copy"><strong>نور الشخصي</strong><small>يومك، عاداتك، وتقدمك</small></span>
               <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
             </a>
             <a href="/work" className="noor-welcome-app-card" onClick={event=>{
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/work");}}>
-              <span className="noor-welcome-app-mark" aria-hidden="true">◈</span>
+              <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="work" alt="" /></span>
               <span className="noor-welcome-app-copy"><strong>نور ورك</strong><small>الجدول والتحضير والطلاب والدرجات</small></span>
               <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
             </a>
@@ -300,6 +302,7 @@ export function PlatformShell(
     case "not-found":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Route not found
           </h1>
@@ -313,6 +316,7 @@ export function PlatformShell(
     case "planned-application":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application planned
           </h1>
@@ -326,6 +330,7 @@ export function PlatformShell(
     case "platform-failed-closed":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application unavailable
           </h1>
@@ -355,6 +360,7 @@ export function PlatformShell(
     case "session-access-unavailable":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Access unavailable
           </h1>
@@ -368,6 +374,7 @@ export function PlatformShell(
     case "authorization-denied":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Access denied
           </h1>
@@ -381,6 +388,7 @@ export function PlatformShell(
     case "authorization-unavailable":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Access unavailable
           </h1>
@@ -394,6 +402,7 @@ export function PlatformShell(
     case "known-view-unavailable":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Known view unavailable
           </h1>
@@ -594,7 +603,7 @@ export function PlatformShell(
               }
             `}</style>
             <div className="noor-entry-content">
-              <img className="noor-entry-logo" src="/noor-brand-r328.svg" alt="شعار نور" decoding="sync" loading="eager" />
+              <img className="noor-entry-logo" src={state.application.appKey==="noor-personal"?NOOR_BRAND.personal.logo:state.application.appKey==="noor-work"?NOOR_BRAND.work.logo:NOOR_BRAND.platform.logo} alt="شعار نور" decoding="sync" loading="eager" />
               <h1 className="noor-entry-title">مرحبا بك في منصة نور</h1>
               <p className="noor-entry-status" role="status" aria-live="polite">
                 جارٍ تجهيز مساحتك الشخصية…
@@ -607,6 +616,7 @@ export function PlatformShell(
 
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application unavailable
           </h1>
@@ -620,6 +630,7 @@ export function PlatformShell(
     case "application-view-failure":
       return (
         <main id="main-content" className="noor-route-state-r231">
+          <NoorBrandHeader scope="platform" />
           <h1>
             Application view unavailable
           </h1>

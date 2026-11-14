@@ -251,7 +251,7 @@
   flex: 0 0 86px;
   border-radius: 50%;
   border: 1px solid #e0ceab;
-  background: white url("/noor-brand-r328.svg") center / contain no-repeat;
+  background: white url("/brand/platform-logo.webp") center / contain no-repeat;
   box-shadow: 0 10px 26px rgba(75,60,38,.07);
 }
 .noor-route-state-r231 h1 { margin: 0; color: #263b45; font-size: clamp(20px,4.5vw,26px); }

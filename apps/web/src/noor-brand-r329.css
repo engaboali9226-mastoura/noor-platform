@@ -1,0 +1,33 @@
+/* R329 approved glass identity: only visual surfaces, never user data. */
+.noor-r329-brand-header{box-sizing:border-box;display:block;width:min(100%,480px);max-width:100%;margin:0 auto 8px;overflow:hidden;border-radius:18px;flex-shrink:0;background:#e6e2e2;box-shadow:0 3px 12px #293f5412}
+.noor-r329-brand-header>img{display:block;width:100%;max-width:100%;height:auto;aspect-ratio:3/1;object-fit:contain;border:0;border-radius:inherit}
+.noor-r329-brand-logo{display:block;width:100%;height:100%;aspect-ratio:1;object-fit:contain;border-radius:50%}
+.noor-r323-gateway .noor-welcome-panel:before,.noor-r323-gateway .noor-welcome-panel:after{display:none}
+.noor-r323-gateway .noor-welcome-logo-frame,.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{display:block;width:min(100%,360px);height:auto;aspect-ratio:3/1;border-radius:16px;margin:0 auto 6px;overflow:hidden;background:#e6e2e2}
+.noor-r323-gateway .noor-welcome-logo-frame .noor-welcome-logo{display:block;width:100%;height:auto;aspect-ratio:3/1;object-fit:contain;mix-blend-mode:normal;border-radius:inherit}
+.noor-r323-gateway .noor-r323-brand-label,.noor-r323-gateway .noor-welcome-eyebrow{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;clip-path:inset(50%);overflow:hidden;white-space:nowrap}
+.noor-r323-gateway .noor-welcome-app-mark{background:none!important;overflow:hidden;padding:0!important}
+.noor-r323-gateway .noor-welcome-app-mark img{width:100%;height:100%;object-fit:contain;border-radius:50%}
+.noor-r323-gateway .noor-welcome-panel{padding-top:12px}
+.noor-route-state-r231:before{display:none}
+.noor-route-state-r231>.noor-r329-brand-header{width:min(100%,420px)}
+.np-page .np-r323-header[data-testid="platform-topbar"]{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;grid-template-areas:"brand brand brand" "status greeting actions" "calendar calendar calendar"!important;grid-template-rows:auto auto auto!important}
+.np-page .np-r323-header[data-testid="platform-topbar"] .np-brand{grid-area:brand!important;width:100%!important;min-width:0;align-self:center!important;justify-self:stretch!important;position:relative!important;inset:auto!important;transform:none!important}
+.np-page .np-r323-header .np-brand .noor-r329-brand-header{width:min(100%,420px);margin:0 auto 2px}
+.np-page .np-r323-header .np-r323-greeting{grid-area:greeting!important;align-self:center!important;justify-self:center!important;white-space:normal}
+.np-page .np-r323-header .np-header-status{grid-area:status!important}
+.np-page .np-r323-header .np-top-actions{grid-area:actions!important}
+.np-page .np-r323-header .np-header-calendar{grid-area:calendar!important}
+.np-page .np-cc-header .np-cc-header-logo{overflow:hidden!important;background:transparent!important;border:0!important}
+.np-page .np-cc-header .np-cc-header-logo img{object-fit:contain!important;mix-blend-mode:normal!important;border-radius:50%!important}
+.np-page .np-cc-shell>.noor-r329-brand-header,.np-r321-onboarding>.noor-r329-brand-header{margin-bottom:0}
+.np-page .np-entry-loading-logo,.noor-entry-screen .noor-entry-logo,.np-page .np-state-logo{object-fit:contain!important;mix-blend-mode:normal!important;border-radius:50%!important}
+.np-r321-header img{object-fit:contain;border-radius:50%}
+.nw-root>.noor-r329-brand-header{width:min(100%,480px);margin:0 auto 10px}
+.na315-panel>.noor-r329-brand-header{width:min(100%,330px);margin:0 auto 8px}
+.na315-panel>header img{object-fit:contain;border-radius:50%}
+.noor-wordmark>span{font-size:.92em;vertical-align:.025em}
+.noor-wordmark>span::after{content:"";position:absolute;inset-inline:10%;top:87%;height:.26em;background:#d6a12e;border:0;border-radius:0;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 24'%3E%3Cpath d='M0 0Q40 26 80 0Q40 45 0 0Z'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+@media(max-width:440px){.noor-r323-gateway .noor-welcome-logo-frame,.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{width:min(100%,300px)}.np-page .np-r323-header[data-testid="platform-topbar"] .np-r323-greeting{font-size:13px!important}.noor-r329-brand-header{border-radius:12px}}
+@media(max-height:630px){.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame{width:min(100%,192px);margin-bottom:2px}.na315-panel>.noor-r329-brand-header{width:min(100%,192px);margin-bottom:4px}}
+@media(max-height:500px){.noor-r323-gateway[data-auth-mode] .noor-welcome-logo-frame,.na315-panel>.noor-r329-brand-header{display:none}.noor-r323-gateway .noor-welcome-eyebrow{position:static!important;width:auto!important;height:auto!important;margin:0 0 4px!important;clip-path:none;overflow:visible;font-size:13px;color:#35546a}}

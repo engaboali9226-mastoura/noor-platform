@@ -421,7 +421,7 @@ body:has(.np-r322-modal[data-open="true"],.np-r322-appointments-overlay[data-ope
 .noor-r328-password-toggle svg { width:21px; height:21px; }
 .noor-r328-password-toggle:focus-visible { outline:2px solid #356b59; outline-offset:-3px; }
 @media(max-height:550px) { .noor-r323-gateway[data-auth-mode] .noor-welcome-field { min-height:49px; padding-block:4px; } }
-.np-page[data-appearance="dark"] .np-logo-frame:has(img[src="/noor-brand-r328.svg"]) { background:#f6f0e6!important; border-radius:10px!important; }
+.np-page[data-appearance="dark"] .np-logo-frame:has(img[src="/brand/personal-logo.webp"]) { background:#f6f0e6!important; border-radius:10px!important; }
 
 /* R328: trusted whole period duration; decorative Personal background without moving the header content. */
 .np-page .np-r323-rhythm .np-r328-total-duration {
@@ -431,14 +431,3 @@ body:has(.np-r322-modal[data-open="true"],.np-r322-appointments-overlay[data-ope
   font-size:12px; line-height:1.5; font-weight:600; max-width:100%;
 }
 .np-r328-total-duration strong { font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
-.np-page .np-r323-header.np-topbar { position:relative; isolation:isolate; }
-.np-page .np-r323-header .np-r328-personal-watermark {
-  position:absolute; inset:0; pointer-events:none; display:flex; align-items:center;
-  justify-content:center; gap:.22em; z-index:-1; direction:ltr;
-  font-family:inherit; font-weight:750; font-size:clamp(30px,9vw,80px);
-  letter-spacing:-.035em; color:#345a4d; opacity:.13; white-space:nowrap;
-}
-.np-page .np-r323-header .np-r328-personal-watermark .noor-wordmark > span::after {
-  border-bottom-color:#b58922;
-}
-.np-page[data-appearance="dark"] .np-r323-header .np-r328-personal-watermark {color:#d4e6df;opacity:.13;}

@@ -1,3 +1,4 @@
+import { NoorBrandHeader } from "./noor-brand-r329.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {noorTotpQrImageSourceR318} from "./noor-admin-totp-qr-r318.js";
 import {createNoorAdminRecoveryR317} from "./noor-admin-recovery-r317.js";
@@ -110,7 +111,8 @@ export function NoorAdminMfaPageR315({
  };
  const logout=async()=>{await service.current?.signOut();setStep("login");setQr("");setSecret("");setRevealSecret(false);setCode("");setError("");setNotice("");};
  return <main className="na315-page" dir="rtl" id="main-content"><section className="na315-panel" ref={panel} data-step={step}>
-  <header><img src="/noor-brand-r328.svg" alt="شعار نور" width="64" height="64"/><div><p lang="en" dir="ltr"><NoorWordmark /> SECURITY</p><h1>تأمين حساب الإدارة</h1><span>إعداد المصادقة الثنائية TOTP</span></div></header>
+  <NoorBrandHeader scope="platform" />
+  <header><img src="/brand/platform-logo.webp" alt="شعار نور" width="64" height="64"/><div><p lang="en" dir="ltr"><NoorWordmark /> SECURITY</p><h1>تأمين حساب الإدارة</h1><span>إعداد المصادقة الثنائية TOTP</span></div></header>
   <p className="na315-caution">هذه الصفحة مخصصة لحساب المدير المستقل. لا تظهر إدارة الحسابات إلا بعد المصادقة الثنائية واعتماد دور المدير على الخادم.</p>
   {step==="login"?<form onSubmit={e=>{void login(e);}}>
    <label>البريد الإلكتروني لحساب الإدارة<input name="email" type="email" autoComplete="username" required dir="ltr" disabled={loading}/></label>

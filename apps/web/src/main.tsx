@@ -10,6 +10,7 @@ import "./noor-account-self-service-r312.css";
 import "./noor-premium-r322.css";
 import "./noor-approved-r323.css";
 import "./noor-unified-r324.css";
+import "./noor-brand-r329.css";
 
 import {
   applicationCatalog,
