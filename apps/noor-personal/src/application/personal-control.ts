@@ -1,3 +1,4 @@
+import { R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
@@ -34,6 +35,8 @@ function orderedDefinitions(definitions:readonly ExecutionDefinition[]):Executio
 function categoryNames(snapshot:Pick<PersonalFoundationSnapshotPort,"getCategories"|"listDefinitions">,userId:string):string[]{return [...new Set([...(snapshot.getCategories?.(userId)??DEFAULT_PERSONAL_CATEGORIES),...snapshot.listDefinitions(userId).map(d=>d.category??"عام")])];}
 
 export type PersonalCommand =
+    | Readonly<{type:"recover-historical-execution";executionId:string;localDate:LocalDate;expectedStatus:ExecutionStatus}>
+    | Readonly<{type:"record-prayer-r331";localDate:LocalDate;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null}>
     | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;plan:NoorReminderPlanR314|null}>
     | Readonly<{type:"set-friday-mosque-hour";hour:FridayMosqueHour|null;expectedHour:FridayMosqueHour|null}>
     | Readonly<{type:"configure-task-sessions";definitionId:string;expectedRevisionId:string;plan:TaskSessionPlanDraft|null}>
@@ -110,6 +113,7 @@ export interface PersonalInsights {
 
 export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;}
 export interface PersonalWorkspace {
+    readonly prayerHistoryR331: readonly Readonly<{date:LocalDate;records:readonly PrayerRecordR331[]}>[];
     readonly fridayMosqueVisits:readonly FridayMosqueVisit[];
     readonly statistics:Readonly<{currentDate:string|null;rows:readonly PersonalStatisticRow[]}>;
     readonly categories: readonly string[];
@@ -376,6 +380,16 @@ export function parsePersonalCommand(
         return operation?{type:"finance",operation}:null;
     }
     // NOOR_HISTORY_EDITOR_R108: distinct commands; never broaden today's completion rules.
+    if(value.type==="recover-historical-execution"){
+        if(!exactKeys(value,["type","executionId","localDate","expectedStatus"])||!boundedIdentifier(value.executionId)||!localDate(value.localDate)||!["Missed","Pending","Planned","InProgress"].includes(String(value.expectedStatus)))return null;
+        return {type:"recover-historical-execution",executionId:value.executionId,localDate:value.localDate as LocalDate,expectedStatus:value.expectedStatus as ExecutionStatus};
+    }
+    if(value.type==="record-prayer-r331"){
+        if(!exactKeys(value,["type","localDate","key","mode","timing","expectedRecordedAt"])||!localDate(value.localDate)||!R331_PRAYERS.includes(value.key as PrayerKeyR331)||
+          !((value.mode===null&&value.timing===null)||(["group","excused","unexcused"].includes(String(value.mode))&&["ontime","late"].includes(String(value.timing))))||
+          !(value.expectedRecordedAt===null||(typeof value.expectedRecordedAt==="string"&&Number.isFinite(Date.parse(value.expectedRecordedAt)))))return null;
+        return {type:"record-prayer-r331",localDate:value.localDate as LocalDate,key:value.key as PrayerKeyR331,mode:value.mode as PrayerModeR331|null,timing:value.timing as PrayerTimingR331|null,expectedRecordedAt:value.expectedRecordedAt as string|null};
+    }
     if(value.type==="correct-historical-execution"){
         if(!exactKeys(value,["type","executionId","localDate","expectedStatus","completed"]) ||
            !boundedIdentifier(value.executionId) || !localDate(value.localDate) ||
@@ -1077,9 +1091,26 @@ export class PersonalCommandService {
                 }
                 // NOOR_HISTORY_EDITOR_R108: corrections require a real persisted occurrence.
                 // The event timestamp remains NOW; the activity date is the original personal day.
-                if(command.type==="correct-historical-execution" || command.type==="record-historical-progress"){
+                if(command.type==="record-prayer-r331"){
+                    const p=parsePersonalCommand(command);
+                    if(!p||p.type!=="record-prayer-r331")throw new Error("INVALID_PRAYER_RECORD");
+                    const day=activePersonalDay(transaction,userId,now);
+                    if(day.userId!==userId||day.boundary.localDate!==p.localDate)throw new PersonalControlError("EXECUTION_NOT_CURRENT");
+                    const context=transaction.findDailyIslamicContextByPersonalDayId(day.id);
+                    const at=context?.prayerTimes[p.key];
+                    if(!at||!Number.isFinite(Date.parse(at))||Date.parse(at)>Date.parse(now))throw new Error("PRAYER_NOT_STARTED");
+                    const records=(day.prayerRecordsR331??[]).filter(validPrayerRecordR331);
+                    const previous=records.find(x=>x.key===p.key);
+                    if((previous?.recordedAt??null)!==p.expectedRecordedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    if(previous?.mode===p.mode&&previous?.timing===p.timing||!previous&&p.mode===null)return;
+                    const next=records.filter(x=>x.key!==p.key);
+                    if(p.mode!==null&&p.timing!==null)next.push({key:p.key,mode:p.mode,timing:p.timing,recordedAt:now});
+                    transaction.savePersonalDay({...day,prayerRecordsR331:next,version:day.version+1,updatedAt:now});
+                    return;
+                }
+                if(command.type==="correct-historical-execution" || command.type==="record-historical-progress" || command.type==="recover-historical-execution"){
                     const parsed=parsePersonalCommand(command);
-                    if(!parsed || (parsed.type!=="correct-historical-execution" && parsed.type!=="record-historical-progress"))
+                    if(!parsed || (parsed.type!=="correct-historical-execution" && parsed.type!=="record-historical-progress" && parsed.type!=="recover-historical-execution"))
                         throw new Error("INVALID_HISTORICAL_COMMAND");
                     const instance=transaction.findDailyExecutionById(userId,parsed.executionId);
                     if(!instance || instance.userId!==userId) throw new PersonalControlError("EXECUTION_NOT_FOUND");
@@ -1094,13 +1125,25 @@ export class PersonalCommandService {
                     const definition=transaction.findDefinitionById(userId,instance.definitionId);
                     if(!definition) throw new PersonalControlError("DEFINITION_NOT_FOUND");
                     if(definition.beveragePlan)throw new Error("BEVERAGE_HISTORY_IS_EVENT_SOURCED");
+                    if(parsed.type==="recover-historical-execution"){
+                        if(instance.status==="Completed"&&instance.recoveredOnR331)return;
+                        if(instance.status!==parsed.expectedStatus)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                        if(definition.sessionPlan||["event","appointment"].includes(definition.countdownPlan?.kind??"task"))throw new Error("RECOVERY_REQUIRES_ELIGIBLE_EXECUTION");
+                        if(definition.measurement&&(definition.activityLog??[]).filter(a=>a.executionId===instance.id).reduce((sum,a)=>sum+a.amount,0)<definition.measurement.target)throw new Error("TARGET_NOT_REACHED");
+                        if(recoveryCreditR331(parsed.localDate,civilToday)<=0)throw new Error("RECOVERY_CREDIT_UNAVAILABLE");
+                        const updated:DailyExecutionInstance={...instance,status:"Completed",recoveredOnR331:civilToday,version:instance.version+1,updatedAt:now};
+                        transaction.saveDailyExecution(updated);
+                        enqueueExecutionStatusEvent({transaction,idGenerator:this.dependencies.idGenerator,now,instance:updated});
+                        return;
+                    }
                     if(parsed.type==="correct-historical-execution"){
                         if(parsed.completed && definition.sessionPlan)
                             throw new Error("SEGMENTED_TASK_HISTORICAL_COMPLETION_REQUIRES_SESSION_ACTIVITY");
                         const status:ExecutionStatus=parsed.completed?"Completed":"Missed";
                         if(instance.status===status)return; // retry of an already-applied correction
                         if(instance.status!==parsed.expectedStatus) throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
-                        const updated:DailyExecutionInstance={...instance,status,version:instance.version+1,updatedAt:now};
+                        const {recoveredOnR331:_oldRecovery,...cleanInstance}=instance;
+                        const updated:DailyExecutionInstance={...cleanInstance,status,version:instance.version+1,updatedAt:now};
                         transaction.saveDailyExecution(updated);
                         enqueueExecutionStatusEvent({transaction,idGenerator:this.dependencies.idGenerator,now,instance:updated});
                         return;
@@ -1435,7 +1478,7 @@ function periodInsight(
                 const definition=definitions.get(e.definitionId);
                 const share=definition?.sessionPlan
                     ?sessionDayCredit(definition.activityLog??[],e.scheduleOccurrenceKey)
-                    :(e.status==="Completed"?1:0);
+                    :completedShareR331(e);
                 return n+e.eligibility.weight*share;
             },0);
             return total?Math.round(done/total*100):0;})(),
@@ -1571,8 +1614,9 @@ export function buildPersonalWorkspace(
     const streak = streaks(execution,currentLocalDate,defs);
     const rows:PersonalStatisticRow[]=execution.flatMap(e=>{const date=days.get(e.personalDayId)??e.scheduleOccurrenceKey;if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!currentLocalDate||date>currentLocalDate)return [];const d=defs.get(e.definitionId);if(d?.sessionPlan?.sessions.length&&!sessionScheduledOnDateR286(d.sessionPlan,date)&&e.status!=="Completed")return [];return [{id:e.id,definitionId:e.definitionId,title:d?.title??e.title,kind:e.kind,date,weight:Number.isFinite(e.eligibility.weight)&&e.eligibility.weight>0?e.eligibility.weight:1,status:e.status,amount:(d?.activityLog??[]).filter(a=>a.executionId===e.id).reduce((n,a)=>n+a.amount,0),unit:d?.measurement?.unit??"",...(d?.beveragePlan||["event","appointment"].includes(d?.countdownPlan?.kind??"task")?{nonAchievement:true}:{}),credit:d?.sessionPlan
         ?sessionDayCredit(d.activityLog??[],date)
-        :(e.status==="Completed"?1:0)}];});
+        :completedShareR331(e)}];});
     return Object.freeze({
+        prayerHistoryR331:personalDays.filter(day=>selectedDayIds.has(day.id)&&day.userId===userId&&day.prayerRecordsR331?.length).map(day=>({date:day.boundary.localDate,records:(day.prayerRecordsR331??[]).filter(validPrayerRecordR331)})),
         fridayMosqueVisits:snapshot.listFridayMosqueVisits?.(userId)??[],
         statistics:{currentDate:currentLocalDate,rows:rows.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id))},
         categories:[...new Set([...(snapshot.getCategories?.(userId)??DEFAULT_PERSONAL_CATEGORIES),...snapshot.listDefinitions(userId).map(d=>d.category??"عام")])],
