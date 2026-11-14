@@ -20,7 +20,7 @@ test("R100 initial Personal load is a full-page quiet welcome, not a top card", 
   assert.match(html, /role="status"/u);
   assert.match(html, /aria-live="polite"/u);
   assert.match(html, /aria-busy="true"/u);
-  assert.match(html, /src="\/noor-platform-logo.jpeg"/u);
+  assert.match(html, /src="\/noor-brand-r328.svg"/u);
   assert.match(html, /np-entry-loading-spinner/u);
   assert.match(html, /background:#f7f4ee/u);
   assert.match(html, /min-height:100dvh/u);
