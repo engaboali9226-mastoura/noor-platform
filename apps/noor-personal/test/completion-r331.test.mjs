@@ -46,10 +46,10 @@ test("R331 prayer reporting is day scoped, not allowed before the prayer, and su
  const client={from(){return {select(){return {eq(){return {limit:async()=>({data:[structuredClone(row)],error:null})}}}},update(value){const filters={};const q={eq(k,v){filters[k]=v;return q;},async select(){if(filters.user_id!==row.user_id||filters.revision!==row.revision)return {data:[],error:null};row={...row,...structuredClone(value)};return {data:[{revision:row.revision}],error:null};}};return q;}}}};
  const open=async()=>{const a=new SupabasePostgresPersonalFoundationPersistence(client);await a.initialize();const scope=await a.openOperation("u");return {scope,service:new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:scope.transaction,accountTimeZone:"Asia/Riyadh"})};};
  const p={type:"record-prayer-r331",localDate:"2026-11-14",key:"fajr",mode:"group",timing:"ontime",expectedRecordedAt:null};
- let a=await open();await assert.rejects(()=>a.service.execute("other",p));await assert.rejects(()=>a.service.execute("u",{...p,key:"isha"}));await assert.rejects(()=>a.service.execute("u",{...p,localDate:"2026-11-13"}));
+ let a=await open();await assert.rejects(()=>a.service.execute("other",p));a=await open();await assert.rejects(()=>a.service.execute("u",{...p,key:"isha"}));a=await open();await assert.rejects(()=>a.service.execute("u",{...p,localDate:"2026-11-13"}));a=await open();
  await a.service.execute("u",p);a=await open();
  let w=buildPersonalWorkspace("u",a.scope.snapshot);assert.deepEqual(w.prayerHistoryR331,[{date:p.localDate,records:[{key:"fajr",mode:"group",timing:"ontime",recordedAt:now}]}]);assert.deepEqual(w.statistics.rows,[]);
- await assert.rejects(()=>a.service.execute("u",{...p,mode:"excused"}));
+ await assert.rejects(()=>a.service.execute("u",{...p,mode:"excused"}));a=await open();
  const previous=now;now="2026-11-14T12:05:00.000Z";
  await a.service.execute("u",{...p,mode:"excused",timing:"late",expectedRecordedAt:previous});
  a=await open();w=buildPersonalWorkspace("u",a.scope.snapshot);assert.equal(w.prayerHistoryR331[0].records[0].mode,"excused");
