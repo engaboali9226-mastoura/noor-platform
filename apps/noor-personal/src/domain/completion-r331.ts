@@ -47,7 +47,7 @@ export function prayerDayScoreR334(input:Readonly<{
  snapshot:PrayerScoreSnapshotR334|null;
 }>):PrayerDayScoreR334|null{
  const {date,currentDate,dueKeys,records,snapshot}=input;
- if(!snapshot||!snapshot.policyId.trim()||!validCivilR334(date)||!validCivilR334(currentDate)||!validCivilR334(snapshot.effectiveFromDate)||date<snapshot.effectiveFromDate||date>currentDate||dueKeys===null)return null;
+ if(!validPrayerScoreSnapshotR334(snapshot)||!validCivilR334(date)||!validCivilR334(currentDate)||!validCivilR334(snapshot.effectiveFromDate)||date<snapshot.effectiveFromDate||date>currentDate||dueKeys===null)return null;
  if(!R331_PRAYERS.every(k=>Number.isFinite(snapshot.weights[k])&&snapshot.weights[k]>0))return null;
  for(const mode of ["group","excused","unexcused"] as const)for(const timing of ["ontime","late"] as const){
   const share=snapshot.shares[mode]?.[timing];
@@ -155,4 +155,17 @@ export function projectPrayerAchievementPeriodR334(input:Readonly<{
  const weight=days.reduce((n,d)=>n+d.weight,0),earnedWeight=days.reduce((n,d)=>n+d.earnedWeight,0);
  if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight))return null;
  return {days,weight,earnedWeight,rate:weight?Math.round(earnedWeight/weight*100):null};
+}
+
+// Stored JSON must never implicitly authorize a new scoring policy.
+export function validPrayerScoreSnapshotR334(value:unknown):value is PrayerScoreSnapshotR334{
+ if(!value||typeof value!=="object"||Array.isArray(value))return false;
+ const v=value as Partial<PrayerScoreSnapshotR334>;
+ if(typeof v.policyId!=="string"||!v.policyId.trim()||typeof v.effectiveFromDate!=="string"||!validCivilR334(v.effectiveFromDate)||!v.weights||typeof v.weights!=="object"||!v.shares||typeof v.shares!=="object"||!v.legacyHabitKeys||typeof v.legacyHabitKeys!=="object"||Array.isArray(v.legacyHabitKeys))return false;
+ if(!R331_PRAYERS.every(key=>Number.isSafeInteger(v.weights?.[key])&&v.weights![key]>0))return false;
+ for(const mode of ["group","excused","unexcused"] as const)for(const timing of ["ontime","late"] as const){
+  const share=v.shares[mode]?.[timing];
+  if(typeof share!=="number"||!Number.isFinite(share)||share<0||share>1)return false;
+ }
+ return Object.entries(v.legacyHabitKeys).every(([id,key])=>!!id.trim()&&R331_PRAYERS.includes(key));
 }

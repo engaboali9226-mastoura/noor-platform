@@ -346,6 +346,7 @@ implements PersonalControlExecutor {
           buildPersonalWorkspace(
             resolved.userId,
             scope.snapshot,
+            this.dependencies.clock.now(),
           ),
       });
     } catch {
@@ -473,8 +474,8 @@ implements PersonalControlExecutor {
       }
 
       try {
-      const workspace=buildPersonalWorkspace(resolved.userId,scope.snapshot);
       const now=this.dependencies.clock.now();
+      const workspace=buildPersonalWorkspace(resolved.userId,scope.snapshot,now);
       const currentDay=scope.snapshot.listPersonalDays(resolved.userId).find(day=>day.state==="Open" && day.boundary.startAt<=now && now<day.boundary.endAt);
       const executions=currentDay?scope.snapshot.listDailyExecutionForUser(resolved.userId).filter(item=>item.personalDayId===currentDay.id):[];
       return Object.freeze({status:200 as const,body:{workspace,executions,personalDayId:currentDay?.id ?? null,materializationRequired:!currentDay || ["create-definition","update-definition","set-definition-state","archive-definition","delete-definition"].includes(command.type)}});

@@ -761,6 +761,11 @@ implements PersonalFoundationOperation {
 
     this.snapshot =
       Object.freeze({
+        listDailyIslamicContexts:(userId:string)=>{
+          this.assertUser(userId);
+          const ids=new Set(this.loaded.state.personalDays.filter(day=>day.userId===userId).map(day=>day.id));
+          return clone(this.loaded.state.islamicContexts.filter(context=>ids.has(context.personalDayId)));
+        },
         listFridayMosqueVisits:(userId:string)=>{this.assertUser(userId);return clone(this.loaded.state.fridayMosqueVisits??[]);},
         getCategories:(userId:string)=>{this.assertUser(userId);return this.loaded.state.categories?clone(this.loaded.state.categories):undefined;},
         getFinance:(userId:string)=>{this.assertUser(userId);const f=this.loaded.state.finance;if(f && f.userId!==userId)throw new Error("FINANCE_OWNER_MISMATCH");return clone(f ?? emptyFinanceLedger(userId));},

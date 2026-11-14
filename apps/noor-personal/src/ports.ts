@@ -170,6 +170,7 @@ export interface LocalTransactionPort {
 }
 
 export interface PersonalFoundationSnapshotPort {
+    listDailyIslamicContexts?(userId:string):readonly DailyIslamicContext[];
     listFridayMosqueVisits?(userId:string):readonly FridayMosqueVisit[];
     getCategories?(userId:string): readonly string[] | undefined;
     getFinance?(userId:string): FinanceLedger;

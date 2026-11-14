@@ -1,4 +1,4 @@
-import { R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
+import { prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
@@ -114,6 +114,7 @@ export interface PersonalInsights {
 
 export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;}
 export interface PersonalWorkspace {
+    readonly prayerAchievementR334?: readonly Readonly<{date:LocalDate;score:PrayerDayScoreR334}>[];
     readonly prayerHistoryR331: readonly Readonly<{date:LocalDate;records:readonly PrayerRecordR331[]}>[];
     readonly fridayMosqueVisits:readonly FridayMosqueVisit[];
     readonly statistics:Readonly<{currentDate:string|null;rows:readonly PersonalStatisticRow[]}>;
@@ -1624,9 +1625,10 @@ function selectedStatisticDayIds(personalDays: readonly PersonalDay[]): Readonly
 export function buildPersonalWorkspace(
     userId: string,
     snapshot: PersonalFoundationSnapshotPort,
+    evaluatedAt?: string,
 ): PersonalWorkspace {
     const definitions = snapshot.listDefinitions(userId);
-    const personalDays = snapshot.listPersonalDays(userId);
+    const personalDays = snapshot.listPersonalDays(userId).filter(day=>day.userId===userId);
     const selectedDayIds = selectedStatisticDayIds(personalDays);
     const knownDayIds = new Set(personalDays.map(day => day.id));
     // Keep orphaned legacy execution readable, but never double-count
@@ -1648,7 +1650,20 @@ export function buildPersonalWorkspace(
     const rows:PersonalStatisticRow[]=execution.flatMap(e=>{const date=days.get(e.personalDayId)??e.scheduleOccurrenceKey;if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!currentLocalDate||date>currentLocalDate)return [];const d=defs.get(e.definitionId);if(d?.sessionPlan?.sessions.length&&!sessionScheduledOnDateR286(d.sessionPlan,date)&&e.status!=="Completed")return [];return [{id:e.id,definitionId:e.definitionId,title:d?.title??e.title,kind:e.kind,date,weight:Number.isFinite(e.eligibility.weight)&&e.eligibility.weight>0?e.eligibility.weight:1,status:e.status,amount:(d?.activityLog??[]).filter(a=>a.executionId===e.id).reduce((n,a)=>n+a.amount,0),unit:d?.measurement?.unit??"",...(d?.beveragePlan||["event","appointment"].includes(d?.countdownPlan?.kind??"task")?{nonAchievement:true}:{}),credit:d?.sessionPlan
         ?sessionDayCredit(d.activityLog??[],date)
         :completedShareR331(e)}];});
+    // Only owner-scoped, explicitly issued day snapshots can contribute.
+    const prayerAchievementR334: {date:LocalDate;score:PrayerDayScoreR334}[]=[];
+    if(evaluatedAt&&currentLocalDate&&Number.isFinite(Date.parse(evaluatedAt))&&personalDays.some(day=>day.prayerScoreSnapshotR334!==undefined)){
+        const contexts=snapshot.listDailyIslamicContexts?.(userId)??[];
+        for(const day of personalDays){
+            if(!selectedDayIds.has(day.id)||!validPrayerScoreSnapshotR334(day.prayerScoreSnapshotR334))continue;
+            const matches=contexts.filter(context=>context.personalDayId===day.id);
+            if(matches.length!==1)continue;
+            const score=prayerScoreFromTrustedDayR334({userId,day,context:matches[0]!,currentDate:currentLocalDate,evaluatedAt,snapshot:day.prayerScoreSnapshotR334});
+            if(score)prayerAchievementR334.push({date:day.boundary.localDate,score});
+        }
+    }
     return Object.freeze({
+        ...(prayerAchievementR334.length?{prayerAchievementR334}:{}),
         prayerHistoryR331:personalDays.filter(day=>selectedDayIds.has(day.id)&&day.userId===userId&&day.prayerRecordsR331?.length).map(day=>({date:day.boundary.localDate,records:(day.prayerRecordsR331??[]).filter(validPrayerRecordR331)})),
         fridayMosqueVisits:snapshot.listFridayMosqueVisits?.(userId)??[],
         statistics:{currentDate:currentLocalDate,rows:rows.sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id))},
