@@ -18,7 +18,7 @@ import { noorLinkedActivityInsightsR312 } from "./noor-linked-activity-insights-
 import { NoorReminderSettingsR314, NoorReminderRibbonR314 } from "./noor-reminder-settings-r314.js";
 import { parseNoorReminderPlanR314, type NoorReminderPlanR314 } from "../../noor-personal/src/domain/reminder-plan-r314.js";
 import { NoorAccountSettingsR312 } from "./noor-account-settings-r312.js";
-import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays, statisticEligible, statisticInsights, statisticCalendar, shiftStatisticMonth, wholeWeekAchievement, yesterdayAchievement, validStatisticDate, shiftStatisticDate, type StatisticRow } from "./progress-statistics.js";
+import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays, statisticEligible, statisticInsights, statisticCalendar, shiftStatisticMonth, wholeWeekAchievement, yesterdayAchievement, validStatisticDate, shiftStatisticDate, weeklyCardSummaryR332, type StatisticRow } from "./progress-statistics.js";
 import { loadCurrentTemperature } from "./public-weather-client.js";
 import { NoorR232TimeWindows } from "./noor-time-windows-r232.js";
 import { r232LocalWeekday, r283CarriedNightWindow, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
@@ -2863,7 +2863,9 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   };
   const nextSession=providedView.tasks.filter(t=>t.status!=="Completed"&&t.status!=="Cancelled").flatMap(t=>{const d=definitionsById.get(t.definitionId);return d?.sessionPlan?.sessions.filter(s=>(!s.scheduledDate||s.scheduledDate===achievementDate)&&!sessionFinishedR254(s,d.activityLog)).map(s=>({title:s.title,task:d.title,target:s.target,unit:d.measurement?.unit??""}))??[];})[0];
   const nextTask=providedView.tasks.filter(t=>t.status!=="Completed"&&t.status!=="Cancelled"&& !["event","appointment"].includes(definitionsById.get(t.definitionId)?.countdownPlan?.kind??"task")).sort((a,b)=>b.weight-a.weight)[0];
-  const weekTotals=summarizeProgress([...(workspace?.statistics.rows??[]).filter(r=>r.date!==achievementDate),...todayRows].filter(r=>visibleWeek.some(d=>!d.future&&d.date===r.date)));
+  const weekRows=[...(workspace?.statistics.rows??[]).filter(r=>r.date!==achievementDate),...todayRows].filter(r=>visibleWeek.some(d=>!d.future&&d.date===r.date));
+  const weekTotals=summarizeProgress(weekRows);
+  const weeklyCard=weeklyCardSummaryR332(weekRows,visibleWeek,workspace?.prayerHistoryR331??[],R331_PRAYERS.filter(key=>providedView.prayerTimes.some(p=>p.key===key&&Number.isFinite(Date.parse(p.at))&&Date.parse(p.at)<=nowMs)));
   const weekFormats=useMemo(()=>({date:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{day:"numeric",month:"numeric",timeZone:"UTC"}),weekday:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",timeZone:"UTC"})}),[]);
   const weekDateLabel=(date:string,weekday=false)=>(weekday?weekFormats.weekday:weekFormats.date).format(new Date(date+"T00:00:00Z"));
 
@@ -3091,24 +3093,36 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>:<p role="status">اكتملت جميع المهام والعادات المستحقة لهذا اليوم.</p>}</section></div>,document.body):null}
       <div className="np-day-context">
         <section className={`np-yesterday${yesterday?.missed.length?" has-missed":""}`} aria-label="فائت أمس" data-testid="yesterday-achievement"><div className="np-yesterday-heading"><span>فائت أمس</span>{yesterday?<time dateTime={yesterday.date}>{weekDateLabel(yesterday.date)}</time>:null}</div><div className="np-yesterday-score"><strong>{arabicNumber(yesterday?.missed.length??0)}</strong><span>عادات ومهام غير مكتملة</span></div>{yesterday?.scheduled?<p>{yesterday.missed.length?"عناصر غير مكتملة" :"اكتملت كل استحقاقات أمس"} · إنجاز أمس {arabicNumber(yesterday.rate??0)}%</p>:<p>لا توجد استحقاقات مسجلة لأمس.</p>}{yesterday?.missed.length?<details className="np-yesterday-details"><summary>عرض الفائت</summary><ul>{yesterday.missed.map(row=><li key={row.id}><span>{row.title}<small>{row.kind==="Habit"?"عادة":"مهمة"} · {STATUS_LABELS[row.status]??row.status}{row.amount>0?` · ${arabicNumber(row.amount)} ${row.unit}`:""}</small></span><strong>{arabicNumber(row.weight)}<small> وزن</small></strong></li>)}</ul></details>:null}</section>
-        <section className="np-week-achievement" aria-label="إنجاز أيام الأسبوع كاملًا" data-week-navigation="r109">
-          <div className="np-week-heading"><h3>{weekShift===0?"إنجاز هذا الأسبوع":"إنجاز الأسبوع المحدد"} <strong className="np-r331-week-rate">{weekTotals.rate===null?"—":`${weekTotals.rate}%`}</strong></h3>
+      </div>
+    </section>
+    <section className="np-card np-week-achievement np-r332-week" aria-label="إنجاز أيام الأسبوع كاملًا" data-week-navigation="r109" data-testid="r332-weekly-card">
+          <div className="np-week-heading"><h3><NoorR323Icon name="bars"/>إنجاز الأسبوع</h3>
             <div className="np-week-navigation" aria-label="التنقل بين الأسابيع">
               <button type="button" data-testid="week-history-previous" disabled={!canGoOlder} aria-label="الأسبوع السابق" onClick={()=>setWeekShift(value=>value-1)}>‹</button>
-              {visibleWeek[0]&&visibleWeek[6]?<span>{weekDateLabel(visibleWeek[0].date)} — {weekDateLabel(visibleWeek[6].date)}</span>:null}
+              {visibleWeek[0]&&visibleWeek[6]?<span className="np-r332-week-range"><b>الأسبوع {weeklyCard.weekNumber}</b><small>{weekDateLabel(visibleWeek[0].date)} — {weekDateLabel(visibleWeek[6].date)}</small></span>:null}
               <button type="button" data-testid="week-history-next" disabled={weekShift===0} aria-label="الأسبوع التالي" onClick={()=>setWeekShift(value=>Math.min(0,value+1))}>›</button>
+            </div>
+          </div>
+          <div className="np-r332-week-overview">
+            <div className="np-r332-week-counts" aria-label="تفاصيل إنجاز الأسبوع">
+              <div data-testid="r332-week-tasks"><NoorR323Icon name="check"/><span>المهام</span><strong dir="ltr">{weeklyCard.tasks.completed} / {weeklyCard.tasks.scheduled}</strong></div>
+              <div data-testid="r332-week-habits"><NoorR323Icon name="layers"/><span>العادات</span><strong dir="ltr">{weeklyCard.habits.completed} / {weeklyCard.habits.scheduled}</strong></div>
+              <div data-testid="r332-week-prayers"><NoorR323Icon name="mosque"/><span>الصلوات <small>المسجلة</small></span><strong dir="ltr">{weeklyCard.prayers.recorded} / {weeklyCard.prayers.due===null?"—":weeklyCard.prayers.due}</strong></div>
+            </div>
+            <div className="np-r332-week-ring" role="img" aria-label={weekTotals.rate===null?"لا توجد استحقاقات موزونة":`الإنجاز الموزون للأسبوع ${weekTotals.rate}%`} data-testid="r332-week-weighted-ring">
+              <svg viewBox="0 0 132 132" aria-hidden="true"><circle className="np-r332-ring-track" cx="66" cy="66" r="54" fill="none" strokeWidth="13"/><circle className="np-r332-ring-fill" cx="66" cy="66" r="54" fill="none" strokeWidth="13" pathLength="100" strokeDasharray={`${weekTotals.rate??0} 100`} strokeLinecap="round" transform="rotate(-90 66 66)" /></svg>
+              <div><strong>{weekTotals.rate===null?"—":`${weekTotals.rate}%`}</strong><small>موزون</small></div>
             </div>
           </div>
           <div className="np-week-days" role="list">{visibleWeek.map(day=><div role="listitem" key={day.date} className="np-week-cell">
             <button type="button" className={`np-week-day${day.current?" is-today":""}${day.future?" is-future":""}${historyDate===day.date?" is-selected":""}`} data-week-selected={historyDate===day.date?"true":"false"} data-week-date={day.date} data-week-state={day.future?"future":day.current?"today":"past"} data-week-rate={day.rate??undefined}
               disabled={day.future} aria-label={`${weekDateLabel(day.date,true)} ${day.date}: ${day.future?"لم يأت بعد":day.rate===null?"لا استحقاقات مسجلة":`إنجاز ${day.rate}%`}. ${day.current?"عرض اليوم الحالي":"عرض عادات ومهام هذا اليوم في نفس الصفحة"}`}
               onClick={()=>{if(day.current){setHistoryDate(null);}else if(!day.future){setHistoryDate(day.date);}/* Preserve scroll position when changing personal days. */}}>
-              <span className="np-week-name">{weekDateLabel(day.date,true)}</span><div className="np-week-value"><span className="np-r331-week-bar" aria-hidden="true" style={{height:`${day.future?0:day.rate??0}%`}}/><strong>{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong></div><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
+              <div className="np-week-value"><span className="np-r331-week-bar" aria-hidden="true" style={{height:`${day.future?0:day.rate??0}%`}}/></div><span className="np-week-name">{weekDateLabel(day.date,true)}</span><strong className="np-r332-day-rate">{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
             </button>
           </div>)}</div>
+          <p className="np-r332-week-note">النسبة موزونة للمهام والعادات. الصلوات سجل مستقل؛ عدم تسجيل صلاة لا يعني عدم أدائها.</p>
         </section>
-      </div>
-    </section>
     {/* NOOR_MINIMAL_DAY_STRIP_R111: date only; navigation stays in the weekly strip. */}
     
 
