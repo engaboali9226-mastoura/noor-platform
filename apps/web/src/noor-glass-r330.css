@@ -101,3 +101,18 @@
 .np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-top-actions{grid-area:actions!important;grid-column:3!important;grid-row:2!important;position:relative!important;inset:auto!important;transform:none!important;z-index:1}
 .np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]>.np-header-calendar{grid-area:calendar!important;grid-column:1/-1!important;grid-row:3!important;position:relative!important;z-index:1}
 .np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]::after{display:none!important}
+
+/* Fixed sheets must use the viewport, not the containing block that a glass
+   backdrop-filter creates. Preserve the translucent gradient on host cards. */
+.np-page[data-appearance] .np-card:has(.np-r322-appointments-overlay),
+.np-page[data-appearance] .np-card:has(.np-r322-modal){
+ -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+}
+.np-page[data-appearance] .np-card:has(.np-r322-appointments-overlay[data-open="true"]),
+.np-page[data-appearance] .np-card:has(.np-r322-modal[data-open="true"]){
+ overflow:visible!important;isolation:auto!important;transform:none!important;
+ filter:none!important;contain:none!important;z-index:auto!important;
+}
+.np-page[data-appearance] :is(.np-r322-sheet,.np-r322-appointments-sheet){
+ background:var(--ng-bg)!important;border-color:var(--ng-line)!important;color:var(--ng-ink);
+}
