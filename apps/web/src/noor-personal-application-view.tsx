@@ -1,8 +1,9 @@
+import { R331_PRAYERS, validPrayerRecordR331, recoveryCreditR331, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
 import { NoorBrandHeader } from "./noor-brand-r329.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 import {NoorPersonalInitialSetupR321} from "./noor-personal-initial-setup-r321.js";
 import {quranQuarterR289,quranQuarterForDateR289,validQuranPlanR289,type QuranHabitPlanR289} from "./noor-quran-quarters-r289.js";
-import {TaskSessionPlannerR254,TaskSessionListR254,sessionFinishedR254,TASK_SESSION_STYLES_R254,type StoredTaskSessionPlanR254,type StoredTaskSessionR254} from "./noor-task-sessions-r254.js";
+import {TaskSessionPlannerR254,TaskSessionListR254,sessionFinishedR254,sessionProgressR254,TASK_SESSION_STYLES_R254,type StoredTaskSessionPlanR254,type StoredTaskSessionR254} from "./noor-task-sessions-r254.js";
 import {NoorBeverageTrackerR294,type BeverageRowR294} from "./noor-beverage-tracker-r294.js";
 import type {NoorBeveragePlanR294,NoorCountdownPlanR301} from "./noor-personal-today-client.js";
 import {UpcomingCountdownR301} from "./noor-upcoming-countdown-r301.js";
@@ -68,6 +69,7 @@ type UnknownRecord = Record<string, unknown>;
 
 type ExecutionItem = Readonly<{
   weight:number;
+  credit?:number;
   id: string;
   definitionId: string;
   title: string;
@@ -75,7 +77,7 @@ type ExecutionItem = Readonly<{
   kind: "Task" | "Habit";
 }>;
 
-type ActivityEntry = Readonly<{ id:string; executionId:string; localDate:string; at:string; note:string; amount:number; endReason:"achieved"|"expired"|"cancelled"|null; taskSessionId?:string; sessionDayCredit?:number; beverageTime?:string }>;
+type ActivityEntry = Readonly<{ id:string; executionId:string; localDate:string; at:string; note:string; amount:number; endReason:"achieved"|"expired"|"cancelled"|null; taskSessionId?:string; sessionDayCredit?:number; performedOnR331?:string; beverageTime?:string }>;
 type DefinitionItem = Readonly<{
   reminderPlan?:NoorReminderPlanR314;
   weight:number;
@@ -111,6 +113,7 @@ type PeriodInsight = Readonly<{
 }>;
 
 type WorkspaceViewModel = Readonly<{
+  prayerHistoryR331:readonly Readonly<{date:string;records:readonly PrayerRecordR331[]}>[];
   fridayMosqueVisits:readonly Readonly<{localDate:string;hour:1|2|3|4|5}>[];
   statistics:Readonly<{currentDate:string|null;rows:readonly StatisticRow[]}>;
   categories:readonly string[];
@@ -1909,7 +1912,8 @@ function buildWorkspaceViewModel(workspace: unknown): WorkspaceViewModel | null 
       &&typeof row.localDate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(row.localDate)
       &&(row.hour===1||row.hour===2||row.hour===3||row.hour===4||row.hour===5))
     :[];
-  return { fridayMosqueVisits, statistics:{currentDate:stats?stringValue(stats.currentDate):null,rows:parseStatisticRows(stats?.rows)},categories:Array.isArray(workspace.categories)?workspace.categories.filter((c):c is string=>typeof c==="string"): [...new Set([...COMMON_CATEGORIES,...definitions.map(d=>d.category)])], definitions, finance, currentStreakDays, bestStreakDays, periods: { week, month, quarter, year } };
+  const prayerHistoryR331=Array.isArray(workspace.prayerHistoryR331)?workspace.prayerHistoryR331.flatMap(row=>isRecord(row)&&validStatisticDate(row.date)&&Array.isArray(row.records)?[{date:row.date,records:row.records.filter(validPrayerRecordR331)}]:[]):[];
+  return { prayerHistoryR331, fridayMosqueVisits, statistics:{currentDate:stats?stringValue(stats.currentDate):null,rows:parseStatisticRows(stats?.rows)},categories:Array.isArray(workspace.categories)?workspace.categories.filter((c):c is string=>typeof c==="string"): [...new Set([...COMMON_CATEGORIES,...definitions.map(d=>d.category)])], definitions, finance, currentStreakDays, bestStreakDays, periods: { week, month, quarter, year } };
 }
 
 function buildViewModel(today: unknown): TodayViewModel | null {
@@ -2601,7 +2605,7 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
 }
 
 const END_REASON_LABELS = {achieved:"تم الإنجاز",expired:"انتهى الوقت دون اكتمال",cancelled:"إلغاء المهمة"};
-function ActivityCard({item,definition,busy,pending=false,historicalDate=null,todayDate,onCommand}:{item:ExecutionItem;definition?:DefinitionItem|undefined;busy:boolean;pending?:boolean;historicalDate?:string|null;todayDate?:string|undefined;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>}):ReactElement {
+function ActivityCard({item,definition,busy,pending=false,historicalDate=null,todayDate,onCommand,remainingMode=false}:{item:ExecutionItem;definition?:DefinitionItem|undefined;busy:boolean;pending?:boolean;historicalDate?:string|null;todayDate?:string|undefined;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>;remainingMode?:boolean}):ReactElement {
  const [mode,setMode]=useState<"note"|"finish"|null>(null);
  const [error,setError]=useState("");
  const [noteEdit,setNoteEdit]=useState<{entry:ActivityEntry;body:string;deleting:boolean}|null>(null);
@@ -2651,14 +2655,16 @@ function ActivityCard({item,definition,busy,pending=false,historicalDate=null,to
   if(await onCommand({type:"record-activity",executionId:item.id,entryId,note,amount,endReason}))setMode(null);
   else setError("تعذر تأكيد الحفظ. بياناتك ما زالت هنا؛ يمكنك إعادة المحاولة.");
  };
- return <div className={`np-item np-activity-item${task?"":" np-habit-row"}${completed?" is-completed":""}`} data-testid={`activity-card-${item.id}`}>
-  <div className="np-item-main"><div className="np-habit-title-with-help-r288"><p className="np-item-title">{displayTitle}</p>{definition?<details className="np-habit-help-r288" data-testid={task?`r293-task-help-${definition.id}`:`r288-habit-help-${definition.id}`}><summary aria-label={`تفاصيل ${task?"مهمة":"عادة"} ${displayTitle}`} title="تفاصيل العنصر">؟</summary><div className="np-habit-help-r288-content"><strong>بيانات {task?"المهمة":"العادة"} المسجلة</strong>{definition.description?<p className="np-definition-description-r293" data-testid="r293-definition-description"><b>الوصف:</b> {definition.description}</p>:null}<p>التصنيف: {definition.category}</p><p>التكرار: {scheduleLabel(definition)}</p><p>الأهمية: {({Essential:"أساسي",Important:"مهم",Supporting:"داعم",Optional:"اختياري"} as Record<string,string>)[definition.importance]??definition.importance} · وزن الإنجاز: {definition.weight}</p>{definition.timeOfDay?<p>موعد التنفيذ: {definition.timeOfDay}</p>:null}{definition.quranPlan?<div className="np-quran-habit-detail-r289" data-testid="r289-quran-habit-today">{quranQuarter?<><p><strong>ورد اليوم: ربع الحزب {quranQuarter.number} من 240</strong></p><p>سورة {quranQuarter.surahName} · الآية {quranQuarter.ayah}</p><p>بداية أول آية: <span dir="rtl">{quranQuarter.opening}</span></p><a target="_blank" rel="noopener noreferrer" href={`https://quran.com/${quranQuarter.surah}/${quranQuarter.ayah}`}>عرض الآية في المصحف</a></>:<p>لا يوجد ربع مستحق في هذا التاريخ؛ تحقق من موعد العادة.</p>}</div>:null}</div></details>:null}</div>{definition?.timeOfDay?<time className="np-habit-time" dateTime={definition.timeOfDay}>◷ {definition.timeOfDay}</time>:null}{task?<div className="np-item-meta"><span className="np-kind-badge">مهمة</span><span>{ended && latest?.endReason ? END_REASON_LABELS[latest.endReason] : STATUS_LABELS[item.status] ?? item.status}</span></div>:null}
+ return <div className={`np-item np-activity-item${task?"":" np-habit-row"}${completed?" is-completed":""}`} data-testid={`${remainingMode?"remaining-activity":"activity-card"}-${item.id}`}>
+  <div className="np-item-main"><div className="np-habit-title-with-help-r288"><p className="np-item-title">{displayTitle}</p>{definition?<details className="np-habit-help-r288" data-testid={task?`r293-task-help-${definition.id}`:`r288-habit-help-${definition.id}`}><summary aria-label={`تفاصيل ${task?"مهمة":"عادة"} ${displayTitle}`} title="تفاصيل العنصر">؟</summary><div className="np-habit-help-r288-content"><strong>بيانات {task?"المهمة":"العادة"} المسجلة</strong>{definition.description?<p className="np-definition-description-r293" data-testid="r293-definition-description"><b>الوصف:</b> {definition.description}</p>:null}<p>التصنيف: {definition.category}</p><p>التكرار: {scheduleLabel(definition)}</p><p>الأهمية: {({Essential:"أساسي",Important:"مهم",Supporting:"داعم",Optional:"اختياري"} as Record<string,string>)[definition.importance]??definition.importance} · وزن الإنجاز: {definition.weight}</p>{definition.timeOfDay?<p>موعد التنفيذ: {definition.timeOfDay}</p>:null}{definition.quranPlan?<div className="np-quran-habit-detail-r289" data-testid="r289-quran-habit-today">{quranQuarter?<><p><strong>ورد اليوم: ربع الحزب {quranQuarter.number} من 240</strong></p><p>سورة {quranQuarter.surahName} · الآية {quranQuarter.ayah}</p><p>بداية أول آية: <span dir="rtl">{quranQuarter.opening}</span></p><a target="_blank" rel="noopener noreferrer" href={`https://quran.com/${quranQuarter.surah}/${quranQuarter.ayah}`}>عرض الآية في المصحف</a></>:<p>لا يوجد ربع مستحق في هذا التاريخ؛ تحقق من موعد العادة.</p>}</div>:null}</div></details>:null}</div>{definition?.timeOfDay?<time className="np-habit-time" dateTime={definition.timeOfDay}>◷ {definition.timeOfDay}</time>:null}{task?<div className="np-item-meta"><span className="np-kind-badge">مهمة · {item.weight}</span><span>{ended && latest?.endReason ? END_REASON_LABELS[latest.endReason] : STATUS_LABELS[item.status] ?? item.status}</span></div>:null}
   {definition?.measurement ? <div className="np-progress-copy"><span>{arabicNumber(total)} / {arabicNumber(definition.measurement.target)} {definition.measurement.unit}</span><progress aria-label={`تقدم ${displayTitle}`} max={definition.measurement.target} value={total}/></div> : null}
+  {historicalDate&&item.credit!==undefined&&item.status==="Completed"&&item.credit<1?<small className="np-r331-recovered">استدراك · {Number((item.credit*100).toPrecision(4))}% من الوزن</small>:null}
   {latestNote?.note ? <p className="np-activity-note">{latestNote.note}</p> : null}</div>
   <div className="np-activity-actions"><button aria-label={`تسجيل ملاحظة${task?" أو تقدم":""}: ${displayTitle}`} title="تسجيل ملاحظة" className="np-btn secondary np-pencil" onClick={()=>open("note")} type="button"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m15 5 4 4M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15l-1 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
-  {task ? historicalDate ? <button className="np-btn complete" disabled={disabled||pending} onClick={()=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:!completed});}} type="button">{historicalDate?(completed?"إلغاء الإتمام":"إتمام"):"إنهاء"}</button> : <button className="np-btn complete" disabled={disabled||pending} onClick={()=>open("finish")} type="button">{ended?"منتهية":"إنهاء"}</button> : <label className="np-habit-check-target"><input aria-label={`إتمام عادة ${displayTitle} ${historicalDate?`بتاريخ ${historicalDate}`:"اليوم"}`} className="np-habit-check" type="checkbox" checked={completed} aria-busy={pending} disabled={disabled} onChange={event=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:event.currentTarget.checked});}}/></label>}</div>
+  {task&&!historicalDate&&definition&&(!remainingMode?!definition.measurement&&!definition.sessionPlan:sessionsDone&&parentTargetDone&&(!definition.measurement||total>=definition.measurement.target))&&!ended?<button type="button" className="np-btn secondary np-r331-task-done" aria-pressed={completed} disabled={disabled||pending} onClick={()=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:!completed});}}>{completed?"إلغاء إتمام اليوم":"تم اليوم"}</button>:null}
+  {task ? remainingMode ? null : historicalDate ? <button className="np-btn complete" disabled={disabled||pending} onClick={()=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:!completed});}} type="button">{historicalDate?(completed?"إلغاء الإتمام":"تصحيح السجل"):"إنهاء"}</button> : <button className="np-btn complete" disabled={disabled||pending} onClick={()=>open("finish")} type="button">{ended?"منتهية":"إنهاء"}</button> : <label className="np-habit-check-target"><input aria-label={`إتمام عادة ${displayTitle} ${historicalDate?`بتاريخ ${historicalDate}`:"اليوم"}`} className="np-habit-check" type="checkbox" checked={completed} aria-busy={pending} disabled={disabled} onChange={event=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:event.currentTarget.checked});}}/></label>}</div>
   {task&&definition?.sessionPlan&&!historicalDate?<TaskSessionListR254 plan={definition.sessionPlan} log={log} definitionId={definition.id} executionId={canRecord&&["Planned","Pending","InProgress"].includes(item.status)?item.id:null} busy={busy||pending} onCommand={onCommand} title={displayTitle} unit={definition.measurement?.unit??""} revisionId={definition.revisionId} taskGeneralNote={definition.taskGeneralNote??""} todayDate={todayDate}/>:null}
-  {mode ? createPortal(<div className="np-activity-backdrop" onClick={event=>{if(event.target===event.currentTarget)close();}}><div aria-modal="true" aria-label={`${mode==="finish"?"إنهاء":"تسجيل"} ${displayTitle}`} className="np-activity-dialog" ref={panel} role="dialog" onKeyDown={event=>{
+  {mode ? createPortal(<div className={`np-activity-backdrop${remainingMode?" np-r331-remaining-editor":""}`} onClick={event=>{if(event.target===event.currentTarget)close();}}><div aria-modal="true" aria-label={`${mode==="finish"?"إنهاء":"تسجيل"} ${displayTitle}`} className="np-activity-dialog" ref={panel} role="dialog" onKeyDown={event=>{
    if(event.key==="Escape"){event.preventDefault();if(noteEdit){if(!busy){setNoteEdit(null);setNoteError("");}}else close();}
    if(event.key==="Tab"){
     const controls=Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled)') ?? []);
@@ -2762,8 +2768,15 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const [weekShift,setWeekShift]=useState(0);
   const [historyDate,setHistoryDate]=useState<string|null>(null);
   const [showRemaining,setShowRemaining]=useState(false);
+  const [showRecovery,setShowRecovery]=useState(false);
+  const [prayerEditor,setPrayerEditor]=useState<{key:PrayerKeyR331;label:string;mode:PrayerModeR331;timing:PrayerTimingR331}|null>(null);
+  const [prayerSaveError,setPrayerSaveError]=useState("");
+  const [recoverError,setRecoverError]=useState("");
+  const [sessionRecovery,setSessionRecovery]=useState<{row:StatisticRow;session:StoredTaskSessionR254;entryId:string;amount:string;note:string}|null>(null);
+  useEffect(()=>{setPrayerEditor(null);},[historyDate]);
   const remainingCloseRef=useRef<HTMLButtonElement>(null);
-  useEffect(()=>{if(showRemaining)remainingCloseRef.current?.focus();},[showRemaining]);
+  const remainingTriggerRef=useRef<HTMLButtonElement>(null);
+  useEffect(()=>{if(!showRemaining)return;remainingCloseRef.current?.focus();return()=>remainingTriggerRef.current?.focus();},[showRemaining]);
   const sessionDueOnDate=(item:ExecutionItem,date:string)=>{
     const plan=definitionsById.get(item.definitionId)?.sessionPlan;
     if(item.kind!=="Task"||!plan?.sessions.length||item.status==="Completed")return true;
@@ -2774,7 +2787,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     if(historyDate){
       // Only persisted execution rows, never current schedule definitions, become history cards.
       const rows=workspace?.statistics.rows?.filter(row=>row.date===historyDate)??[];
-      const occurrences=rows.map(row=>({id:row.id,definitionId:row.definitionId,title:row.title,kind:row.kind,status:row.status,weight:row.weight}));
+      const occurrences=rows.map(row=>({id:row.id,definitionId:row.definitionId,title:row.title,kind:row.kind,status:row.status,weight:row.weight,...(row.credit!==undefined?{credit:row.credit}:{})}));
       return {...providedView,localDate:historyDate,tasks:occurrences.filter(item=>item.kind==="Task"&&visible(item)),habits:occurrences.filter(item=>item.kind==="Habit"&&visible(item))};
     }
     return {...providedView,tasks:providedView.tasks.filter(visible),habits:providedView.habits.filter(visible)};
@@ -2795,7 +2808,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     doneWeight=achievementItems.filter(e=>e.status==="Completed").reduce((n,e)=>n+e.weight,0);
   const dayWeighted=achievementItems.reduce((n,e)=>{
     const definition=definitionsById.get(e.definitionId);
-    const fraction=definition?.sessionPlan?Math.min(1,definition.activityLog.filter(a=>a.taskSessionId&&a.localDate===view.localDate).reduce((sum,a)=>sum+(a.sessionDayCredit??0),0)):(e.status==="Completed"?1:0);
+    const fraction=historyDate&&e.credit!==undefined?e.credit:definition?.sessionPlan?Math.min(1,definition.activityLog.filter(a=>a.taskSessionId&&a.localDate===view.localDate).reduce((sum,a)=>sum+(a.sessionDayCredit??0),0)):(e.status==="Completed"?1:0);
     return n+e.weight*fraction;
   },0);
   const completionRate=todayWeight?Math.round(dayWeighted/todayWeight*100):0;
@@ -2818,6 +2831,39 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     const date=shiftStatisticDate(day.date,weekShift*7);
     return {...day,date,current:false,future:false,...summarizeProgress((workspace?.statistics.rows??[]).filter(r=>r.date===date))};
   });
+  const historicalRows=(workspace?.statistics.rows??[]).filter(r=>r.date<achievementDate&&statisticEligible(r)&&["Missed","Pending","Planned","InProgress"].includes(r.status)).sort((a,b)=>b.date.localeCompare(a.date)||b.weight-a.weight);
+  const recoverable=historicalRows.filter(r=>{const d=definitionsById.get(r.definitionId);return d&&!d.sessionPlan&&!d.beveragePlan&&!["event","appointment"].includes(d.countdownPlan?.kind??"task")&&(!d.measurement||d.activityLog.filter(a=>a.executionId===r.id).reduce((sum,a)=>sum+a.amount,0)>=d.measurement.target);});
+  const recoverableSessions=historicalRows.flatMap(row=>{
+    const def=definitionsById.get(row.definitionId);
+    if(row.kind!=="Task"||def?.state!=="Active")return [];
+    return (def.sessionPlan?.sessions??[]).filter(s=>s.scheduledDate===row.date&&!sessionFinishedR254(s,def.activityLog)).map(session=>({row,session,def,progress:sessionProgressR254(def.activityLog,session.id)}));
+  });
+  const saveRecoveredSession=async()=>{
+    if(!sessionRecovery||busy)return;
+    const def=definitionsById.get(sessionRecovery.row.definitionId),s=sessionRecovery.session;
+    if(!def)return;
+    const amount=s.target===null?0:Number(sessionRecovery.amount),previous=sessionProgressR254(def.activityLog,s.id);
+    if(s.target!==null&&(!Number.isFinite(amount)||amount<=0||Math.round((amount+previous)*1e6)>Math.round(s.target*1e6))){setRecoverError("أدخل مقدارًا منجزًا لا يتجاوز المتبقي.");return;}
+    setRecoverError("");
+    const ok=await onHistoryCommand({type:"recover-task-session-r331",executionId:sessionRecovery.row.id,localDate:sessionRecovery.row.date,taskSessionId:s.id,entryId:sessionRecovery.entryId,amount,note:sessionRecovery.note});
+    if(ok)setSessionRecovery(null);else setRecoverError("تعذر تسجيل الجلسة المتأخرة. تحقق من المقدار ثم أعد المحاولة.");
+  };
+  const recovery=async(row:StatisticRow)=>{
+    if(busy||!recoverable.some(r=>r.id===row.id))return;
+    setRecoverError("");
+    const ok=await onHistoryCommand({type:"recover-historical-execution",executionId:row.id,localDate:row.date,expectedStatus:row.status as "Missed"|"Pending"|"Planned"|"InProgress"});
+    if(!ok)setRecoverError("تعذر حفظ الاستدراك. أعد المحاولة بعد تحديث البيانات.");
+  };
+  const prayerRecords=workspace?.prayerHistoryR331.find(r=>r.date===(historyDate??achievementDate))?.records??[];
+  const savePrayer=async(clear=false)=>{
+    if(!prayerEditor||busy||historyDate)return;
+    const prior=prayerRecords.find(r=>r.key===prayerEditor.key);
+    const ok=await onCommand({type:"record-prayer-r331",localDate:achievementDate,key:prayerEditor.key,mode:clear?null:prayerEditor.mode,timing:clear?null:prayerEditor.timing,expectedRecordedAt:prior?.recordedAt??null});
+    if(ok)setPrayerEditor(null);else setPrayerSaveError("تعذر حفظ تسجيل الصلاة. حاول مرة أخرى.");
+  };
+  const nextSession=providedView.tasks.filter(t=>t.status!=="Completed"&&t.status!=="Cancelled").flatMap(t=>{const d=definitionsById.get(t.definitionId);return d?.sessionPlan?.sessions.filter(s=>(!s.scheduledDate||s.scheduledDate===achievementDate)&&!sessionFinishedR254(s,d.activityLog)).map(s=>({title:s.title,task:d.title,target:s.target,unit:d.measurement?.unit??""}))??[];})[0];
+  const nextTask=providedView.tasks.filter(t=>t.status!=="Completed"&&t.status!=="Cancelled"&& !["event","appointment"].includes(definitionsById.get(t.definitionId)?.countdownPlan?.kind??"task")).sort((a,b)=>b.weight-a.weight)[0];
+  const weekTotals=summarizeProgress([...(workspace?.statistics.rows??[]).filter(r=>r.date!==achievementDate),...todayRows].filter(r=>visibleWeek.some(d=>!d.future&&d.date===r.date)));
   const weekFormats=useMemo(()=>({date:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{day:"numeric",month:"numeric",timeZone:"UTC"}),weekday:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",timeZone:"UTC"})}),[]);
   const weekDateLabel=(date:string,weekday=false)=>(weekday?weekFormats.weekday:weekFormats.date).format(new Date(date+"T00:00:00Z"));
 
@@ -2918,12 +2964,6 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
 
   return <>
     <div className="np-topbar np-r323-header" data-testid="platform-topbar">
-      <div className="np-top-actions">
-                <button aria-label="إعادة الاتصال بنور وتحديث البيانات" title="تحديث نور" className="np-icon-btn np-refresh-icon-r296" disabled={busy||reconnecting} onClick={onReconnect} type="button" data-testid="r296-reconnect-button">
-          <svg aria-hidden="true" className={reconnecting?"np-refresh-spin-r296":""} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9A7 7 0 0 1 18.2 7L20 12M4 12l1.8 5A7 7 0 0 0 18.5 15"/></svg>
-        </button>
-      </div>
-
       <div className="np-r323-greeting">أهلًا بك <span aria-hidden="true"><NoorR323Icon name="leaf"/></span></div><div className="np-header-calendar" data-testid="header-information">
         <div className="np-header-day">{weekday}</div>
         <div className="np-header-date-pair">
@@ -2957,28 +2997,38 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>
     </div>
 
-    <div className="np-r323-home-grid" data-testid="r323-approved-dashboard">
-    <NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight}
+    <div className="np-r323-home-grid np-r331-home-grid" data-testid="r323-approved-dashboard">
+    {!historyDate?<section className="np-r331-board np-card" data-testid="r331-announcement-board" aria-label="لوحة نور">
+      <header><NoorR323Icon name="grid"/><h2>لوحة نور</h2><small>ما يهمك الآن</small></header>
+      <div className="np-r331-board-grid">
+      <div className="np-r331-tile np-r331-tile-time"><NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight}
       selectedFridayHour={workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null}
       fridaySelectionBusy={busy}
       onSelectFridayHour={(hour)=>{
         const selected=workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null;
         if(busy)return;
         void onCommand({type:"set-friday-mosque-hour",hour:selected===hour?null:hour,expectedHour:selected});
-      }}/> 
-    {!historyDate?<UpcomingCountdownR301 definitions={workspace?.definitions??[]} nowMs={nowMs} timeZone={view.timeZone} onAdd={onAddCountdown} religiousEvents={religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night})}/>:null}
+      }}/></div>
+      <div className="np-r331-tile np-r331-tile-next"><UpcomingCountdownR301 definitions={workspace?.definitions??[]} nowMs={nowMs} timeZone={view.timeZone} onAdd={onAddCountdown} religiousEvents={religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night})}/></div>
+      <a href="#noor-r331-prayers" className="np-r331-tile np-r331-small"><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></a>
+      <a href="#noor-r323-tasks" className="np-r331-tile np-r331-small"><NoorR323Icon name="layers"/><span>الجلسة القادمة</span><strong>{nextSession?.title??"لا جلسات مستحقة"}</strong><small>{nextSession?[nextSession.task,nextSession.target!==null?nextSession.target+" "+nextSession.unit:""].filter(Boolean).join(" · "):"عرض المهام والجلسات"}</small></a>
+      <a href={nextTask?"#noor-r323-tasks":"#noor-r323-progress"} className="np-r331-tile np-r331-small"><NoorR323Icon name="check"/><span>المهمة ذات الأولوية</span><strong>{nextTask?.title??"لا مهام متبقية"}</strong><small>{nextTask?"وزن "+nextTask.weight:"عرض الإنجاز"}</small></a>
+      <button type="button" className="np-r331-tile np-r331-small" onClick={()=>setShowRecovery(true)}><NoorR323Icon name="bars"/><span>تدارك الفائت</span><strong>{recoverable.length+recoverableSessions.length} قابل للاستدراك</strong><small>{historicalRows.length} عنصر غير مكتمل</small></button>
+      </div>
+    </section>:null}
+    {showRecovery?createPortal(<div className="np-r331-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRecovery(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="تدارك الفائت" onKeyDown={e=>{if(e.key==="Escape")setShowRecovery(false);}}><header><h2>تدارك الفائت</h2><button type="button" onClick={()=>setShowRecovery(false)} aria-label="إغلاق التدارك">×</button></header><p>يحفظ الاستدراك على يوم الاستحقاق بوزن يتناقص إلى النصف عن كل يوم تأخير.</p>{recoverableSessions.length?<h3>جلسات مجدولة فائتة</h3>:null}{recoverableSessions.map(({row,session,def,progress})=><article key={row.id+"-"+session.id} className="np-r331-recovery-row"><div><strong>{session.title}</strong><small>{def.title} · {row.date} · {Math.round(recoveryCreditR331(row.date,achievementDate)*100)}% من وزن الجزء المنجز</small>{session.target!==null?<small>{progress} / {session.target} {def.measurement?.unit??""}</small>:null}</div><button type="button" disabled={busy} onClick={()=>{setRecoverError("");setSessionRecovery({row,session,entryId:globalThis.crypto.randomUUID(),amount:session.target===null?"0":String(Math.round((session.target-progress)*1e6)/1e6),note:""});}}>تسجيل التقدم</button></article>)}{sessionRecovery?<form className="np-r331-session-recovery" onSubmit={event=>{event.preventDefault();void saveRecoveredSession();}}><strong>{sessionRecovery.session.title}</strong>{sessionRecovery.session.target!==null?<label>المقدار المنجز الآن<input type="number" inputMode="decimal" required min="0.000001" step="any" value={sessionRecovery.amount} onChange={event=>setSessionRecovery({...sessionRecovery,amount:event.currentTarget.value})}/></label>:<p>تأكيد إتمام الجلسة المتأخرة.</p>}<label>ملاحظة اختيارية<textarea dir="rtl" rows={2} maxLength={2000} value={sessionRecovery.note} onChange={event=>setSessionRecovery({...sessionRecovery,note:event.currentTarget.value})}/></label><div><button type="submit" disabled={busy}>حفظ الاستدراك</button><button type="button" disabled={busy} onClick={()=>setSessionRecovery(null)}>إلغاء</button></div></form>:null}{!historicalRows.length?<p>لا توجد عناصر فائتة.</p>:historicalRows.map(row=><article key={row.id} className="np-r331-recovery-row"><div><strong>{row.title}</strong><small>{row.date} · {Number((row.weight*recoveryCreditR331(row.date,achievementDate)).toPrecision(5))} من {row.weight} نقطة</small></div>{recoverable.some(r=>r.id===row.id)?<button type="button" disabled={busy} onClick={()=>{void recovery(row)}}>تم الآن</button>:<button type="button" onClick={()=>{setHistoryDate(row.date);setWeekShift(Math.floor((Date.parse(row.date+"T00:00:00Z")-Date.parse(achievementWeek[0]!.date+"T00:00:00Z"))/604800000));setShowRecovery(false);}}>عرض السجل</button>}</article>)}{recoverError?<p role="alert">{recoverError}</p>:null}</section></div>,document.body):null}
 
-    <section aria-label="الصلوات" className="np-card np-prayer-card" data-header-layout="padding-only-132" data-prayer-layout="compact-1x8-until-600-92" data-testid="prayer-card">
+    <section id="noor-r331-prayers" aria-label="الصلوات" className="np-card np-prayer-card" data-header-layout="padding-only-132" data-prayer-layout="compact-five-obligatory-r331" data-testid="prayer-card">
       <div className="np-prayer-card-head">
         <span className="np-prayer-card-icon" aria-hidden="true">
           <svg fill="none" viewBox="0 0 32 32"><path d="M7 25h18M10 25V14h12v11M12 14c0-3.1 1.5-5.4 4-7 2.5 1.6 4 3.9 4 7M16 7V4M14.5 4h3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"/></svg>
         </span>
-        <h2 className="np-prayer-card-title">الصلوات وأوقات الليل</h2>
+        <h2 className="np-prayer-card-title">الصلوات الخمس</h2>
       </div>
-      {nextPrayer?<div className="np-r324-prayer-next"><strong>{eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الصلاة القادمة"} · {formatTime(nextPrayer.at,view.timeZone)}</strong><span role="timer" dir="ltr">{formatCountdown(countdown)}</span></div>:null}
+      {nextPrayer&&!historyDate?<div className="np-r324-prayer-next"><strong>{eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الصلاة القادمة"} · {formatTime(nextPrayer.at,view.timeZone)}</strong><span role="timer" dir="ltr">{formatCountdown(countdown)}</span></div>:null}
       {!nextPrayer && view.nextPrayer ? <p className="np-action-error" role="status">جارٍ تحديث مواقيت الصلاة…</p> : null}
-      <div data-countdown-version="NOOR_COUNTDOWN_ROLLOVER_R81" aria-label="مواقيت الصلاة وأوقات الليل" className="np-prayer-times" data-testid="prayer-times-strip" role="region" tabIndex={0}>
-        {eventTimes.map(prayer => {
+      <div data-countdown-version="NOOR_COUNTDOWN_ROLLOVER_R81" aria-label="الصلوات الخمس" className="np-prayer-times" data-testid="prayer-times-strip" role="region" tabIndex={0}>
+        {eventTimes.filter(p=>R331_PRAYERS.includes(p.key as PrayerKeyR331)).map(prayer => {
           const [prayerClock,prayerPeriod] = formatTime(prayer.at,view.timeZone).split(/\s+/);
           const isNext = prayer.key === nextKey;
           const isNightEvent = prayer.key === "midnight" || prayer.key === "last-third";
@@ -2986,11 +3036,14 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
            const countdownTarget=lastThirdStarted&&night?night.endsAt:prayer.at;
            const nightRemaining=isNightEvent?remainingPrayerSeconds(countdownTarget,nowMs):0;
           const showNightCountdown = isNightEvent && night?.enabled && nightRemaining > 0;
+          const record=prayerRecords.find(r=>r.key===prayer.key);
+          const prayerStarted=Date.parse(view.prayerTimes.find(p=>p.key===prayer.key)?.at??"")<=nowMs;
 
           return <div className={`np-prayer ${isNext ? "is-next" : ""} ${isNightEvent ? "np-night-event" : ""}`} data-prayer-key={prayer.key} data-event-at={prayer.at} data-night-countdown-active={isNightEvent ? String(Boolean(night?.enabled)) : undefined} key={prayer.key}>
             <span className="np-prayer-symbol">{prayerSymbol(prayer.key)}</span>
             <span className="np-prayer-label">{prayer.label}</span>
-            <span className="np-prayer-time"><span>{prayerClock}</span>{" "}<span className="np-prayer-period">{prayerPeriod}</span></span>
+            {!historyDate?<span className="np-prayer-time"><span>{prayerClock}</span>{" "}<span className="np-prayer-period">{prayerPeriod}</span></span>:null}
+            <button type="button" className="np-r331-prayer-record" data-prayer-mode={record?.mode??"pending"} aria-label={`تسجيل أداء ${prayer.label}`} disabled={busy||!!historyDate||!prayerStarted} onClick={()=>{setPrayerSaveError("");setPrayerEditor({key:prayer.key as PrayerKeyR331,label:prayer.label,mode:record?.mode??"group",timing:record?.timing??"ontime"});}}>{record?record.mode==="group"?"جماعة":record.mode==="excused"?"بعذر":"دون عذر":"تسجيل"}{record?.timing==="late"?" · فات الوقت":""}</button>
             {isNext && nextPrayer ? <span className="np-countdown" data-testid="prayer-countdown">
               <svg aria-hidden="true" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" stroke="currentColor" strokeWidth="1.5"/><path d="M12 7.8v4.6l3 1.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5"/></svg>
               <span className="np-countdown-digits">{formatCountdown(countdown)}</span>
@@ -3004,9 +3057,10 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>
     </section>
 
+    {prayerEditor?createPortal(<div className="np-r331-overlay" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setPrayerEditor(null);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label={"تسجيل صلاة "+prayerEditor.label} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setPrayerEditor(null);}}><header><h2>صلاة {prayerEditor.label}</h2><button type="button" disabled={busy} onClick={()=>setPrayerEditor(null)} aria-label="إغلاق تسجيل الصلاة">×</button></header><h3>كيفية الأداء</h3><div className="np-r331-options">{([["group","في جماعة"],["excused","منفردًا بعذر"],["unexcused","منفردًا دون عذر"]] as const).map(([mode,label])=><button type="button" key={mode} aria-pressed={prayerEditor.mode===mode} onClick={()=>setPrayerEditor({...prayerEditor,mode})}>{label}</button>)}</div><h3>وقت الأداء</h3><div className="np-r331-options">{([["ontime","في وقتها"],["late","بعد خروج وقتها"]] as const).map(([timing,label])=><button type="button" key={timing} aria-pressed={prayerEditor.timing===timing} onClick={()=>setPrayerEditor({...prayerEditor,timing})}>{label}</button>)}</div><p>سجل مستقل عن أوزان المهام والعادات.</p>{prayerSaveError?<p role="alert">{prayerSaveError}</p>:null}<div className="np-r331-options"><button type="button" disabled={busy} onClick={()=>{void savePrayer()}}>حفظ الأداء</button>{prayerRecords.some(r=>r.key===prayerEditor.key)?<button type="button" disabled={busy} onClick={()=>{void savePrayer(true)}}>حذف التسجيل</button>:null}</div></section></div>,document.body):null}
     <NoorBeverageTrackerR294 rows={beverageRows} allNames={(workspace?.definitions??[]).filter(d=>d.kind==="Habit"&&!!d.beveragePlan&&d.state!=="Archived").map(d=>d.title)}
       localDate={view.localDate??""} timeZone={view.timeZone} busy={busy} onCommand={onCommand} historical={historyDate!==null}/>
-      {!historyDate?<nav className="np-r323-home-shortcuts" aria-label="اختصارات لوحة نور"><a href="#noor-r323-habits"><span aria-hidden="true"><NoorR323Icon name="leaf"/></span><strong>العادات</strong><small>{view.habits.length} عادات اليوم</small></a><a href={view.tasks.length?"#noor-r323-tasks":"#noor-r323-progress"}><span aria-hidden="true"><NoorR323Icon name="check"/></span><strong>المهام</strong><small>{view.tasks.length} مهام اليوم</small></a><a href="#noor-r323-progress"><span aria-hidden="true"><NoorR323Icon name="bars"/></span><strong>التقدم</strong><small>{completionRate}% إنجاز اليوم</small></a></nav>:null}
+
     </div>
 
 
@@ -3020,12 +3074,25 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         <svg viewBox="0 0 100 100" aria-hidden="true"><circle className="np-day-ring-track" cx="50" cy="50" r="42"/><circle className="np-day-ring-fill" cx="50" cy="50" r="42" strokeDasharray={263.894} strokeDashoffset={263.894*(1-completionRate/100)}/></svg><strong data-testid="today-completion-rate">{arabicNumber(completionRate)}%</strong>
       </div>
       <div className="np-day-achievement-copy"><div className="np-day-achievement-text"><h2>{historyDate?`إنجاز يوم ${weekDateLabel(historyDate)}`:"إنجاز اليوم"} <small>موزون</small></h2><p>{!totalToday?"لا توجد عادات أو مهام مستحقة اليوم.":completedToday===totalToday?"اكتملت كل عادات ومهام اليوم. أحسنت الاستمرار.":`${arabicNumber(completedToday)} من ${arabicNumber(totalToday)} عادات ومهام مكتملة اليوم`}</p></div>{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 personalDate={view.localDate??undefined} /></>:null}</div>
-      {totalToday?<button type="button" className="np-day-remaining" data-testid="r286-remaining-trigger" aria-haspopup="dialog" aria-expanded={showRemaining} onClick={()=>setShowRemaining(true)}><strong>{arabicNumber(Math.max(0,totalToday-completedToday))}</strong><span>{completedToday===totalToday?"يوم مكتمل":historyDate?"متبقية في اليوم":"متبقية اليوم"}</span></button>:null}
-      {showRemaining?createPortal(<div className="np-r286-remaining-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRemaining(false);}}><section role="dialog" aria-modal="true" aria-labelledby="r286-remaining-heading" className="np-r286-remaining-dialog" onKeyDown={event=>{if(event.key==="Escape")setShowRemaining(false);}}><header><h2 id="r286-remaining-heading">{historyDate?"المتبقي في اليوم المحدد":"المتبقي اليوم"}</h2><button type="button" className="np-cc-button" ref={remainingCloseRef} onClick={()=>setShowRemaining(false)}>إغلاق ×</button></header>{(achievementItems.filter(x=>x.status!=="Completed"&&x.status!=="Suppressed")).length?<ul>{achievementItems.filter(x=>x.status!=="Completed"&&x.status!=="Suppressed").map(x=><li key={x.id}><span><strong>{x.title}</strong><small>{x.kind==="Habit"?"عادة":"مهمة"} · {STATUS_LABELS[x.status]??x.status}</small></span><span>وزن {arabicNumber(x.weight)}</span></li>)}</ul>:<p role="status">اكتملت جميع المهام والعادات المستحقة لهذا اليوم.</p>}</section></div>,document.body):null}
+      {totalToday?<button type="button" className="np-day-remaining" data-testid="r286-remaining-trigger" ref={remainingTriggerRef} aria-haspopup="dialog" aria-expanded={showRemaining} onClick={()=>setShowRemaining(true)}><strong>{arabicNumber(Math.max(0,totalToday-completedToday))}</strong><span>{completedToday===totalToday?"يوم مكتمل":historyDate?"متبقية في اليوم":"متبقية اليوم"}</span></button>:null}
+      {showRemaining?createPortal(<div className="np-r286-remaining-backdrop np-r331-actionable-remaining" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRemaining(false);}}><section role="dialog" aria-modal="true" aria-labelledby="r286-remaining-heading" className="np-r286-remaining-dialog" onKeyDown={event=>{if(!event.currentTarget.contains(event.target as Node))return;if(event.key==="Escape")setShowRemaining(false);}}><header><div><h2 id="r286-remaining-heading">{historyDate?"المتبقي في اليوم المحدد":"المتبقي اليوم"}</h2><small aria-live="polite">{Math.max(0,totalToday-completedToday)} متبقية · {completionRate}% إنجاز موزون</small></div><button type="button" className="np-cc-button" ref={remainingCloseRef} onClick={()=>setShowRemaining(false)}>إغلاق ×</button></header>
+      {actionError?<p role="alert" className="np-r331-remaining-error">{actionError}</p>:null}
+      {achievementItems.some(x=>x.status!=="Completed"&&x.status!=="Suppressed")?<div className="np-page np-r331-remaining-content" dir="rtl">
+        {historyDate?<p className="np-r331-remaining-hint">سجّل الاستدراك بوزن التأخير الفعلي، دون تغيير تسجيلات اليوم الأصلي.</p>:<p className="np-r331-remaining-hint">أتمّ العادات والمهام مباشرة، أو سجّل الكمية والجلسة. تبقى المهام المتكررة فعّالة للأيام التالية.</p>}
+        {achievementItems.filter(x=>x.status!=="Completed"&&x.status!=="Suppressed").map(x=>{
+          const d=definitionsById.get(x.definitionId);
+          if(historyDate){
+            const row=recoverable.find(r=>r.id===x.id&&r.date===historyDate);
+            return <div key={x.id} className="np-r331-recovery-row" data-testid={`remaining-activity-${x.id}`}><div><strong>{x.title}</strong><small>{x.kind==="Habit"?"عادة":"مهمة"} · وزن {x.weight}</small></div>{row?<button type="button" disabled={busy} onClick={()=>{void recovery(row);}}>تم الآن</button>:<button type="button" onClick={()=>{setShowRemaining(false);setShowRecovery(true);}}>عرض التدارك</button>}</div>;
+          }
+          return <ActivityCard key={x.id} item={x} definition={d} busy={busy||lockedIds.includes(x.id)} pending={pendingIds.includes(x.id)} onCommand={onCommand} todayDate={view.localDate??undefined} remainingMode/>;
+        })}
+        {recoverError&&historyDate?<p role="alert">{recoverError}</p>:null}
+      </div>:<p role="status">اكتملت جميع المهام والعادات المستحقة لهذا اليوم.</p>}</section></div>,document.body):null}
       <div className="np-day-context">
         <section className={`np-yesterday${yesterday?.missed.length?" has-missed":""}`} aria-label="فائت أمس" data-testid="yesterday-achievement"><div className="np-yesterday-heading"><span>فائت أمس</span>{yesterday?<time dateTime={yesterday.date}>{weekDateLabel(yesterday.date)}</time>:null}</div><div className="np-yesterday-score"><strong>{arabicNumber(yesterday?.missed.length??0)}</strong><span>عادات ومهام غير مكتملة</span></div>{yesterday?.scheduled?<p>{yesterday.missed.length?"عناصر غير مكتملة" :"اكتملت كل استحقاقات أمس"} · إنجاز أمس {arabicNumber(yesterday.rate??0)}%</p>:<p>لا توجد استحقاقات مسجلة لأمس.</p>}{yesterday?.missed.length?<details className="np-yesterday-details"><summary>عرض الفائت</summary><ul>{yesterday.missed.map(row=><li key={row.id}><span>{row.title}<small>{row.kind==="Habit"?"عادة":"مهمة"} · {STATUS_LABELS[row.status]??row.status}{row.amount>0?` · ${arabicNumber(row.amount)} ${row.unit}`:""}</small></span><strong>{arabicNumber(row.weight)}<small> وزن</small></strong></li>)}</ul></details>:null}</section>
         <section className="np-week-achievement" aria-label="إنجاز أيام الأسبوع كاملًا" data-week-navigation="r109">
-          <div className="np-week-heading"><h3>{weekShift===0?"هذا الأسبوع":"الأسبوع المحدد"}</h3>
+          <div className="np-week-heading"><h3>{weekShift===0?"إنجاز هذا الأسبوع":"إنجاز الأسبوع المحدد"} <strong className="np-r331-week-rate">{weekTotals.rate===null?"—":`${weekTotals.rate}%`}</strong></h3>
             <div className="np-week-navigation" aria-label="التنقل بين الأسابيع">
               <button type="button" data-testid="week-history-previous" disabled={!canGoOlder} aria-label="الأسبوع السابق" onClick={()=>setWeekShift(value=>value-1)}>‹</button>
               {visibleWeek[0]&&visibleWeek[6]?<span>{weekDateLabel(visibleWeek[0].date)} — {weekDateLabel(visibleWeek[6].date)}</span>:null}
@@ -3036,7 +3103,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             <button type="button" className={`np-week-day${day.current?" is-today":""}${day.future?" is-future":""}${historyDate===day.date?" is-selected":""}`} data-week-selected={historyDate===day.date?"true":"false"} data-week-date={day.date} data-week-state={day.future?"future":day.current?"today":"past"} data-week-rate={day.rate??undefined}
               disabled={day.future} aria-label={`${weekDateLabel(day.date,true)} ${day.date}: ${day.future?"لم يأت بعد":day.rate===null?"لا استحقاقات مسجلة":`إنجاز ${day.rate}%`}. ${day.current?"عرض اليوم الحالي":"عرض عادات ومهام هذا اليوم في نفس الصفحة"}`}
               onClick={()=>{if(day.current){setHistoryDate(null);}else if(!day.future){setHistoryDate(day.date);}/* Preserve scroll position when changing personal days. */}}>
-              <span className="np-week-name">{weekDateLabel(day.date,true)}</span><div className="np-week-value"><strong>{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong></div><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
+              <span className="np-week-name">{weekDateLabel(day.date,true)}</span><div className="np-week-value"><span className="np-r331-week-bar" aria-hidden="true" style={{height:`${day.future?0:day.rate??0}%`}}/><strong>{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong></div><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
             </button>
           </div>)}</div>
         </section>
@@ -3058,7 +3125,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
                 const due=items.flatMap(row=>row.execution&&row.execution.status!=='Suppressed'?[row.execution]:[]);
                 const displayCategory=habitCardDisplayTitle(category);
                 const done = completedCount(due);
-                const totalWeight=due.reduce((n,e)=>n+e.weight,0),completedWeight=due.filter(e=>e.status==="Completed").reduce((n,e)=>n+e.weight,0);
+                const totalWeight=due.reduce((n,e)=>n+e.weight,0),completedWeight=due.reduce((n,e)=>n+e.weight*(e.credit??(e.status==="Completed"?1:0)),0);
                 const rate=totalWeight?Math.round(completedWeight/totalWeight*100):0;
                 const circumference = 2 * Math.PI * 24;
                 return <details aria-label={`عادات ${displayCategory}`} className="np-card np-category np-habit-category" data-habit-layout="tracker-r76" data-testid="habit-category-card" key={category}>

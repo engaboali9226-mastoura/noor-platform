@@ -13,3 +13,4 @@ export * from "./infrastructure/intl-umm-al-qura-hijri-date-adapter.js";
 export * from "./infrastructure/versioned-islamic-history-catalog.js";
 export * from "./infrastructure/system-clock.js";
 export * from "./infrastructure/cryptographic-id-generator.js";
+export * from "./domain/completion-r331.js";

@@ -51,7 +51,7 @@ test("R296: sign-out exists solely in Control Center, never the day header",()=>
 });
 
 test("R296: recover an asleep server from the current page without navigation or destroying unsaved notes",()=>{
- assert.match(src,/data-testid="r296-reconnect-button"/);
+ assert.doesNotMatch(src,/data-testid="r296-reconnect-button"/); // R331: remove header refresh only; retry remains available on failure
  assert.match(src,/data-testid="r296-reconnect-state"/);
  assert.match(src,/invalidateNoorPersonalReads\(\);\s*try\{const ok=await refresh\(\)/);
  assert.match(src,/setResult\(previous=>today.kind==="unavailable" && previous\?\.kind==="success" && !strict\?previous:today\)/);

@@ -16,7 +16,7 @@ test('R110: week selection is in-page; no day overlay or history-day card is ren
 test('R110: historical tasks and habits reuse the real R107 layout and ActivityCard',()=>{
  assert.match(s,/historyDate\?historicalCommand:onCommand/);
  assert.match(s,/historicalDate=\{historyDate\}/);
- assert.match(s,/historicalDate\?\(completed\?"إلغاء الإتمام":"إتمام"\)/);
+ assert.match(s,/historicalDate\?\(completed\?"إلغاء الإتمام":"تصحيح السجل"\)/);
  assert.match(s,/className="np-habits-section np-history-page"/);
  assert.match(s,/data-testid="habit-category-card"/);
  assert.match(s,/data-testid="habit-category-grid"/);

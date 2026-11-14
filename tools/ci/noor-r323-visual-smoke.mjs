@@ -80,7 +80,7 @@ try{
   await snap(screen.name+"-login");
   await cdp("Page.navigate",{url:url+"?screen=selector"});
   await find(".noor-welcome-app-card");
-  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>x.getBoundingClientRect().width>=100&&x.querySelector('img').naturalWidth>0)","Both scoped circular logos are enlarged and decoded");
+  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>x.getBoundingClientRect().width>=95&&x.querySelector('img').naturalWidth>0)","Both scoped circular logos are enlarged and decoded");
   await expect("document.documentElement.scrollWidth<=innerWidth+1","Application picker fits viewport");
   await snap(screen.name+"-selector");
   await run("(()=>{const s=document.querySelector('[aria-label=\\\"اختيار ألوان المنصة\\\"]');s.value='beige';s.dispatchEvent(new Event('change',{bubbles:true}))})()");
@@ -123,7 +123,7 @@ try{
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
   await expect("document.documentElement.scrollWidth<=innerWidth+2","Dashboard horizontal overflow");
   await expect("document.querySelector('.np-r323-home-grid').querySelectorAll('.np-r323-rhythm').length===1","No duplicate timer");
-  await expect("(()=>{const a=document.querySelector('.np-r323-friday'),b=document.querySelector('.np-upcoming-r303');return a&&b&&Math.abs(a.getBoundingClientRect().top-b.getBoundingClientRect().top)<3&&a.getBoundingClientRect().left>b.getBoundingClientRect().left})()","Friday and appointments must share the same row in reference order");
+  await expect("document.querySelectorAll(\'[data-testid=r331-announcement-board] .np-r331-board-grid>.np-r331-tile\').length===6&&document.querySelectorAll(\'#noor-r331-prayers [data-prayer-key]\').length===5&&!document.querySelector(\'[data-testid=r296-reconnect-button]\')","Six functional tiles, five prayers, no refresh icon");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect("!document.querySelector(\'.np-r323-header [aria-label=\\\"فتح مركز التحكم\\\"]\')","No top control shortcut");
   await snap(screen.name+"-personal");

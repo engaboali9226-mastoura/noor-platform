@@ -130,6 +130,7 @@ export interface DayBoundarySnapshot {
 }
 
 export interface PersonalDay {
+    readonly prayerRecordsR331?: readonly import("./completion-r331.js").PrayerRecordR331[];
     readonly id: string;
     readonly userId: string;
     readonly boundary: DayBoundarySnapshot;
@@ -160,6 +161,7 @@ export interface TargetLevels {
 }
 
 export interface ActivityEntry {
+    readonly performedOnR331?: LocalDate;
     readonly id: string;
     readonly executionId: string;
     readonly localDate: LocalDate;
@@ -235,6 +237,7 @@ export interface EligibilitySnapshot {
 }
 
 export interface DailyExecutionInstance {
+    readonly recoveredOnR331?: LocalDate;
     readonly id: string;
     readonly userId: string;
     readonly personalDayId: string;

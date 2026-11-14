@@ -1,3 +1,4 @@
+import type {PrayerKeyR331,PrayerModeR331,PrayerTimingR331} from "../../noor-personal/src/domain/completion-r331.js";
 export type NoorQuranHabitPlanR289=Readonly<{anchorDate:string;firstQuarter:number;repeatOccurrences:number}>;
 export type NoorCountdownPlanR301=Readonly<{kind:"task"|"event"|"appointment";date:string;time:string}>;
 export type NoorBeveragePlanR294=Readonly<{targetServings:number;servingMl?:number;kind?:"coffee"|"tea"|"other";sleepTime?:string}>;
@@ -26,6 +27,9 @@ export type NoorPersonalWorkspaceResult =
     };
 
 export type NoorPersonalCommandInput =
+  | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:string;taskSessionId:string;entryId:string;amount:number;note:string}>
+  | Readonly<{type:"recover-historical-execution";executionId:string;localDate:string;expectedStatus:"Missed"|"Pending"|"Planned"|"InProgress"}>
+  | Readonly<{type:"record-prayer-r331";localDate:string;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null}>
   | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;
       plan:import("../../noor-personal/src/domain/reminder-plan-r314.js").NoorReminderPlanR314|null}>
   | Readonly<{type:"set-friday-mosque-hour";hour:1|2|3|4|5|null;expectedHour:1|2|3|4|5|null}>
