@@ -1,3 +1,0 @@
-# R335 — restore approved R333 interface
-
-User reported a visual regression after R334. Restore the entire apps/web subtree byte-for-byte to R333, and restore its browser smoke baseline. Keep R334 server-side calculation, policy persistence and backend tests for storage compatibility. No live account data, journal, permissions or schema changes are made. The R334 client-side policy editor and visible score integration are paused. Any previously approved policy is preserved, not erased, and backend projections may differ from the restored interface until separately reviewed. User visual acceptance on their actual device is still required.
