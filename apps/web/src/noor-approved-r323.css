@@ -375,3 +375,50 @@ body:has(.np-r322-modal[data-open="true"],.np-r322-appointments-overlay[data-ope
   .noor-r323-gateway[data-auth-mode] .noor-r323-auth-card { margin-block: 7px; }
   .noor-r323-gateway[data-auth-mode] .noor-welcome-field { min-height: 53px; }
 }
+
+/* R328: one accessible focus boundary, matching fields and one shared smile wordmark. */
+.noor-wordmark { padding-bottom:.12em; }
+.noor-wordmark > span::after {
+  inset-inline:0;
+  top:83%;
+  height:.36em;
+  border:0;
+  border-bottom:max(2px,.115em) solid #c99225;
+  border-radius:0 0 50% 50%;
+}
+.noor-r323-gateway .noor-welcome-logo-frame { width:104px; height:57px; }
+.noor-r323-gateway .noor-welcome-logo { width:100%; height:100%; object-fit:contain; mix-blend-mode:normal; }
+.noor-r323-gateway .noor-welcome-eyebrow { font-weight:750; color:#214b40; letter-spacing:-.015em; }
+.noor-r323-gateway[data-auth-mode] .noor-welcome-logo { width:100%; height:100%; }
+.noor-r323-gateway[data-auth-mode] .noor-welcome-field {
+  box-sizing:border-box; display:grid; align-content:center; min-height:56px;
+  padding:6px 39px 6px 13px; border:1px solid #c2ccc3;
+  border-radius:14px; background:#fffdf8; box-shadow:none; outline:none;
+}
+.noor-r323-gateway[data-auth-mode] .noor-welcome-field > span {
+  display:block; margin:0; font-size:12px; line-height:1.4; font-weight:650;
+}
+.noor-r323-gateway[data-auth-mode] .noor-welcome-field input,
+.noor-r323-gateway[data-auth-mode] .noor-welcome-field input:focus-visible {
+  box-sizing:border-box; width:100%; min-width:0; min-height:26px;
+  font-size:16px; line-height:1.35; font-weight:500; border:0!important;
+  border-radius:0!important; outline:none!important; box-shadow:none!important;
+  padding:1px 0!important; margin:0; background:transparent!important;
+  text-align:start; color:#214b40; -webkit-appearance:none; appearance:none;
+}
+.noor-r323-gateway[data-auth-mode] .noor-welcome-field input::placeholder { direction:rtl; text-align:right; color:#69766e; opacity:1; }
+.noor-r323-gateway[data-auth-mode] .noor-welcome-field:focus-within {
+  border-color:#356b59; outline:none!important; box-shadow:0 0 0 1px #356b59;
+}
+.noor-r323-gateway .noor-welcome-field::before { right:13px; top:50%; transform:translateY(-50%); pointer-events:none; }
+.noor-r328-password-wrap { position:relative; min-width:0; }
+.noor-r323-gateway[data-auth-mode] .noor-r328-password-wrap .noor-welcome-field { padding-left:51px; }
+.noor-r328-password-toggle {
+  position:absolute; left:5px; top:50%; transform:translateY(-50%);
+  width:44px; height:44px; display:grid; place-items:center; padding:0;
+  background:transparent; color:#456f60; border:0; border-radius:10px; cursor:pointer;
+}
+.noor-r328-password-toggle svg { width:21px; height:21px; }
+.noor-r328-password-toggle:focus-visible { outline:2px solid #356b59; outline-offset:-3px; }
+@media(max-height:550px) { .noor-r323-gateway[data-auth-mode] .noor-welcome-field { min-height:49px; padding-block:4px; } }
+.np-page[data-appearance="dark"] .np-logo-frame:has(img[src="/noor-brand-r328.svg"]) { background:#f6f0e6!important; border-radius:10px!important; }
