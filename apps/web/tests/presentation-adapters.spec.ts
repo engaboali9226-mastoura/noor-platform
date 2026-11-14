@@ -2,16 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {readAppearance,saveAppearance} from "../src/appearance-preference-store.js";
 import {loadCurrentTemperature} from "../src/public-weather-client.js";
-test("appearance storage accepts only the fixed preference key and three themes",()=>{
+test("appearance storage accepts only the fixed preference key and six themes",()=>{
  const old=Object.getOwnPropertyDescriptor(globalThis,"window");const calls:unknown[]=[];let saved="dark";
  try {
   Object.defineProperty(globalThis,"window",{configurable:true,value:{localStorage:{getItem(key:string){calls.push(["read",key]);return saved;},setItem(key:string,value:string){calls.push(["write",key,value]);saved=value;}}}});
   assert.equal(readAppearance(),"dark");saveAppearance("light");assert.equal(readAppearance(),"light");
   const before=calls.length;saveAppearance("session-token" as never);assert.equal(calls.length,before);
   assert.deepEqual(calls,[["read","noor:appearance:v1"],["write","noor:appearance:v1","light"],["read","noor:appearance:v1"]]);
-  saved="unknown";assert.equal(readAppearance(),"noor");
+  for(const palette of ["blue","beige","sage","lavender"] as const){saveAppearance(palette);assert.equal(readAppearance(),palette);}
+  saved="noor";assert.equal(readAppearance(),"blue");
+  saved="unknown";assert.equal(readAppearance(),"blue");
   Object.defineProperty(globalThis,"window",{configurable:true,get(){throw Error("storage unavailable");}});
-  assert.equal(readAppearance(),"noor");assert.doesNotThrow(()=>saveAppearance("dark"));
+  assert.equal(readAppearance(),"blue");assert.doesNotThrow(()=>saveAppearance("dark"));
  } finally {if(old)Object.defineProperty(globalThis,"window",old);else delete (globalThis as any).window;}
 });
 test("weather adapter uses the public provider without credentials and validates its response",async()=>{

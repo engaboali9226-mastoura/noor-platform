@@ -21,5 +21,5 @@ export function applyAppearance(value: NoorAppearance): void {
 export function saveAppearance(value: NoorAppearance): void {
  if(!NOOR_APPEARANCES.some(([id])=>id===value))return;
  applyAppearance(value);
- try{window.localStorage.setItem(APPEARANCE_KEY,value);}catch{/* Local preference remains usable in memory. */}
+ try{window.localStorage.setItem(APPEARANCE_KEY, value);}catch{/* Local preference remains usable in memory. */}
 }
