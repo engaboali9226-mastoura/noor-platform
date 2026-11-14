@@ -110,7 +110,7 @@ export function NoorAdminMfaPageR315({
  };
  const logout=async()=>{await service.current?.signOut();setStep("login");setQr("");setSecret("");setRevealSecret(false);setCode("");setError("");setNotice("");};
  return <main className="na315-page" dir="rtl" id="main-content"><section className="na315-panel" ref={panel} data-step={step}>
-  <header><img src="/noor-platform-logo.jpeg" alt="شعار نور" width="64" height="64"/><div><p lang="en" dir="ltr"><NoorWordmark /> SECURITY</p><h1>تأمين حساب الإدارة</h1><span>إعداد المصادقة الثنائية TOTP</span></div></header>
+  <header><img src="/noor-brand-r328.svg" alt="شعار نور" width="64" height="64"/><div><p lang="en" dir="ltr"><NoorWordmark /> SECURITY</p><h1>تأمين حساب الإدارة</h1><span>إعداد المصادقة الثنائية TOTP</span></div></header>
   <p className="na315-caution">هذه الصفحة مخصصة لحساب المدير المستقل. لا تظهر إدارة الحسابات إلا بعد المصادقة الثنائية واعتماد دور المدير على الخادم.</p>
   {step==="login"?<form onSubmit={e=>{void login(e);}}>
    <label>البريد الإلكتروني لحساب الإدارة<input name="email" type="email" autoComplete="username" required dir="ltr" disabled={loading}/></label>
