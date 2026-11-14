@@ -66,6 +66,14 @@ try{
   await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=innerHeight","Login controls fit without scrolling");
   await expect("document.querySelector('.noor-welcome-logo').getBoundingClientRect().top<80","Brand begins near the top of the screen");
   await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
+  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/noor-brand-r328.svg'","Shared login logo");
+  await run("document.querySelector('input[name=email]').focus()");
+  await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='0px'&&s.boxShadow==='none'&&s.outlineStyle==='none'})()","No nested focus border");
+  await run("document.querySelector('.noor-r328-password-toggle').click()");
+  await expect("document.querySelector('input[name=password]').type==='text'","Password visibility works");
+  await run("document.querySelector('.noor-r328-password-toggle').click()");
+  await expect("document.querySelector('input[name=password]').type==='password'","Password can be concealed");
+  await run("document.activeElement.blur()");
   await snap(screen.name+"-login");
   await run("document.querySelector('.noor-r322-secondary-actions button').click()");
   await find("input[name=name]");
