@@ -3114,14 +3114,13 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
               <div><strong>{weekTotals.rate===null?"—":`${weekTotals.rate}%`}</strong><small>موزون</small></div>
             </div>
           </div>
-          <div className="np-week-days" role="list">{visibleWeek.map(day=><div role="listitem" key={day.date} className="np-week-cell">
+          <div className="np-week-days" dir="rtl" role="list">{visibleWeek.map(day=><div role="listitem" key={day.date} className="np-week-cell">
             <button type="button" className={`np-week-day${day.current?" is-today":""}${day.future?" is-future":""}${historyDate===day.date?" is-selected":""}`} data-week-selected={historyDate===day.date?"true":"false"} data-week-date={day.date} data-week-state={day.future?"future":day.current?"today":"past"} data-week-rate={day.rate??undefined}
               disabled={day.future} aria-label={`${weekDateLabel(day.date,true)} ${day.date}: ${day.future?"لم يأت بعد":day.rate===null?"لا استحقاقات مسجلة":`إنجاز ${day.rate}%`}. ${day.current?"عرض اليوم الحالي":"عرض عادات ومهام هذا اليوم في نفس الصفحة"}`}
               onClick={()=>{if(day.current){setHistoryDate(null);}else if(!day.future){setHistoryDate(day.date);}/* Preserve scroll position when changing personal days. */}}>
               <div className="np-week-value"><span className="np-r331-week-bar" aria-hidden="true" style={{height:`${day.future?0:day.rate??0}%`}}/></div><span className="np-week-name">{weekDateLabel(day.date,true)}</span><strong className="np-r332-day-rate">{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
             </button>
           </div>)}</div>
-          <p className="np-r332-week-note">النسبة موزونة للمهام والعادات. الصلوات سجل مستقل؛ عدم تسجيل صلاة لا يعني عدم أدائها.</p>
         </section>
     {/* NOOR_MINIMAL_DAY_STRIP_R111: date only; navigation stays in the weekly strip. */}
     
