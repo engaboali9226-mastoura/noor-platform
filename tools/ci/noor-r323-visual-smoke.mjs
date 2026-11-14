@@ -92,15 +92,9 @@ try{
   await find(".noor-r323-auth-card");
   await run("document.querySelector('.noor-r322-secondary-actions button').click()");
   await find("input[name=name]");
-  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Registration retains approved shared artwork");
-  await expect("document.documentElement.scrollWidth<=innerWidth+1&&document.querySelector('.noor-auth-return-r312').getBoundingClientRect().bottom<=innerHeight","Registration controls fit the normal viewport");
-  await expect("Array.from(document.querySelectorAll('.noor-welcome-field input')).every(i=>parseFloat(getComputedStyle(i).fontSize)>=16)","Registration fields avoid mobile auto zoom");
-  await snap(screen.name+"-registration");
   await run("document.querySelector('.noor-auth-return-r312').click()");
   await run("document.querySelector('.noor-auth-forgot').click()");
   await wait(()=>run("!document.querySelector('input[name=password]')"));
-  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Password reset retains approved shared artwork");
-  await expect("document.documentElement.scrollWidth<=innerWidth+1&&document.querySelector('.noor-auth-return-r312').getBoundingClientRect().bottom<=innerHeight","Password reset controls fit the normal viewport");
   await snap(screen.name+"-recovery");
   if(screen.mobile){
    await cdp("Emulation.setDeviceMetricsOverride",{width:390,height:480,deviceScaleFactor:1,mobile:true});
@@ -158,14 +152,6 @@ try{
   await find(".np-cc-shell");
   await expect(visible("[data-testid=r324-persistent-navigation]"),"Navigation stays in control center");
   await snap(screen.name+"-tools");
-  await run("Array.from(document.querySelectorAll('.np-cc-nav-item')).find(b=>b.textContent.includes('الأوزان')).click()");
-  await find('[data-testid=r334-prayer-policy-editor]');
-  await run("document.querySelector('[data-testid=r334-prayer-policy-editor]>summary').click()");
-  await expect("document.querySelector('[data-testid=r334-prayer-base-weight]').value===''&&document.querySelector('[data-testid=r334-share-excused-ontime]').value===''&&document.querySelector('[data-testid=r334-policy-save]').disabled","R334 no implicit policy approval");
-  await expect("document.documentElement.scrollWidth<=innerWidth+2","R334 policy editor fits viewport");
-  await run("document.querySelector('[data-testid=r334-prayer-policy-editor]').scrollIntoView({block:'start'})");
-  await snap(screen.name+"-prayer-policy");
-
   await run("document.querySelector('[data-testid=r324-nav-bell]').click()");
   await expect("document.querySelector('[data-testid=r324-nav-bell]').getAttribute('aria-current')==='page'","Reminders navigation active");
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");

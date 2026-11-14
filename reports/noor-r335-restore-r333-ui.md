@@ -1,0 +1,3 @@
+# R335 — restore approved R333 interface
+
+User reported visual regression after R334. Restore the exact R333 blobs for the main Personal UI, weight manager, associated UI tests and browser baseline. Retain R334 backend, durable policy fields and calculation tests for compatibility; do not delete or rewrite any account data or journals. R334 configuration UI and its visible scoring integration are paused while the prior design is restored. Previously approved policies, if any, are not erased; server projections can therefore differ from the restored UI until a separately reviewed integration. No client-side or production database migration. This is a deliberate visual rollback, not a new design. User visual acceptance on their device remains required.
