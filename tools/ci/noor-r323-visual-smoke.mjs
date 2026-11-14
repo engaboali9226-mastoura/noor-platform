@@ -35,9 +35,12 @@ try{
  const render=[
  'const root=createRoot(document.getElementById("root")!);',
  'const isLogin=new URLSearchParams(location.search).get("screen")==="login";',
+ 'const isSelector=new URLSearchParams(location.search).get("screen")==="selector";',
+ 'import {applyAppearance,readAppearance} from "./src/appearance-preference-store";',
+ 'applyAppearance(readAppearance());',
  'const accountService={requestPasswordReset:async()=>"sent" as const,registerPendingAccount:async()=>"sent" as const,completePasswordRecovery:async()=>"updated" as const,requestEmailChange:async()=>"sent" as const};',
  'const appointments=[{id:"visual-appointment-1",kind:"Task",title:"اجتماع فريق العمل",state:"Active",category:"العمل",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-07",time:"15:00"}},{id:"visual-appointment-2",kind:"Task",title:"موعد طبي",state:"Active",category:"الصحة",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-08",time:"10:00"}}];',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>({signIn:async()=>"challenge-needed",enroll:async()=>null,verify:async()=>"invalid",accessToken:async()=>null,signOut:async()=>{}})}/>:isLogin?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState="idle" accountService={accountService}/>:<NoorPersonalApplicationView initialResult={today as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>({signIn:async()=>"challenge-needed",enroll:async()=>null,verify:async()=>"invalid",accessToken:async()=>null,signOut:async()=>{}})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={today as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
  vite=spawn("npm",["--workspace","apps/web","run","dev","--","--host","127.0.0.1","--port","5179","--strictPort"],{stdio:"inherit",env:{...process.env,VITE_NOOR_SUPABASE_URL:"http://127.0.0.1:54321",VITE_NOOR_SUPABASE_PUBLISHABLE_KEY:"sb_publishable_noor_browser_fixture"}});
@@ -66,7 +69,7 @@ try{
   await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=innerHeight","Login controls fit without scrolling");
   await expect("document.querySelector('.noor-welcome-logo').getBoundingClientRect().top<80","Brand begins near the top of the screen");
   await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
-  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Shared login logo");
+  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-logo.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Shared login logo");
   await run("document.querySelector('input[name=email]').focus()");
   await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='0px'&&s.boxShadow==='none'&&s.outlineStyle==='none'})()","No nested focus border");
   await run("document.querySelector('.noor-r328-password-toggle').click()");
@@ -75,6 +78,18 @@ try{
   await expect("document.querySelector('input[name=password]').type==='password'","Password can be concealed");
   await run("document.activeElement.blur()");
   await snap(screen.name+"-login");
+  await cdp("Page.navigate",{url:url+"?screen=selector"});
+  await find(".noor-welcome-app-card");
+  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>x.getBoundingClientRect().width>=100&&x.querySelector('img').naturalWidth>0)","Both scoped circular logos are enlarged and decoded");
+  await expect("document.documentElement.scrollWidth<=innerWidth+1","Application picker fits viewport");
+  await snap(screen.name+"-selector");
+  await run("(()=>{const s=document.querySelector('[aria-label=\\\"اختيار ألوان المنصة\\\"]');s.value='beige';s.dispatchEvent(new Event('change',{bubbles:true}))})()");
+  await expect("document.documentElement.dataset.noorAppearance==='beige'&&localStorage.getItem('noor:appearance:v1')==='beige'","Beige selection applied and persisted");
+  await snap(screen.name+"-selector-beige");
+  await run("(()=>{const s=document.querySelector('[aria-label=\\\"اختيار ألوان المنصة\\\"]');s.value='blue';s.dispatchEvent(new Event('change',{bubbles:true}))})()");
+  await expect("document.documentElement.dataset.noorAppearance==='blue'","Blue palette restored");
+  await cdp("Page.navigate",{url:url+"?screen=login"});
+  await find(".noor-r323-auth-card");
   await run("document.querySelector('.noor-r322-secondary-actions button').click()");
   await find("input[name=name]");
   await run("document.querySelector('.noor-auth-return-r312').click()");
@@ -103,6 +118,7 @@ try{
   await expect(visible("[data-testid=r328-night-total-duration]"),"Trusted whole-night duration visibly distinct from the timer");
   await expect("(()=>{const h=document.querySelector('[data-testid=r329-personal-header]');return h&&h.getAttribute('src')==='/brand/personal-header.webp'&&h.naturalWidth>0&&h.getBoundingClientRect().height>0&&!document.querySelector('.np-r328-personal-watermark')})()","Approved Personal glass header decodes, with no obsolete watermark");
 
+  await expect("(()=>{const b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('[data-testid=r329-personal-header]'),g=document.querySelector('.np-r323-greeting');return b&&h&&g&&b.getBoundingClientRect().width>=Math.min(innerWidth-40,1000)&&h.getBoundingClientRect().bottom<=g.getBoundingClientRect().top+3})()","Full-width background header does not overlap dashboard information");
   await expect(visible("[data-testid=prayer-card]"),"Existing prayer card retained");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
   await expect("document.documentElement.scrollWidth<=innerWidth+2","Dashboard horizontal overflow");

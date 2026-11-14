@@ -1,3 +1,4 @@
+import { NOOR_APPEARANCES, readAppearance, saveAppearance, normalizeAppearance } from "./appearance-preference-store.js";
 import { NoorBrandHeader, NoorBrandLogo, NOOR_BRAND } from "./noor-brand-r329.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {
@@ -148,6 +149,7 @@ function SmartGateway({
   const [busy,setBusy]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
   // Recovery links take precedence over an unrelated old NOOR app cookie.
+  const [appearance,setAppearance] = useState(readAppearance);
   const isAuth = authenticationState === "authenticated" && mode !== "recovery";
   const submitting = authenticationState === "submitting" || busy;
   const changeMode=(next:typeof mode)=>{if(submitting)return;setMode(next);setShowPassword(false);setNotice("");setError("");};
@@ -199,8 +201,8 @@ function SmartGateway({
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
         <div className="noor-welcome-logo-frame">
-          <img className="noor-welcome-logo" src="/brand/platform-header.webp"
-            alt="NOOR Platform — شعار منصة نور" width="1800" height="600" fetchPriority="high" decoding="async" />
+          <img className="noor-welcome-logo" src={isAuth?"/brand/platform-header.webp":"/brand/platform-logo.webp"}
+            alt="NOOR Platform — شعار منصة نور" width={isAuth?1800:1024} height={isAuth?600:1024} fetchPriority="high" decoding="async" />
         </div>
         <div className="noor-r323-brand-label">منصة نور</div><p className="noor-welcome-eyebrow" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
         <h1 id="noor-welcome-title" className="glass-title">مرحبا بك في منصة نور</h1>
@@ -253,7 +255,7 @@ function SmartGateway({
         </div>
         </> : (
           <div className="noor-welcome-apps" aria-label="تطبيقات نور">
-            <p className="noor-welcome-apps-title">اختر مساحتك</p>
+            <div className="noor-r330-picker-heading"><p className="noor-welcome-apps-title">اختر مساحتك</p><label className="noor-r330-theme-select"><span>المظهر</span><select aria-label="اختيار ألوان المنصة" value={appearance} onChange={event=>{const value=normalizeAppearance(event.currentTarget.value);setAppearance(value);saveAppearance(value);}}>{NOOR_APPEARANCES.map(([id,title])=><option key={id} value={id}>{title}</option>)}</select></label></div>
             <a href="/personal" className="noor-welcome-app-card" onClick={event=>{
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/personal");}}>
