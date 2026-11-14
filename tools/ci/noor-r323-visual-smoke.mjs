@@ -134,10 +134,13 @@ try{
   await snap(screen.name+"-personal");
   await run("document.querySelector('.np-caffeine-details-r296 > summary').click()");
   await expect("document.querySelector('.np-caffeine-details-r296').open","Beverage details can open on demand");
+  const liveBoardDate=await run("document.querySelector('[data-testid=r331-announcement-board]').dataset.boardDate");
   await run("document.querySelector('[data-week-state=past]').click()");
+  await expect("(()=>{const b=document.querySelector('[data-testid=r331-announcement-board]');return !!b&&b.querySelectorAll('.np-r331-board-grid>.np-r331-tile').length===6&&Array.from(b.querySelectorAll('.np-r331-board-grid>.np-r331-tile')).every(x=>x.getBoundingClientRect().width>0&&x.getBoundingClientRect().height>0)&&b.querySelector('header small').textContent.includes('اليوم الحالي')&&b.dataset.boardDate==="+JSON.stringify(liveBoardDate)+"})()","R333 all six live board tiles remain visible when browsing historical days");
   await expect("(()=>{const d=document.querySelector('.np-caffeine-details-r296');return d&&!d.open&&d.querySelector('summary').textContent==='تفاصيل المشروبات'&&!d.querySelector('.np-caffeine-bedtime-settings-r296')})()","R333 selecting an earlier day keeps drinks collapsed and read-only");
   await run("document.querySelector('[data-week-state=today]').click()");
   await expect("!document.querySelector('.np-caffeine-details-r296').open","Returning to the current day keeps drinks collapsed");
+  await expect("document.querySelectorAll('[data-testid=r331-announcement-board] .np-r331-board-grid>.np-r331-tile').length===6","Six board tiles remain after returning to today");
   await run("document.querySelector('[data-testid=r322-open-time-windows]').click()");
   await expect("(()=>{const r=document.querySelector('.np-r322-sheet')?.getBoundingClientRect();return r&&r.height>100&&r.top<innerHeight-100&&r.bottom<=innerHeight+3})()","Timer sheet must actually be inside the viewport");
   await snap(screen.name+"-timer-details");
