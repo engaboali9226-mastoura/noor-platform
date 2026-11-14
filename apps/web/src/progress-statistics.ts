@@ -44,7 +44,7 @@ export function yesterdayAchievement(rows:readonly WeightedStatisticRow[],curren
 
 /** R332: use only the displayed civil week. Prayer recording is not a score or a
  * claim of actual attendance; keep it separate from weighted task/habit credit. */
-export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:readonly {date:string;future:boolean;current:boolean}[],history:readonly {date:string;records:readonly {key:string}[]}[],startedToday:readonly string[]){
+export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:readonly {date:string;future:boolean;current:boolean}[],history:readonly {date:string;records:readonly {key:string}[]}[],startedToday:readonly string[],prayerDays:readonly PrayerStatisticDayR334[]=[]){
  const elapsed=days.filter(d=>!d.future),dates=new Set(elapsed.map(d=>d.date)),keys=new Set(["fajr","dhuhr","asr","maghrib","isha"]);
  const weekRows=rows.filter(r=>dates.has(r.date));
  const recordedSet=new Set<string>();
@@ -52,13 +52,15 @@ export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:
  const current=elapsed.find(d=>d.current);
  const started=new Set(startedToday.filter(k=>keys.has(k)));
  if(current)for(const key of keys)if(recordedSet.has(current.date+":"+key))started.add(key);
- const due=elapsed.reduce((sum,d)=>sum+(d.current?started.size:5),0);
+ const projected=new Map(prayerDays.map(p=>[p.date,p.score]));
+ const due=elapsed.reduce((sum,d)=>sum+(projected.get(d.date)?.rows.length??(d.current?started.size:5)),0);
+ const recorded=elapsed.reduce((sum,d)=>sum+(projected.get(d.date)?.rows.filter(p=>p.recorded).length??[...keys].filter(key=>recordedSet.has(d.date+":"+key)).length),0);
  const first=days[0]?.date;
  // Keep the existing Saturday–Friday date boundaries. Week label uses the ISO
  // week number of the start date rather than shifting the stored week.
  let weekNumber:number|null=null;
  if(validStatisticDate(first)){const d=new Date(first+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+4-(d.getUTCDay()||7));const jan=new Date(Date.UTC(d.getUTCFullYear(),0,1));weekNumber=Math.ceil(((d.getTime()-jan.getTime())/86400000+1)/7);}
- return {weekNumber,tasks:summarizeProgress(weekRows.filter(r=>r.kind==="Task")),habits:summarizeProgress(weekRows.filter(r=>r.kind==="Habit")),prayers:{recorded:recordedSet.size,due:current&&startedToday.length===0&&started.size===0&&elapsed.length===1?null:due}};
+ return {weekNumber,tasks:summarizeProgress(weekRows.filter(r=>r.kind==="Task")),habits:summarizeProgress(weekRows.filter(r=>r.kind==="Habit")),prayers:{recorded,due:current&&!projected.has(current.date)&&startedToday.length===0&&started.size===0&&elapsed.length===1?null:due}};
 }
 
 // The server sends a separate, already authorized projection; never read prayer

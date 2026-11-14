@@ -91,6 +91,9 @@ test("R334 workspace emits trusted owner-specific prayer projection only for an 
  assert.equal(view.prayerAchievementR334[0].score.weight,203);
  assert.equal(view.prayerAchievementR334[0].score.earnedWeight,101);
  assert.deepEqual(view.statistics.rows,[]);
+ assert.equal(view.insights.periods.week.completionRate,50);
+ assert.equal(view.insights.periods.week.scheduled,2);
+ assert.equal(view.insights.periods.week.completed,1);
  for(const bad of [make([{...personalDay,prayerScoreSnapshotR334:undefined}],[context]),make([personalDay],[]),make([personalDay],[context,context]),make([{...personalDay,userId:"other"}],[context]),make([{...personalDay,prayerScoreSnapshotR334:{}}],[context])])assert.equal(buildPersonalWorkspace("u",bad,now).prayerAchievementR334,undefined);
  assert.equal(buildPersonalWorkspace("u",make([personalDay],[context])).prayerAchievementR334,undefined);
  assert.equal(validPrayerScoreSnapshotR334({policyId:"bad",effectiveFromDate:"2026-11-15"}),false);

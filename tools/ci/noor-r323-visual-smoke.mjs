@@ -158,6 +158,14 @@ try{
   await find(".np-cc-shell");
   await expect(visible("[data-testid=r324-persistent-navigation]"),"Navigation stays in control center");
   await snap(screen.name+"-tools");
+  await run("Array.from(document.querySelectorAll('.np-cc-nav-item')).find(b=>b.textContent.includes('الأوزان')).click()");
+  await find('[data-testid=r334-prayer-policy-editor]');
+  await run("document.querySelector('[data-testid=r334-prayer-policy-editor]>summary').click()");
+  await expect("document.querySelector('[data-testid=r334-prayer-base-weight]').value===''&&document.querySelector('[data-testid=r334-share-excused-ontime]').value===''&&document.querySelector('[data-testid=r334-policy-save]').disabled","R334 no implicit policy approval");
+  await expect("document.documentElement.scrollWidth<=innerWidth+2","R334 policy editor fits viewport");
+  await run("document.querySelector('[data-testid=r334-prayer-policy-editor]').scrollIntoView({block:'start'})");
+  await snap(screen.name+"-prayer-policy");
+
   await run("document.querySelector('[data-testid=r324-nav-bell]').click()");
   await expect("document.querySelector('[data-testid=r324-nav-bell]').getAttribute('aria-current')==='page'","Reminders navigation active");
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");

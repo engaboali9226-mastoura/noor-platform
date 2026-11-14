@@ -29,3 +29,8 @@ No production merge or deploy until numeric base/prayer mode/timing coefficients
 - The next newly materialized civil day receives an immutable copy of the approved policy. Current/previous days are not rescaled. No migration or default policy is issued.
 - Account controls show stored values, require manual coefficients and explicit mapping/confirmation, and send no mutation until approval. The server validates ownership and current weights again. Existing account-state revision CAS is reused.
 - Approval UI is opt-in, so code may be tested without assigning real-user values.
+
+## End-to-end release evidence planned
+- Next-day integration test executes the actual EnsureToday service, verifies 0 weight before Fajr, records Fajr through the authenticated command, changes the next policy, and checks that the already materialized day retains its frozen weight.
+- Durable adapter test reloads a policy and day snapshot through the account-scoped persistence boundary and rejects a foreign account. It is a synthetic adapter test, not a live production write.
+- Application read model exposes prayer-aware period insights; linked habits are omitted from operational achievement cards only on dates with an effective policy, without deletion. Browser smoke checks opt-in editor defaults and viewport width.

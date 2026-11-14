@@ -1,4 +1,4 @@
-import { parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
+import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
@@ -1685,6 +1685,36 @@ export function buildPersonalWorkspace(
         }
     }
     const prayerScorePolicyR334=snapshot.getPrayerScorePolicyR334?.(userId);
+    // Preserve legacy insights when no prayer policy is effective. For effective
+    // days the server and UI both consume the same frozen execution weights and
+    // separately projected prayer credit.
+    const prayerByDate=new Map(prayerAchievementR334.map(day=>[day.date,day.score]));
+    const insightDates=[...new Set([...rows.map(row=>row.date),...prayerByDate.keys()])].sort();
+    const insightInputs=prayerAchievementR334.length?insightDates.map(date=>{
+        const prayer=prayerByDate.get(date)??null;
+        const eligible=rows.filter(row=>row.date===date&&!row.nonAchievement&&countsTowardCompletion(row.status));
+        const counted=eligible.filter(row=>row.kind!=="Habit"||!prayer?.excludedHabitDefinitionIds.includes(row.definitionId));
+        return {date,prayer,ordinary:eligible.map(row=>({definitionId:row.definitionId,kind:row.kind,weight:row.weight,credit:row.credit??(row.status==="Completed"?1:0)})),scheduled:counted.length+(prayer?.rows.length??0),completed:counted.filter(row=>row.status==="Completed").length+(prayer?.rows.filter(row=>row.recorded).length??0)};
+    }):[];
+    const periodR334=(windowDays:number):PersonalPeriodInsight=>{
+        if(!currentLocalDate)return periodInsight(execution,currentLocalDate,windowDays,defs);
+        const startDate=shiftLocalDate(currentLocalDate,-(windowDays-1));
+        if(!prayerAchievementR334.some(day=>day.date>=startDate&&day.date<=currentLocalDate))return periodInsight(execution,currentLocalDate,windowDays,defs);
+        const input=insightInputs.filter(day=>day.date>=startDate&&day.date<=currentLocalDate);
+        const score=projectPrayerAchievementPeriodR334({startDate,endDate:currentLocalDate,currentDate:currentLocalDate,days:input});
+        if(!score)return periodInsight(execution,currentLocalDate,windowDays,defs);
+        return {windowDays,scheduled:input.reduce((n,day)=>n+day.scheduled,0),completed:input.reduce((n,day)=>n+day.completed,0),completionRate:score.rate??0,successfulDays:input.filter(day=>day.scheduled>0&&day.scheduled===day.completed).length};
+    };
+    const successR334=new Set(insightInputs.filter(day=>day.scheduled>0&&day.scheduled===day.completed).map(day=>day.date));
+    let streakCurrentR334=0,streakBestR334=0;
+    if(currentLocalDate&&prayerAchievementR334.length){
+        for(let date=currentLocalDate;successR334.has(date);date=shiftLocalDate(date,-1))streakCurrentR334++;
+        let run=0,previous:string|null=null;
+        for(const date of [...successR334].sort()){
+            run=previous&&shiftLocalDate(previous,1)===date?run+1:1;
+            streakBestR334=Math.max(streakBestR334,run);previous=date;
+        }
+    }
     return Object.freeze({
         ...(validPrayerScoreSnapshotR334(prayerScorePolicyR334)?{prayerScorePolicyR334}:{}),
         ...(prayerAchievementR334.length?{prayerAchievementR334}:{}),
@@ -1696,33 +1726,13 @@ export function buildPersonalWorkspace(
         definitions: orderedDefinitions(definitions),
         insights: {
             currentLocalDate,
-            currentStreakDays: streak.current,
-            bestStreakDays: streak.best,
+            currentStreakDays: prayerAchievementR334.length?streakCurrentR334:streak.current,
+            bestStreakDays: prayerAchievementR334.length?streakBestR334:streak.best,
             periods: {
-                week: periodInsight(
-                    execution,
-                    currentLocalDate,
-                    7,
-                    defs,
-                ),
-                month: periodInsight(
-                    execution,
-                    currentLocalDate,
-                    30,
-                    defs,
-                ),
-                quarter: periodInsight(
-                    execution,
-                    currentLocalDate,
-                    90,
-                    defs,
-                ),
-                year: periodInsight(
-                    execution,
-                    currentLocalDate,
-                    365,
-                    defs,
-                ),
+                week: periodR334(7),
+                month: periodR334(30),
+                quarter: periodR334(90),
+                year: periodR334(365),
             },
         },
     });

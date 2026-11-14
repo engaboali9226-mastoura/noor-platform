@@ -380,6 +380,8 @@ function createSystem(
     return {
         store,
         service,
+        clock,
+        idGenerator,
     };
 }
 
@@ -996,3 +998,35 @@ test(
         );
     },
 );
+
+test("R334 approval persists the next civil day's immutable scoring policy through real EnsureToday transition",async()=>{
+ const system=createSystem("2026-07-24T09:10:00.000Z");
+ const first=await system.service.execute("user-1");
+ const command=new noor.PersonalCommandService({clock:system.clock,idGenerator:system.idGenerator,transaction:system.store});
+ const approval={type:"configure-prayer-score-r334",expectedPolicyId:null,baseWeight:20,shares:{group:{ontime:1,late:.5},excused:{ontime:.9,late:.4},unexcused:{ontime:.6,late:.2}},mappings:[],confirm:true};
+ await command.execute("user-1",approval);
+ const saved=system.store.snapshot().prayerScorePoliciesR334[0].policy;
+ assert.equal(saved.effectiveFromDate,"2026-07-25");
+ assert.equal((await system.service.execute("user-1")).personalDay.prayerScoreSnapshotR334,undefined);
+ system.clock.instant="2026-07-24T21:01:00.000Z";
+ const next=await system.service.execute("user-1");
+ assert.equal(next.personalDay.boundary.localDate,"2026-07-25");
+ assert.deepEqual(next.personalDay.prayerScoreSnapshotR334,saved);
+ const project=now=>{
+  const state=system.store.snapshot();
+  return noor.buildPersonalWorkspace("user-1",{listDefinitions:()=>state.definitions,listPersonalDays:()=>state.personalDays,listDailyExecutionForUser:()=>state.dailyExecution,listDailyIslamicContexts:()=>state.islamicContexts,getPrayerScorePolicyR334:()=>state.prayerScorePoliciesR334[0].policy},now);
+ };
+ assert.equal(project(system.clock.now()).prayerAchievementR334[0].score.weight,0);
+ system.clock.instant="2026-07-25T01:32:00.000Z";
+ await command.execute("user-1",{type:"record-prayer-r331",localDate:"2026-07-25",key:"fajr",mode:"group",timing:"ontime",expectedRecordedAt:null});
+ const scored=project(system.clock.now());
+ assert.equal(scored.prayerAchievementR334[0].score.weight,20);
+ assert.equal(scored.prayerAchievementR334[0].score.earnedWeight,20);
+ assert.ok(scored.insights.periods.week.completionRate>0);
+ await command.execute("user-1",{...approval,expectedPolicyId:saved.policyId,baseWeight:30});
+ const revised=project(system.clock.now());
+ assert.equal(revised.prayerScorePolicyR334.effectiveFromDate,"2026-07-26");
+ assert.equal(revised.prayerScorePolicyR334.weights.fajr,30);
+ assert.equal(revised.prayerAchievementR334[0].score.weight,20);
+ assert.equal(system.store.snapshot().personalDays.find(d=>d.id===first.personalDay.id).prayerScoreSnapshotR334,undefined);
+});
