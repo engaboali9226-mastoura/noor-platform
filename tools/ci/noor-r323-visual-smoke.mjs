@@ -40,7 +40,7 @@ try{
  'applyAppearance(readAppearance());',
  'const accountService={requestPasswordReset:async()=>"sent" as const,registerPendingAccount:async()=>"sent" as const,completePasswordRecovery:async()=>"updated" as const,requestEmailChange:async()=>"sent" as const};',
  'const appointments=[{id:"visual-appointment-1",kind:"Task",title:"اجتماع فريق العمل",state:"Active",category:"العمل",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-07",time:"15:00"}},{id:"visual-appointment-2",kind:"Task",title:"موعد طبي",state:"Active",category:"الصحة",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-08",time:"10:00"}}];',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>({signIn:async()=>"challenge-needed",enroll:async()=>null,verify:async()=>"invalid",accessToken:async()=>null,signOut:async()=>{}})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={today as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>({signIn:async()=>"challenge-needed",enroll:async()=>null,verify:async()=>"invalid",accessToken:async()=>null,signOut:async()=>{}})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
  vite=spawn("npm",["--workspace","apps/web","run","dev","--","--host","127.0.0.1","--port","5179","--strictPort"],{stdio:"inherit",env:{...process.env,VITE_NOOR_SUPABASE_URL:"http://127.0.0.1:54321",VITE_NOOR_SUPABASE_PUBLISHABLE_KEY:"sb_publishable_noor_browser_fixture"}});
@@ -130,7 +130,14 @@ try{
   await expect("document.querySelectorAll(\'[data-testid=r331-announcement-board] .np-r331-board-grid>.np-r331-tile\').length===6&&document.querySelectorAll(\'#noor-r331-prayers [data-prayer-key]\').length===5&&!document.querySelector(\'[data-testid=r296-reconnect-button]\')","Six functional tiles, five prayers, no refresh icon");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect("!document.querySelector(\'.np-r323-header [aria-label=\\\"فتح مركز التحكم\\\"]\')","No top control shortcut");
+  await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
+  await run("document.querySelector('.np-caffeine-details-r296 > summary').click()");
+  await expect("document.querySelector('.np-caffeine-details-r296').open","Beverage details can open on demand");
+  await run("document.querySelector('[data-week-state=past]').click()");
+  await expect("(()=>{const d=document.querySelector('.np-caffeine-details-r296');return d&&!d.open&&d.querySelector('summary').textContent==='تفاصيل المشروبات'&&!d.querySelector('.np-caffeine-bedtime-settings-r296')})()","R333 selecting an earlier day keeps drinks collapsed and read-only");
+  await run("document.querySelector('[data-week-state=today]').click()");
+  await expect("!document.querySelector('.np-caffeine-details-r296').open","Returning to the current day keeps drinks collapsed");
   await run("document.querySelector('[data-testid=r322-open-time-windows]').click()");
   await expect("(()=>{const r=document.querySelector('.np-r322-sheet')?.getBoundingClientRect();return r&&r.height>100&&r.top<innerHeight-100&&r.bottom<=innerHeight+3})()","Timer sheet must actually be inside the viewport");
   await snap(screen.name+"-timer-details");
