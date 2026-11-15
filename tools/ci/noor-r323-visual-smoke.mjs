@@ -80,7 +80,7 @@ try{
   await snap(screen.name+"-login");
   await cdp("Page.navigate",{url:url+"?screen=selector"});
   await find(".noor-welcome-app-card");
-  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>x.getBoundingClientRect().width>=95&&x.querySelector('img').naturalWidth>0)","Both scoped circular logos are enlarged and decoded");
+  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>{const width=x.getBoundingClientRect().width;return width>=84&&width<=112&&x.querySelector('img').naturalWidth>0})","Both scoped circular logos are compact and decoded");
   await expect("document.documentElement.scrollWidth<=innerWidth+1","Application picker fits viewport");
   await snap(screen.name+"-selector");
   await run("(()=>{const s=document.querySelector('[aria-label=\\\"اختيار ألوان المنصة\\\"]');s.value='beige';s.dispatchEvent(new Event('change',{bubbles:true}))})()");
