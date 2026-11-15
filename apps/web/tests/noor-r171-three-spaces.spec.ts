@@ -18,6 +18,11 @@ test('R171 three spaces are mounted INSIDE day achievement, not in separate floa
  assert.ok(start>0&&end>start&&source.slice(start,end).includes('<NoorThreeSpacesR171 personalDate={view.localDate??undefined} />'));
  assert.equal(source.split('<NoorThreeSpacesR171 personalDate={view.localDate??undefined} />').length-1,1);
 });
+test('R171 textarea fields do not duplicate directional attributes',()=>{
+ const textareas=[...component.matchAll(/<textarea\b[^>]*>/gu)].map(match=>match[0]);
+ assert.ok(textareas.length>0);
+ for(const textarea of textareas)assert.equal(textarea.match(/\bdir=/gu)?.length??0,1,textarea);
+});
 test('R173 without IndexedDB fails closed, never claims persistent saving',async()=>{
  await assert.rejects(indexedNotesR173.read(),/IndexedDB unavailable/);
  await assert.rejects(indexedNotesR173.write([one]),/IndexedDB unavailable/);
