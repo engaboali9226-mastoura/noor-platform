@@ -13,7 +13,8 @@
 .noor-r323-gateway[data-auth-mode] .noor-welcome-field input{font-size:16px;min-height:25px}
 .noor-r323-gateway[data-auth-mode] .noor-welcome-field:focus-within{box-shadow:0 0 0 2px var(--ng-focus)!important}
 .np-page[data-appearance] .np-topbar.np-r323-header[data-testid="platform-topbar"]{
- grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:"brand brand" "status greeting" "calendar calendar"!important;
+ /* R338 adds a real alert control in the action column; keep all three header columns explicit. */
+ grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;grid-template-areas:"brand brand brand" "status greeting actions" "calendar calendar calendar"!important;
  width:calc(100% + 24px)!important;margin-inline:-12px!important;margin-top:-10px!important;margin-bottom:12px!important;padding:0 16px 9px!important;gap:3px!important;
  border-radius:0 0 26px 26px!important;background:linear-gradient(180deg,var(--ng-top),var(--ng-sub) 80%,transparent)!important;
  box-shadow:none!important;overflow:visible!important;isolation:isolate

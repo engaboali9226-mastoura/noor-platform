@@ -124,6 +124,8 @@ try{
   await expect(visible("[data-testid=r328-night-total-duration]"),"Trusted whole-night duration visibly distinct from the timer");
   await expect("(()=>{const h=document.querySelector('[data-testid=r329-personal-header]');return h&&h.getAttribute('src')==='/brand/personal-header.webp'&&h.naturalWidth>0&&h.getBoundingClientRect().height>0&&!document.querySelector('.np-r328-personal-watermark')})()","Approved Personal glass header decodes, with no obsolete watermark");
 
+  const headerGeometry=await run("(()=>{const rect=x=>{const r=x.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}},b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('[data-testid=r329-personal-header]'),g=document.querySelector('.np-r323-greeting');return {viewport:{width:innerWidth,height:innerHeight},brand:rect(b),image:rect(h),greeting:rect(g)}})()");
+  console.log("R323_HEADER_LAYOUT",screen.name,JSON.stringify(headerGeometry));
   await expect("(()=>{const b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('[data-testid=r329-personal-header]'),g=document.querySelector('.np-r323-greeting');return b&&h&&g&&b.getBoundingClientRect().width>=Math.min(innerWidth-40,1000)&&h.getBoundingClientRect().bottom<=g.getBoundingClientRect().top+3})()","Full-width background header does not overlap dashboard information");
   await expect(visible("[data-testid=prayer-card]"),"Existing prayer card retained");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");

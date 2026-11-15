@@ -8,6 +8,7 @@ import {NoorBeverageTrackerR294,type BeverageRowR294} from "./noor-beverage-trac
 import type {NoorBeveragePlanR294,NoorCountdownPlanR301} from "./noor-personal-today-client.js";
 import {UpcomingCountdownR301} from "./noor-upcoming-countdown-r301.js";
 import {religiousEventsR324} from "./noor-upcoming-events-r324.js";
+import {appointmentInstantR324,remainingEventR332} from "./noor-upcoming-events-r324.js";
 import {shouldRefreshNoorOnResume} from "./noor-resume-sync-r259.js";
 import {revokeNoorBrowserSessionR269} from "./noor-session-logout-client-r269.js";
 import type {NoorTaskSessionDraft} from "./noor-personal-today-client.js";
@@ -16,10 +17,12 @@ import { NoorThreeSpacesR171 } from "./noor-three-spaces-r171.js";
 import { NoorWellbeingLabR165 } from "./noor-wellbeing-lab-r165.js";
 import { noorLinkedActivityInsightsR312 } from "./noor-linked-activity-insights-r312.js";
 import { NoorReminderSettingsR314, NoorReminderRibbonR314 } from "./noor-reminder-settings-r314.js";
+import { noorDueRemindersR314 } from "./noor-reminders-r314.js";
+import { NoorNotificationCenterR338,type NoorNotificationAppointmentR338 } from "./noor-notification-center-r338.js";
 import { parseNoorReminderPlanR314, type NoorReminderPlanR314 } from "../../noor-personal/src/domain/reminder-plan-r314.js";
 import { NoorAccountSettingsR312 } from "./noor-account-settings-r312.js";
 import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays, statisticEligible, statisticInsights, statisticCalendar, shiftStatisticMonth, wholeWeekAchievement, yesterdayAchievement, validStatisticDate, shiftStatisticDate, weeklyCardSummaryR332, parsePrayerStatisticDaysR334, weightedStatisticRowsR334, statisticEarnedShareR285, type PrayerStatisticDayR334, type WeightedStatisticRow, type StatisticRow } from "./progress-statistics.js";
-import { loadCurrentTemperature } from "./public-weather-client.js";
+import { loadCurrentWeather,type CurrentWeatherR338 } from "./public-weather-client.js";
 import { NoorR232TimeWindows } from "./noor-time-windows-r232.js";
 import { r232LocalWeekday, r283CarriedNightWindow, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
 import { NoorHabitWeightManagerR251 } from "./noor-habit-weight-manager-r251.js";
@@ -282,6 +285,20 @@ const PAGE_STYLES = `
   }
   .np-icon-btn:hover{background:#fffaf0;border-color:#c9a64a;transform:translateY(-2px)}
   .np-icon-btn svg{width:23px;height:23px}
+  .np-r338-bell{position:relative}
+  .np-r338-badge{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;display:grid;place-items:center;border:2px solid #fffdfa;border-radius:999px;background:#a65c4c;color:#fff;font-size:10px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .np-r338-alert-overlay{position:fixed;inset:0;z-index:5000;display:grid;place-items:center;padding:18px;background:rgba(19,31,40,.36);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .np-r338-alert-sheet{width:min(560px,100%);max-height:min(78dvh,760px);overflow:auto;overscroll-behavior:contain;padding:22px;border:1px solid rgba(220,224,225,.88);border-radius:24px;background:rgba(255,254,251,.98);color:#18364a;box-shadow:0 24px 70px rgba(24,43,57,.24)}
+  .np-r338-alert-sheet>header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:14px;border-bottom:1px solid #e9e5dc}
+  .np-r338-alert-sheet>header h2{margin:0;font-size:21px}.np-r338-alert-sheet>header p{margin:5px 0 0;color:#74818b;font-size:12px}
+  .np-r338-alert-sheet>header>button{width:36px;height:36px;border:1px solid #e3e6e5;border-radius:12px;background:#f8f9f7;color:#526675;font:inherit;font-size:23px;line-height:1;cursor:pointer}
+  .np-r338-alert-group{margin-top:16px}.np-r338-alert-group h3{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:14px}.np-r338-alert-group h3 span{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#f4eee2;color:#8c6e36;font-size:11px}
+  .np-r338-alert-row{width:100%;min-height:58px;display:flex;align-items:center;gap:11px;margin-top:6px;padding:10px 12px;border:1px solid #e8e9e5;border-radius:15px;background:rgba(255,255,255,.78);color:inherit;text-align:right;font:inherit;cursor:pointer;transition:background .15s,border-color .15s}
+  .np-r338-alert-row:hover{background:#f7f6f0;border-color:#d5c9aa}
+  .np-r338-alert-mark{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:12px;background:#f4eee2;color:#9b7a3e}.np-r338-alert-mark svg{width:18px;height:18px}.np-r338-alert-mark.appointment{font-size:22px}
+  .np-r338-alert-copy{min-width:0;flex:1;display:grid;gap:3px}.np-r338-alert-copy strong{overflow-wrap:anywhere;font-size:13px}.np-r338-alert-copy small{color:#71808b;font-size:11px;line-height:1.6}.np-r338-alert-arrow{color:#9a8a68;font-size:24px;line-height:1}
+  .np-r338-alert-empty{margin:18px 0;padding:16px;border:1px dashed #d8d9d4;border-radius:14px;color:#71808b;text-align:center;font-size:13px;line-height:1.8}
+  .np-r338-alert-sheet>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:17px;padding-top:14px;border-top:1px solid #e9e5dc}.np-r338-alert-sheet>footer button{min-height:38px;padding:8px 13px;border:1px solid #d9e1e4;border-radius:11px;background:#f3f7f7;color:#315367;font:inherit;font-size:12px;font-weight:700;cursor:pointer}.np-r338-alert-sheet>footer span{color:#7c8990;font-size:10px}
   .np-header-calendar{
     grid-area:calendar;direction:rtl;text-align:center;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-inline:8px
   }
@@ -301,6 +318,7 @@ const PAGE_STYLES = `
   .np-header-location{margin-top:5px;display:flex;align-items:center;gap:7px;color:#6b7f92;font-size:13px;font-weight:650}
   .np-header-location svg{width:18px;height:18px;color:#315f7b;flex:0 0 auto}
   .np-header-weather{margin-top:5px;display:flex;align-items:center;gap:9px;color:#6b7f92;transform:translateX(18px)}
+  .np-weather-details{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 9px;max-width:100%;color:#788692;font-size:10px;line-height:1.5}
   .np-weather-icon{width:44px;height:34px;position:relative;display:inline-block;flex:0 0 auto}
   .np-weather-icon::before{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#f7c948;top:0;right:6px;box-shadow:0 0 0 6px rgba(247,201,72,.10)}
   .np-weather-icon::after{content:"";position:absolute;width:31px;height:15px;border-radius:14px 14px 9px 9px;background:#dbe8ef;bottom:1px;left:1px;box-shadow:10px -6px 0 -4px #dbe8ef}
@@ -2658,7 +2676,7 @@ function ActivityCard({item,definition,busy,pending=false,historicalDate=null,to
   if(await onCommand({type:"record-activity",executionId:item.id,entryId,note,amount,endReason}))setMode(null);
   else setError("تعذر تأكيد الحفظ. بياناتك ما زالت هنا؛ يمكنك إعادة المحاولة.");
  };
- return <div className={`np-item np-activity-item${task?" np-r332-task":" np-habit-row"}${completed?" is-completed":""}`} data-testid={`${remainingMode?"remaining-activity":"activity-card"}-${item.id}`}>
+ return <div className={`np-item np-activity-item${task?" np-r332-task":" np-habit-row"}${completed?" is-completed":""}`} data-testid={`${remainingMode?"remaining-activity":"activity-card"}-${item.id}`} data-definition-id={definition?.id}>
   <div className="np-item-main">{task&&!remainingMode?<span className="np-r332-task-icon" aria-hidden="true"><NoorR323Icon name={definition?.sessionPlan?"layers":"check"}/></span>:null}<div className="np-habit-title-with-help-r288"><p className="np-item-title">{displayTitle}</p>{definition?<details className="np-habit-help-r288" data-testid={task?`r293-task-help-${definition.id}`:`r288-habit-help-${definition.id}`}><summary aria-label={`تفاصيل ${task?"مهمة":"عادة"} ${displayTitle}`} title="تفاصيل العنصر">؟</summary><div className="np-habit-help-r288-content"><strong>بيانات {task?"المهمة":"العادة"} المسجلة</strong>{definition.description?<p className="np-definition-description-r293" data-testid="r293-definition-description"><b>الوصف:</b> {definition.description}</p>:null}<p>التصنيف: {definition.category}</p><p>التكرار: {scheduleLabel(definition)}</p><p>الأهمية: {({Essential:"أساسي",Important:"مهم",Supporting:"داعم",Optional:"اختياري"} as Record<string,string>)[definition.importance]??definition.importance} · وزن الإنجاز: {definition.weight}</p>{definition.timeOfDay?<p>موعد التنفيذ: {definition.timeOfDay}</p>:null}{definition.quranPlan?<div className="np-quran-habit-detail-r289" data-testid="r289-quran-habit-today">{quranQuarter?<><p><strong>ورد اليوم: ربع الحزب {quranQuarter.number} من 240</strong></p><p>سورة {quranQuarter.surahName} · الآية {quranQuarter.ayah}</p><p>بداية أول آية: <span dir="rtl">{quranQuarter.opening}</span></p><a target="_blank" rel="noopener noreferrer" href={`https://quran.com/${quranQuarter.surah}/${quranQuarter.ayah}`}>عرض الآية في المصحف</a></>:<p>لا يوجد ربع مستحق في هذا التاريخ؛ تحقق من موعد العادة.</p>}</div>:null}</div></details>:null}</div>{definition?.timeOfDay?<time className="np-habit-time" dateTime={definition.timeOfDay}>◷ {definition.timeOfDay}</time>:null}{task?<div className="np-item-meta"><span className="np-kind-badge">وزن {item.weight}</span>{definition?.category?<span className="np-r332-task-category">{definition.category}</span>:null}<span className="np-r332-task-status">{ended && latest?.endReason ? END_REASON_LABELS[latest.endReason] : STATUS_LABELS[item.status] ?? item.status}</span></div>:null}
   {definition?.measurement ? <div className="np-progress-copy"><span>{arabicNumber(total)} / {arabicNumber(definition.measurement.target)} {definition.measurement.unit}</span>{task?<strong className="np-r332-task-percent">{Math.min(100,Math.round(total/definition.measurement.target*100))}%</strong>:null}<progress aria-label={`تقدم ${displayTitle}`} max={definition.measurement.target} value={total}/></div> : null}
   {historicalDate&&item.credit!==undefined&&item.status==="Completed"&&item.credit<1?<small className="np-r331-recovered">استدراك · {Number((item.credit*100).toPrecision(4))}% من الوزن</small>:null}
@@ -2798,7 +2816,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   },[providedView,workspace,historyDate]);
   const dates = civilDateLabels(nowMs, view.timeZone);
   const location = view.location ?? headerLocationForTimeZone(view.timeZone);
-  const [temperature,setTemperature] = useState<number | null>(null);
+  const [weather,setWeather] = useState<CurrentWeatherR338|null>(null);
   // Informational drink counters are not actionable habits or outstanding work.
   // Preserve their own card/history, but remove their weight from every achievement view.
   const achievementItems=[...view.habits,...view.tasks].filter(e=>
@@ -2926,8 +2944,8 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   useEffect(() => {
     let cancelled = false;
     const refreshWeather = async () => {
-      const value = await loadCurrentTemperature(location);
-      if (!cancelled) setTemperature(value);
+      const value = await loadCurrentWeather(location);
+      if (!cancelled) setWeather(value);
     };
     void refreshWeather();
     const timer = window.setInterval(() => { void refreshWeather(); },15 * 60 * 1000);
@@ -2953,6 +2971,40 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       { key:"last-third", label:"الثلث الأخير", at:night.lastThird },
     ] : []),
   ];
+  const notificationRows:StatisticRow[]=[...(workspace?.statistics.rows??[]).filter(row=>row.date<achievementDate),...todayRows];
+  const notificationAlerts=noorDueRemindersR314(notificationRows,workspace?.definitions??[],achievementDate,nowMs,view.timeZone);
+  const appointmentNotifications:NoorNotificationAppointmentR338[]=(workspace?.definitions??[])
+    .flatMap(definition=>{
+      const plan=definition.countdownPlan;
+      if(definition.state!=="Active"||!plan||plan.kind==="task")return [];
+      const atMs=appointmentInstantR324(plan.date,plan.time,view.timeZone);
+      if(atMs===null||atMs<=nowMs)return [];
+      return [{id:definition.id,title:definition.title,atMs,when:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{
+        timeZone:view.timeZone,weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit",hour12:true,
+      }).format(new Date(atMs)),remaining:remainingEventR332(atMs,nowMs)}];
+    })
+    .sort((a,b)=>a.atMs-b.atMs)
+    .slice(0,5)
+    .map(({id,title,when,remaining})=>({id,title,when,remaining}));
+  const navigateToReminder=(definitionId:string)=>{
+    setHistoryDate(null);
+    setWeekShift(0);
+    window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>{
+      const card=Array.from(document.querySelectorAll<HTMLElement>(".np-activity-item[data-definition-id]"))
+        .find(element=>element.dataset.definitionId===definitionId);
+      const section=card??document.getElementById(definitionsById.get(definitionId)?.kind==="Habit"?"noor-r323-habits":"noor-r323-tasks");
+      section?.scrollIntoView({behavior:"smooth",block:"center"});
+    }));
+  };
+  const openUpcomingAppointments=()=>{
+    setHistoryDate(null);
+    setWeekShift(0);
+    window.requestAnimationFrame(()=>{
+      const trigger=document.querySelector<HTMLButtonElement>('[data-testid="r322-open-appointments"]');
+      trigger?.scrollIntoView({behavior:"smooth",block:"center"});
+      trigger?.click();
+    });
+  };
 
   const dateOnlyParts = new Intl.DateTimeFormat(
     "ar-SA-u-ca-gregory-nu-latn",
@@ -2999,16 +3051,22 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
           <svg aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="M12 21s6-5.3 6-11a6 6 0 1 0-12 0c0 5.7 6 11 6 11Z" stroke="currentColor" strokeWidth="1.5"/><circle cx="12" cy="10" r="2" stroke="currentColor" strokeWidth="1.5"/></svg>
           <span>{location.city}{location.country ? `، ${location.country}` : ""}</span>
         </div>
-        <div className="np-header-weather">
+        {weather&&Object.values(weather).some(value=>value!==null)?<div className="np-header-weather" data-testid="header-weather" role="group" aria-label="حالة الطقس الحالية">
           <span className="np-weather-icon" aria-hidden="true" />
-          <span className="np-header-temperature" data-testid="header-temperature">{temperature === null ? "—°" : `${arabicNumber(Math.round(temperature))}°`}</span>
-          <span className="np-weather-caption">درجة الحرارة</span>
-        </div>
+          {weather.temperatureC!==null?<><span className="np-header-temperature" data-testid="header-temperature">{arabicNumber(Math.round(weather.temperatureC))}°</span><span className="np-weather-caption">درجة الحرارة</span></>:null}
+          <span className="np-weather-details" data-testid="header-weather-details">
+            {weather.uvIndex!==null?<span>UV {arabicNumber(Math.round(weather.uvIndex*10)/10)}</span>:null}
+            {weather.windSpeedKmh!==null?<span>الرياح {arabicNumber(Math.round(weather.windSpeedKmh))} كم/س</span>:null}
+            {weather.windDirectionDeg!==null?<span>اتجاه الرياح {arabicNumber(Math.round(weather.windDirectionDeg))}°</span>:null}
+            {weather.rainMm!==null||weather.precipitationMm!==null?<span>{(weather.rainMm??weather.precipitationMm??0)>0?`مطر ${arabicNumber(Math.round((weather.rainMm??weather.precipitationMm??0)*10)/10)} مم`:"لا مطر الآن"}</span>:null}
+          </span>
+        </div>:null}
       </div>
 
       <div className="np-brand">
         <NoorBrandHeader scope="personal" />
       </div>
+      <div className="np-top-actions"><NoorNotificationCenterR338 alerts={notificationAlerts} appointments={appointmentNotifications} onOpenReminder={navigateToReminder} onOpenAppointment={openUpcomingAppointments} onOpenSettings={onOpenReminders}/></div>
     </div>
 
     <div className="np-r323-home-grid np-r331-home-grid" data-testid="r323-approved-dashboard">
