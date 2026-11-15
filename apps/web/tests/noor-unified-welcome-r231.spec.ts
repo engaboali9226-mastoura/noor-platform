@@ -57,6 +57,16 @@ test("R231 sign-in invalid/retry and success gateway retain brand without reveal
  assert.match(stale,/name="password"/u);
 });
 
+test("R337 app selector uses corrected English names and compact circular logos",()=>{
+ const authorizedHome=markup({kind:"no-application-selected"},"authenticated");
+ assert.match(authorizedHome,/<strong[^>]*lang="en"[^>]*dir="ltr"[^>]*>noor personal<\/strong>/u);
+ assert.match(authorizedHome,/<strong[^>]*lang="en"[^>]*dir="ltr"[^>]*>noor work<\/strong>/u);
+ assert.doesNotMatch(authorizedHome,/>نور الشخصي<|>نور ورك<\/u);
+ assert.match(source,/lang="en" dir="ltr">noor personal/u);
+ assert.match(source,/lang="en" dir="ltr">noor work/u);
+ assert.match(functionalStyles,/clamp\\(84px,23vw,112px\\);min-height:98px/u);
+});
+
 test("R231 protected access errors remain truthful but use branded styling",()=>{
  for(const state of [
   {kind:"session-access-unavailable",application:personal} as const,
