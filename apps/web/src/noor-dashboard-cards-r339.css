@@ -1,0 +1,57 @@
+/* R339: the daily card group mirrors the approved six-card composition. */
+.np-page .np-r339-board{width:100%;box-sizing:border-box;padding:12px!important}
+.np-page .np-r339-board-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;padding:0 2px}
+.np-page .np-r339-board-head h2{margin:0;color:var(--ng-ink);font-size:18px}
+.np-page .np-r339-board-head small,.np-page .np-r339-board-head>span{color:var(--ng-muted);font-size:11px}
+.np-page .np-r339-card-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:9px!important;align-items:stretch}
+.np-page .np-r339-card-grid>.np-r339-card,.np-page .np-r339-card-grid>.np-r339-card-slot{min-width:0;min-height:0;box-sizing:border-box}
+.np-page .np-r339-card-grid>.np-r339-card-slot{display:block!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+.np-page .np-r339-card-grid .np-r339-card{width:100%;height:100%;box-sizing:border-box;margin:0!important;padding:10px!important;border:1px solid var(--ng-line)!important;border-radius:16px!important;background:var(--ng-card)!important;color:var(--ng-ink)!important;box-shadow:var(--ng-shadow)!important;text-align:right;overflow:hidden}
+.np-page .np-r339-card-head{display:flex;align-items:center;gap:7px;margin:0 0 8px;text-align:right}
+.np-page .np-r339-card-head>div{min-width:0;display:grid;gap:1px}
+.np-page .np-r339-card-head h3{margin:0;font-size:13px;font-weight:800;color:var(--ng-ink)}
+.np-page .np-r339-card-head small{color:var(--ng-muted);font-size:9px;line-height:1.5}
+.np-page .np-r339-card-icon{width:27px;height:27px;display:grid;place-items:center;flex:0 0 27px;border-radius:9px;background:var(--ng-sub);color:var(--ng-accent);font-size:16px}
+.np-page .np-r339-card-icon svg{width:16px;height:16px}
+.np-page .np-r339-card-status{margin:12px 0;color:var(--ng-muted);font-size:11px;line-height:1.7}
+.np-page .np-r339-next-prayer{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 7px;padding:7px 8px;border-radius:10px;background:var(--ng-sub);font-size:11px}
+.np-page .np-r339-next-prayer b{color:var(--ng-accent2);font-size:12px;font-variant-numeric:tabular-nums}
+.np-page .np-r339-prayer-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;direction:rtl}
+.np-page .np-r339-prayer-list a{display:grid;gap:3px;min-width:0;padding:5px 2px;border:1px solid transparent;border-radius:8px;color:var(--ng-ink);text-decoration:none;text-align:center;font-size:9px}
+.np-page .np-r339-prayer-list a:hover,.np-page .np-r339-prayer-list a.is-next{border-color:var(--ng-line);background:var(--ng-sub)}
+.np-page .np-r339-prayer-list time{font-size:9px;color:var(--ng-muted);white-space:nowrap}
+.np-page .np-r339-card-link{display:block;margin-top:7px;color:var(--ng-accent2);font-size:9px;text-decoration:none}
+.np-page .np-r339-window-list{display:grid;gap:5px}
+.np-page .np-r339-window-row{display:grid;grid-template-columns:minmax(0,.7fr) minmax(0,1.2fr);gap:2px 5px;padding:6px 7px;border-radius:10px;background:var(--ng-sub);font-size:10px}
+.np-page .np-r339-window-row strong{font-size:10px;direction:rtl;white-space:nowrap}
+.np-page .np-r339-window-row small{grid-column:1/-1;color:var(--ng-muted);font-size:9px}
+.np-page .np-r339-card-note{display:block;margin-top:7px;color:var(--ng-muted);font-size:9px;line-height:1.55}
+.np-page .np-r339-friday-list{display:grid;gap:3px}
+.np-page .np-r339-friday-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:5px;width:100%;padding:5px 6px;border:1px solid transparent;border-radius:9px;background:var(--ng-sub);color:var(--ng-ink);font:inherit;text-align:right;cursor:pointer}
+.np-page .np-r339-friday-row.is-active{border-color:var(--ng-accent)}
+.np-page .np-r339-friday-row.is-selected{box-shadow:inset 0 0 0 1px var(--ng-accent2)}
+.np-page .np-r339-friday-row:disabled{cursor:default;opacity:.75}
+.np-page .np-r339-friday-row>span{font-size:10px;font-weight:800;white-space:nowrap}
+.np-page .np-r339-friday-row small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ng-muted);font-size:8px}
+.np-page .np-r339-friday-row strong{font-size:9px;direction:rtl;white-space:nowrap}
+.np-page .np-r339-history-card>strong{display:block;font-size:13px}
+.np-page .np-r339-history-card p{margin:7px 0 0;color:var(--ng-muted);font-size:10px;line-height:1.7}
+.np-page .np-r339-rhythm-card{padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
+.np-page .np-r339-rhythm-card>.np-r322-timer-hub{height:100%;box-sizing:border-box;margin:0!important;border:1px solid var(--ng-line)!important;border-radius:16px!important;background:var(--ng-card)!important;box-shadow:var(--ng-shadow)!important}
+.np-page .np-r339-rhythm-card>.np-r322-friday-preview{display:none!important}
+.np-page .np-r339-appointment-slot>.np-upcoming-r301{height:100%;box-sizing:border-box;margin:0!important;border:1px solid var(--ng-line)!important;border-radius:16px!important;background:var(--ng-card)!important;box-shadow:var(--ng-shadow)!important}
+.np-page .np-r339-appointment-slot .np-upcoming-head-r301{padding:0!important}
+.np-page .np-r339-appointment-slot .np-upcoming-feature-r303{padding:7px!important}
+.np-page .np-r339-appointment-slot .np-upcoming-following-r303{max-height:54px;overflow:hidden}
+@media(max-width:799px){
+ .np-page .np-r339-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+ .np-page .np-r339-card-grid>.np-r339-rhythm-card{grid-column:1/-1}
+ .np-page .np-r339-card-grid>.np-r339-appointment-slot{grid-column:1/-1}
+}
+@media(max-width:430px){
+ .np-page .np-r339-board{padding:9px!important}
+ .np-page .np-r339-card-grid{grid-template-columns:minmax(0,1fr)!important;gap:7px!important}
+ .np-page .np-r339-card-grid>.np-r339-card-slot,.np-page .np-r339-card-grid>.np-r339-rhythm-card,.np-page .np-r339-card-grid>.np-r339-appointment-slot{grid-column:1!important}
+ .np-page .np-r339-card{padding:9px!important}
+ .np-page .np-r339-prayer-list a{padding-block:6px}
+}

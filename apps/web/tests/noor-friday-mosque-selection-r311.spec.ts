@@ -85,7 +85,7 @@ test("R311: Thursday preview has no selectable hours, and cross-device sync uses
  assert.doesNotMatch(thursday,/r311-select-friday-/);
  const view=readFileSync(new URL("../src/noor-personal-application-view.tsx",import.meta.url),"utf8");
  const client=readFileSync(new URL("../src/noor-personal-today-client.ts",import.meta.url),"utf8");
- assert.match(view,/type:"set-friday-mosque-hour",hour:selected===hour\?null:hour,expectedHour:selected/);
+ assert.match(view,/type:"set-friday-mosque-hour",hour:selectedFridayHour===hour\?null:hour,expectedHour:selectedFridayHour/);
  assert.match(view,/workspace\?\.fridayMosqueVisits\.find/);
  assert.match(client,/set-friday-mosque-hour/);
  assert.doesNotMatch(view,/localStorage\.setItem\(["']friday/);

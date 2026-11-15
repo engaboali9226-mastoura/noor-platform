@@ -18,7 +18,7 @@ const prayers=[
 const nextFajr="2026-11-07T02:33:00Z";
 test("R234 the night uses tomorrow's Fajr from authoritative server prayer snapshot",()=>{
  assert.match(viewSource,/stringValue\(rawPrayerTimes\.nextFajr\)/u);
- assert.match(viewSource,/nextFajrAt=\{view\.nextFajrAt\?\?undefined\}/u);
+ assert.match(viewSource,/nextFajrAt=\{view\.nextFajrAt\}/u);
  assert.doesNotMatch(viewSource,/nextFajrAt=\{\(view\.nextPrayer\?/u);
  const w=r232DailyWindows(prayers,nextFajr);
  assert.equal(w.islamicNight?.startMs,Date.parse("2026-11-06T14:12:00Z"));

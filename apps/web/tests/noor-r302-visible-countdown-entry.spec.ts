@@ -82,6 +82,6 @@ test("R302: Dashboard action opens Control Center directly on the appointment cr
  assert.match(source,/initialSection=\{controlInitialSection\}/);
  assert.match(source,/const \[creating,setCreating\] = useState\(initialCountdownCreate\|\|initialQuickCreateKind!==null\)/);
  assert.match(source,/defaultCountdownKind=\{quickCountdown&&!editing\?"appointment":"none"\}/);
- assert.match(source,/onAdd=\{onAddCountdown\}/);
+ assert.match(source,/onAddAppointment=\{onAddCountdown\}/);
  assert.match(source,/R302: countdown discovery and direct add on mobile/);
 });
