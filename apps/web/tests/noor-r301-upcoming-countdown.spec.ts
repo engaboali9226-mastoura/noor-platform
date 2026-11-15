@@ -58,7 +58,8 @@ test("R301: task definition editor allows appointment, event and task deadlines 
  assert.match(html,/مهمة بموعد إنجاز/);
  assert.match(html,/name="startDate"/);
  const source=readFileSync(new URL("../src/noor-personal-application-view.tsx",import.meta.url),"utf8");
- assert.match(source,/UpcomingCountdownR301 definitions=\{workspace\?\.definitions\?\?\[\]\}/);
+ assert.match(source,/NoorDashboardCardsR339/);
+ assert.match(source,/appointmentDefinitions/);
  assert.match(source,/countdownPlan:NoorCountdownPlanR301/);
  assert.match(source,/R301 upcoming timers/);
 });
