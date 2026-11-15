@@ -260,14 +260,14 @@ function SmartGateway({
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/personal");}}>
               <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="personal" alt="" /></span>
-              <span className="noor-welcome-app-copy"><strong>نور الشخصي</strong><small>يومك، عاداتك، وتقدمك</small></span>
+              <span className="noor-welcome-app-copy"><strong lang="en" dir="ltr">noor personal</strong><small>يومك، عاداتك، وتقدمك</small></span>
               <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
             </a>
             <a href="/work" className="noor-welcome-app-card" onClick={event=>{
               if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
               event.preventDefault();navigate("/work");}}>
               <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="work" alt="" /></span>
-              <span className="noor-welcome-app-copy"><strong>نور ورك</strong><small>الجدول والتحضير والطلاب والدرجات</small></span>
+              <span className="noor-welcome-app-copy"><strong lang="en" dir="ltr">noor work</strong><small>الجدول والتحضير والطلاب والدرجات</small></span>
               <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
             </a>
           </div>
