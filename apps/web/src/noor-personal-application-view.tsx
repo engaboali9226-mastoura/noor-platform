@@ -6,9 +6,9 @@ import {quranQuarterR289,quranQuarterForDateR289,validQuranPlanR289,type QuranHa
 import {TaskSessionPlannerR254,TaskSessionListR254,sessionFinishedR254,sessionProgressR254,TASK_SESSION_STYLES_R254,type StoredTaskSessionPlanR254,type StoredTaskSessionR254} from "./noor-task-sessions-r254.js";
 import {NoorBeverageTrackerR294,type BeverageRowR294} from "./noor-beverage-tracker-r294.js";
 import type {NoorBeveragePlanR294,NoorCountdownPlanR301} from "./noor-personal-today-client.js";
-import type {UpcomingDefinitionR301} from "./noor-upcoming-countdown-r301.js";
-import {NoorDashboardCardsR339} from "./noor-dashboard-cards-r339.js";
-import {appointmentInstantR324,remainingEventR332,religiousEventsR324} from "./noor-upcoming-events-r324.js";
+import {UpcomingCountdownR301} from "./noor-upcoming-countdown-r301.js";
+import {religiousEventsR324} from "./noor-upcoming-events-r324.js";
+import {appointmentInstantR324,remainingEventR332} from "./noor-upcoming-events-r324.js";
 import {shouldRefreshNoorOnResume} from "./noor-resume-sync-r259.js";
 import {revokeNoorBrowserSessionR269} from "./noor-session-logout-client-r269.js";
 import type {NoorTaskSessionDraft} from "./noor-personal-today-client.js";
@@ -24,14 +24,13 @@ import { NoorAccountSettingsR312 } from "./noor-account-settings-r312.js";
 import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays, statisticEligible, statisticInsights, statisticCalendar, shiftStatisticMonth, wholeWeekAchievement, yesterdayAchievement, validStatisticDate, shiftStatisticDate, weeklyCardSummaryR332, parsePrayerStatisticDaysR334, weightedStatisticRowsR334, statisticEarnedShareR285, type PrayerStatisticDayR334, type WeightedStatisticRow, type StatisticRow } from "./progress-statistics.js";
 import { loadCurrentWeather,type CurrentWeatherR338 } from "./public-weather-client.js";
 import { NoorR232TimeWindows } from "./noor-time-windows-r232.js";
-import { r232LocalWeekday, r283CarriedNightWindow, r283FridayHoursAtDhuhr, type R283PrecedingNight, type R232FridayHour } from "./noor-islamic-daylight-r232.js";
+import { r232LocalWeekday, r283CarriedNightWindow, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
 import { NoorHabitWeightManagerR251 } from "./noor-habit-weight-manager-r251.js";
 import { NoorR232ControlLocation } from "./noor-time-location-control-r232.js";
 import { readNoorR232Preferences,saveNoorR232Preferences,type NoorR232Preferences,type NoorR232City } from "./noor-time-display-preferences-r232.js";
 import { NOOR_APPEARANCES, readAppearance, saveAppearance, type NoorAppearance } from "./appearance-preference-store.js";
 import { createPortal, flushSync } from "react-dom";
 import {
-  default as React,
   useEffect,
   useMemo,
   useRef,
@@ -2892,6 +2891,8 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     const ok=await onCommand({type:"record-prayer-r331",localDate:achievementDate,key:prayerEditor.key,mode:clear?null:prayerEditor.mode,timing:clear?null:prayerEditor.timing,expectedRecordedAt:prior?.recordedAt??null});
     if(ok)setPrayerEditor(null);else setPrayerSaveError("تعذر حفظ تسجيل الصلاة. حاول مرة أخرى.");
   };
+  const nextSession=providedView.tasks.filter(t=>t.status!=="Completed"&&t.status!=="Cancelled").flatMap(t=>{const d=definitionsById.get(t.definitionId);return d?.sessionPlan?.sessions.filter(s=>(!s.scheduledDate||s.scheduledDate===achievementDate)&&!sessionFinishedR254(s,d.activityLog)).map(s=>({title:s.title,task:d.title,target:s.target,unit:d.measurement?.unit??""}))??[];})[0];
+  const nextTask=providedView.tasks.filter(t=>t.status!=="Completed"&&t.status!=="Cancelled"&& !["event","appointment"].includes(definitionsById.get(t.definitionId)?.countdownPlan?.kind??"task")).sort((a,b)=>b.weight-a.weight)[0];
   const weekRows=[...weightedHistory.filter(r=>r.date!==achievementDate),...weightedToday].filter(r=>visibleWeek.some(d=>!d.future&&d.date===r.date));
   const weekTotals=summarizeProgress(weekRows);
   const weeklyCard=weeklyCardSummaryR332(weekRows,visibleWeek,workspace?.prayerHistoryR331??[],R331_PRAYERS.filter(key=>providedView.prayerTimes.some(p=>p.key===key&&Number.isFinite(Date.parse(p.at))&&Date.parse(p.at)<=nowMs)),prayerDays);
@@ -2970,17 +2971,6 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       { key:"last-third", label:"الثلث الأخير", at:night.lastThird },
     ] : []),
   ];
-  const selectedFridayHour=workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null;
-  const fridayHours:readonly R232FridayHour[]|null=r283FridayHoursAtDhuhr({
-    nowMs,timeZone:view.timeZone,prayers:view.prayerTimes,sunriseOffsetMinutes:timePreferences.afterSunrise,
-  });
-  const appointmentDefinitions:readonly UpcomingDefinitionR301[]=(workspace?.definitions??[]).flatMap(definition=>{
-    const plan=definition.countdownPlan;
-    return definition.state==="Active"&&plan?.kind==="appointment"
-      ? [{id:definition.id,title:definition.title,state:definition.state,countdownPlan:plan}]
-      : [];
-  });
-  const religiousEvents=religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night});
   const notificationRows:StatisticRow[]=[...(workspace?.statistics.rows??[]).filter(row=>row.date<achievementDate),...todayRows];
   const notificationAlerts=noorDueRemindersR314(notificationRows,workspace?.definitions??[],achievementDate,nowMs,view.timeZone);
   const appointmentNotifications:NoorNotificationAppointmentR338[]=(workspace?.definitions??[])
@@ -3080,28 +3070,24 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     </div>
 
     <div className="np-r323-home-grid np-r331-home-grid" data-testid="r323-approved-dashboard">
-    <NoorDashboardCardsR339
-      prayers={eventTimes}
-      nextPrayer={nextPrayer?{...nextPrayer,label:eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر"}:null}
-      countdownSeconds={countdown}
-      nowMs={nowMs}
-      timeZone={view.timeZone}
-      nextFajrAt={view.nextFajrAt}
-      precedingNight={view.precedingNight}
-      preferences={timePreferences}
-      onPreferencesChange={onTimePreferencesChange}
-      selectedFridayHour={selectedFridayHour}
+    <section className="np-r331-board np-card" data-testid="r331-announcement-board" data-board-date={achievementDate} aria-label="لوحة نور لليوم الحالي">
+      <header><NoorR323Icon name="grid"/><h2>لوحة نور</h2><small>{historyDate?"اليوم الحالي · "+weekDateLabel(achievementDate):"ما يهمك الآن"}</small></header>
+      <div className="np-r331-board-grid">
+      <div className="np-r331-tile np-r331-tile-time"><NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight}
+      selectedFridayHour={workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null}
       fridaySelectionBusy={busy}
-      fridayHours={fridayHours}
       onSelectFridayHour={(hour)=>{
+        const selected=workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null;
         if(busy)return;
-        void onCommand({type:"set-friday-mosque-hour",hour:selectedFridayHour===hour?null:hour,expectedHour:selectedFridayHour});
-      }}
-      appointmentDefinitions={appointmentDefinitions}
-      religiousEvents={religiousEvents}
-      onAddAppointment={onAddCountdown}
-      boardDate={achievementDate}
-    />
+        void onCommand({type:"set-friday-mosque-hour",hour:selected===hour?null:hour,expectedHour:selected});
+      }}/></div>
+      <div className="np-r331-tile np-r331-tile-next"><UpcomingCountdownR301 definitions={workspace?.definitions??[]} nowMs={nowMs} timeZone={view.timeZone} onAdd={onAddCountdown} religiousEvents={religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night})}/></div>
+      <a href="#noor-r331-prayers" onClick={()=>{if(historyDate){setHistoryDate(null);setWeekShift(0);}}} className="np-r331-tile np-r331-small"><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></a>
+      <a href={historyDate||!nextSession?"#noor-r323-progress":"#noor-r323-tasks"} onClick={()=>{if(historyDate){setHistoryDate(null);setWeekShift(0);}}} className="np-r331-tile np-r331-small"><NoorR323Icon name="layers"/><span>الجلسة القادمة</span><strong>{nextSession?.title??"لا جلسات مستحقة"}</strong><small>{nextSession?[nextSession.task,nextSession.target!==null?nextSession.target+" "+nextSession.unit:""].filter(Boolean).join(" · "):"عرض المهام والجلسات"}</small></a>
+      <a href={nextTask&&!historyDate?"#noor-r323-tasks":"#noor-r323-progress"} onClick={()=>{if(historyDate){setHistoryDate(null);setWeekShift(0);}}} className="np-r331-tile np-r331-small"><NoorR323Icon name="check"/><span>المهمة ذات الأولوية</span><strong>{nextTask?.title??"لا مهام متبقية"}</strong><small>{nextTask?"وزن "+nextTask.weight:"عرض الإنجاز"}</small></a>
+      <button type="button" className="np-r331-tile np-r331-small" onClick={()=>setShowRecovery(true)}><NoorR323Icon name="bars"/><span>تدارك الفائت</span><strong>{recoverable.length+recoverableSessions.length} قابل للاستدراك</strong><small>{historicalRows.length} عنصر غير مكتمل</small></button>
+      </div>
+    </section>
     {showRecovery?createPortal(<div className="np-r331-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRecovery(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="تدارك الفائت" onKeyDown={e=>{if(e.key==="Escape")setShowRecovery(false);}}><header><h2>تدارك الفائت</h2><button type="button" onClick={()=>setShowRecovery(false)} aria-label="إغلاق التدارك">×</button></header><p>يحفظ الاستدراك على يوم الاستحقاق بوزن يتناقص إلى النصف عن كل يوم تأخير.</p>{recoverableSessions.length?<h3>جلسات مجدولة فائتة</h3>:null}{recoverableSessions.map(({row,session,def,progress})=><article key={row.id+"-"+session.id} className="np-r331-recovery-row"><div><strong>{session.title}</strong><small>{def.title} · {row.date} · {Math.round(recoveryCreditR331(row.date,achievementDate)*100)}% من وزن الجزء المنجز</small>{session.target!==null?<small>{progress} / {session.target} {def.measurement?.unit??""}</small>:null}</div><button type="button" disabled={busy} onClick={()=>{setRecoverError("");setSessionRecovery({row,session,entryId:globalThis.crypto.randomUUID(),amount:session.target===null?"0":String(Math.round((session.target-progress)*1e6)/1e6),note:""});}}>تسجيل التقدم</button></article>)}{sessionRecovery?<form className="np-r331-session-recovery" onSubmit={event=>{event.preventDefault();void saveRecoveredSession();}}><strong>{sessionRecovery.session.title}</strong>{sessionRecovery.session.target!==null?<label>المقدار المنجز الآن<input type="number" inputMode="decimal" required min="0.000001" step="any" value={sessionRecovery.amount} onChange={event=>setSessionRecovery({...sessionRecovery,amount:event.currentTarget.value})}/></label>:<p>تأكيد إتمام الجلسة المتأخرة.</p>}<label>ملاحظة اختيارية<textarea dir="rtl" rows={2} maxLength={2000} value={sessionRecovery.note} onChange={event=>setSessionRecovery({...sessionRecovery,note:event.currentTarget.value})}/></label><div><button type="submit" disabled={busy}>حفظ الاستدراك</button><button type="button" disabled={busy} onClick={()=>setSessionRecovery(null)}>إلغاء</button></div></form>:null}{!historicalRows.length?<p>لا توجد عناصر فائتة.</p>:historicalRows.map(row=><article key={row.id} className="np-r331-recovery-row"><div><strong>{row.title}</strong><small>{row.date} · {Number((row.weight*recoveryCreditR331(row.date,achievementDate)).toPrecision(5))} من {row.weight} نقطة</small></div>{recoverable.some(r=>r.id===row.id)?<button type="button" disabled={busy} onClick={()=>{void recovery(row)}}>تم الآن</button>:<button type="button" onClick={()=>{setHistoryDate(row.date);setWeekShift(Math.floor((Date.parse(row.date+"T00:00:00Z")-Date.parse(achievementWeek[0]!.date+"T00:00:00Z"))/604800000));setShowRecovery(false);}}>عرض السجل</button>}</article>)}{recoverError?<p role="alert">{recoverError}</p>:null}</section></div>,document.body):null}
 
     <section id="noor-r331-prayers" aria-label="الصلوات" className="np-card np-prayer-card" data-header-layout="padding-only-132" data-prayer-layout="compact-five-obligatory-r331" data-testid="prayer-card">

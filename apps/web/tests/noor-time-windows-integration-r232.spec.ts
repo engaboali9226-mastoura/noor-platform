@@ -74,7 +74,7 @@ test("R232 city preference is display-only and cannot change authority of prayer
  assert.match(data,/navigator\.geolocation\.getCurrentPosition/u);
  assert.match(data,/credentials:"omit"/u);
  assert.match(view,/serverZone=\{timeZone\}/u);
- assert.match(view,/prayers=\{eventTimes\}/u);
+ assert.match(view,/prayers=\{view\.prayerTimes\}/u);
  assert.deepEqual(NOOR_R232_DEFAULT.selectedCity,null);
  assert.deepEqual(readNoorR232Preferences(),NOOR_R232_DEFAULT);
 });
