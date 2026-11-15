@@ -64,7 +64,7 @@ test("R337 app selector uses corrected English names and compact circular logos"
  assert.doesNotMatch(authorizedHome,/نور الشخصي|نور ورك/u);
  assert.match(source,/lang="en" dir="ltr">noor personal/u);
  assert.match(source,/lang="en" dir="ltr">noor work/u);
- assert.match(functionalStyles,/clamp\\(84px,23vw,112px\\);min-height:98px/u);
+ assert.match(functionalStyles,/clamp\(84px,23vw,112px\);min-height:98px/u);
 });
 
 test("R231 protected access errors remain truthful but use branded styling",()=>{
