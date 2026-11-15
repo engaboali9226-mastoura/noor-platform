@@ -7,7 +7,7 @@
 :root[data-noor-appearance="dark"]{--ng-logo-filter:brightness(.84) saturate(.85)}
 .noor-r323-gateway :is(.noor-welcome-logo,.noor-welcome-app-mark img),.nw-root>.noor-r329-brand-header img,.np-r323-header .noor-r329-brand-header img{filter:var(--ng-logo-filter)}
 .noor-r323-gateway:not([data-auth-mode]) .noor-welcome-logo-frame{width:min(100%,360px);margin:0 auto 4px}
-.noor-r323-gateway .noor-welcome-app-card{grid-template-columns:minmax(0,1fr) 22px clamp(100px,27vw,132px);min-height:112px;padding:6px 12px;gap:9px;border-radius:22px!important}
+.noor-r323-gateway .noor-welcome-app-card{grid-template-columns:minmax(0,1fr) 22px clamp(84px,23vw,112px);min-height:98px;padding:6px 12px;gap:9px;border-radius:22px!important}
 .noor-r323-gateway .noor-welcome-apps{gap:9px}
 .noor-r323-gateway[data-auth-mode] .noor-welcome-field{min-height:57px;border-radius:20px!important;box-shadow:inset 0 1px 1px #ffffffb0,0 2px 8px #3c5e8019}
 .noor-r323-gateway[data-auth-mode] .noor-welcome-field input{font-size:16px;min-height:25px}
