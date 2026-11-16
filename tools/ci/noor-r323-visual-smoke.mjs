@@ -38,7 +38,7 @@ try{
  'const isSelector=new URLSearchParams(location.search).get("screen")==="selector";',
  'import {applyAppearance,readAppearance} from "./src/appearance-preference-store";',
  'applyAppearance(readAppearance());',
- 'const accountService={requestPasswordReset:async()=>"sent" as const,registerPendingAccount:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,completePasswordRecovery:async()=>"updated" as const,requestEmailChange:async()=>"sent" as const};',
+ 'const accountService={requestPasswordReset:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,registerPendingAccount:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,completePasswordRecovery:async()=>"updated" as const,requestEmailChange:async()=>"sent" as const};',
  'const appointments=[{id:"visual-appointment-1",kind:"Task",title:"اجتماع فريق العمل",state:"Active",category:"العمل",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-07",time:"15:00"}},{id:"visual-appointment-2",kind:"Task",title:"موعد طبي",state:"Active",category:"الصحة",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-08",time:"10:00"}}];',
  'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>({signIn:async()=>"challenge-needed",enroll:async()=>null,verify:async()=>"invalid",accessToken:async()=>null,signOut:async()=>{}})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
  ].join("\n");
@@ -133,7 +133,7 @@ try{
       && artwork.includes('/brand/login-glass-header.webp')
       && parseFloat(getComputedStyle(tagline).fontWeight) >= 700
       && wordmark.width >= tagline.getBoundingClientRect().width * 1.15
-      && !document.querySelector('.noor-auth-hint-r312, .noor-registration-receipt')
+      && !document.querySelector('.noor-auth-hint-r312, .noor-account-request-receipt')
       && document.documentElement.scrollWidth <= innerWidth + 1
       && Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
       && admin.bottom <= innerHeight;
@@ -150,10 +150,10 @@ try{
     form.requestSubmit();
   })()`);
   await submitRegistration("unavailable@example.test");
-  await expect("document.querySelector('.noor-welcome-error')&&!document.querySelector('.noor-registration-receipt')&&document.querySelector('input[name=email]').value==='unavailable@example.test'","Failed request keeps the form values and shows no receipt");
+  await expect("document.querySelector('.noor-welcome-error')&&!document.querySelector('.noor-account-request-receipt')&&document.querySelector('input[name=email]').value==='unavailable@example.test'","Failed request keeps the form values and shows no receipt");
   await submitRegistration("registration@example.test");
   await expect(`(() => {
-    const receipt = document.querySelector('.noor-registration-receipt:modal');
+    const receipt = document.querySelector('.noor-account-request-receipt:modal');
     if (!receipt) return false;
     const bounds = receipt.getBoundingClientRect();
     return receipt.querySelector('h2').textContent === 'تم استلام طلب التسجيل'
@@ -166,20 +166,68 @@ try{
   if (screen.mobile) {
    await cdp("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
    await cdp("Input.dispatchKeyEvent",{type:"keyUp",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
-   await expect("!document.querySelector('.noor-registration-receipt')&&document.querySelector('main').dataset.authMode==='register'","Escape dismisses the receipt and stays on registration");
+   await expect("!document.querySelector('.noor-account-request-receipt')&&document.querySelector('main').dataset.authMode==='register'","Escape dismisses the receipt and stays on registration");
    await submitRegistration("registration@example.test");
-   await find(".noor-registration-receipt:modal");
+   await find(".noor-account-request-receipt:modal");
   }
-  await run("document.querySelector('.noor-registration-receipt-return').click()");
-  await expect("document.querySelector('main').dataset.authMode==='login'&&!document.querySelector('.noor-registration-receipt')","Receipt returns to the login view");
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await expect("document.querySelector('main').dataset.authMode==='login'&&!document.querySelector('.noor-account-request-receipt')","Receipt returns to the login view");
   await run("document.querySelector('.noor-auth-forgot').click()");
-  await wait(()=>run("!document.querySelector('input[name=password]')"));
-  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Password reset retains approved shared artwork");
-  await expect("document.documentElement.scrollWidth<=innerWidth+1&&document.querySelector('.noor-auth-return-r312').getBoundingClientRect().bottom<=innerHeight","Password reset controls fit the normal viewport");
+  await expect(`(() => {
+    const email = document.querySelector('.noor-login-field input');
+    const card = document.querySelector('.noor-r332-auth').getBoundingClientRect();
+    const wordmark = document.querySelector('.noor-login-wordmark').getBoundingClientRect();
+    const tagline = document.querySelector('.noor-login-tagline');
+    const artwork = getComputedStyle(document.querySelector('.noor-welcome-ambient'), '::before').backgroundImage;
+    return document.querySelector('main').dataset.authMode === 'reset'
+      && document.querySelector('h1').textContent === 'استعادة كلمة المرور'
+      && document.querySelector('.noor-login-brand img').naturalWidth > 0
+      && artwork.includes('/brand/login-glass-header.webp')
+      && document.querySelectorAll('.noor-welcome-form input').length === 1
+      && email?.type === 'email' && parseFloat(getComputedStyle(email).fontSize) >= 16
+      && wordmark.width >= tagline.getBoundingClientRect().width * 1.15
+      && parseFloat(getComputedStyle(tagline).fontWeight) >= 700
+      && !document.querySelector('.noor-account-request-receipt, .noor-auth-success-r312, .noor-welcome-description')
+      && document.documentElement.scrollWidth <= innerWidth + 1
+      && Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
+      && document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom <= innerHeight;
+  })()`,"Password reset matches the centered glass artwork with a single email field");
   await snap(screen.name+"-recovery");
+
+  const submitReset = email => run(`(() => {
+    const form = document.querySelector('.noor-welcome-form');
+    form.elements.email.value = ${JSON.stringify(email)};
+    form.querySelector('[type=submit]').focus();
+    form.requestSubmit();
+  })()`);
+  await submitReset("unavailable@example.test");
+  await expect("document.querySelector('.noor-welcome-error')&&!document.querySelector('.noor-account-request-receipt')&&document.querySelector('input[name=email]').value==='unavailable@example.test'","Failed reset displays the error and retains the email for retry");
+  await submitReset("account@example.test");
+  await expect(`(() => {
+    const receipt = document.querySelector('.noor-account-request-receipt:modal');
+    if (!receipt) return false;
+    const bounds = receipt.getBoundingClientRect();
+    return receipt.querySelector('h2').textContent === 'تم استلام طلب الاستعادة'
+      && receipt.textContent.includes('إذا كان البريد مرتبطًا بحساب')
+      && !receipt.textContent.includes('account@example.test')
+      && receipt.contains(document.activeElement)
+      && bounds.left >= 0 && bounds.top >= 0 && bounds.right <= innerWidth && bounds.bottom <= innerHeight
+      && !document.querySelector('input[name=email]').value
+      && !document.querySelector('.noor-auth-success-r312');
+  })()`,"Successful reset opens a focused receipt with conditional copy and clears the email");
+  await snap(screen.name+"-recovery-receipt");
   if(screen.mobile){
+   await run("document.querySelector('.noor-account-request-receipt-close').click()");
+   await expect("!document.querySelector('.noor-account-request-receipt')&&document.querySelector('main').dataset.authMode==='reset'","The close button dismisses the receipt and leaves the reset form visible");
    await cdp("Emulation.setDeviceMetricsOverride",{width:390,height:480,deviceScaleFactor:1,mobile:true});
-   await run("document.querySelector('.noor-auth-return-r312').click()");
+   await run("document.querySelector('input[name=email]').focus()");
+   await expect("document.activeElement.getBoundingClientRect().bottom<=visualViewport.height&&visualViewport.scale===1&&document.querySelector('.noor-auth-return-r312').getBoundingClientRect().bottom<=visualViewport.height","Recovery controls fit the reduced mobile viewport");
+   await submitReset("account@example.test");
+   await find(".noor-account-request-receipt:modal");
+  }
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await expect("document.querySelector('main').dataset.authMode==='login'&&!document.querySelector('.noor-account-request-receipt')","Reset receipt returns to the login view");
+  if(screen.mobile){
    await run("document.querySelector('input[name=email]').focus()");
    await expect("document.activeElement.getBoundingClientRect().bottom<=visualViewport.height&&visualViewport.scale===1","Focused field fits the reduced mobile viewport");
    await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=visualViewport.height","Login controls fit the reduced mobile viewport");
