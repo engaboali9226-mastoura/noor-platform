@@ -95,6 +95,10 @@
 
 .noor-r323-gateway[data-auth-mode="login"] .noor-r332-field::before { display: none; }
 
+.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field:focus-within {
+  box-shadow: none !important;
+}
+
 .noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field > span {
   font-size: 14px !important;
   color: var(--login-label) !important;
