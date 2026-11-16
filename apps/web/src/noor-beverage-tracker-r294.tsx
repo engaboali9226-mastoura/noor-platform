@@ -162,7 +162,12 @@ export function NoorBeverageTrackerR294({rows,allNames=[],localDate,busy,onComma
   <header className="np-beverages-head-r294">
    <div className="np-caffeine-card-heading-r299">
     <span className="np-caffeine-card-dot-r299" aria-hidden="true"/>
-    <div><h2>{historical?"مشروبات اليوم المحدد":"القهوة والشاي"}</h2><small className="np-r323-beverage-subtitle">متابعة المشروبات اليومية</small></div>
+    <h2>{historical?"مشروبات اليوم المحدد":"القهوة والشاي"}</h2>
+   </div>
+   <div className={"np-caffeine-signal-r295 np-caffeine-"+summary.level} role="status"
+     aria-label={"حالة المنبهات: "+(summary.level==="green"?"أخضر":summary.level==="yellow"?"أصفر":"أحمر")+" — "+summary.reason}>
+    <strong>{summary.level==="green"?"متوازن":summary.level==="yellow"?"انتبه":"تنبيه مرتفع"}</strong>
+    <span className="np-caffeine-reason-r296">{summary.reason}</span>
    </div>
    {!historical?<button type="button" disabled={busy||saving} aria-label="إضافة مشروب" title="إضافة نوع مشروب" aria-expanded={adding} onClick={()=>{setAdding(x=>!x);setError("");}}>+ نوع</button>:null}
   </header>
@@ -172,11 +177,6 @@ export function NoorBeverageTrackerR294({rows,allNames=[],localDate,busy,onComma
      <div><span>القهوة</span><strong>{summary.coffee}</strong></div>
      <div><span>الشاي</span><strong>{summary.tea}</strong></div>
      <div><span aria-label="إجمالي المنبّهات">إجمالي اليوم</span><strong>{summary.total} <small>كوب</small></strong></div><div className="np-r323-last-cup"><span>آخر مشروب</span><strong dir="ltr">{summary.recent[0]?.time??"—"}</strong></div>
-    </div>
-    <div className={"np-caffeine-signal-r295 np-caffeine-"+summary.level} role="status"
-      aria-label={"حالة المنبهات: "+(summary.level==="green"?"أخضر":summary.level==="yellow"?"أصفر":"أحمر")+" — "+summary.reason}>
-     <strong>{summary.level==="green"?"متوازن":summary.level==="yellow"?"انتبه":"تنبيه مرتفع"}</strong>
-     <span className="np-caffeine-reason-r296">{summary.reason}</span>
     </div>
    </div>
    <div className="np-caffeine-cup-r299" aria-hidden="true">
