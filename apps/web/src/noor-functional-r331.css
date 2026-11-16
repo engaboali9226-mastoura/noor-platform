@@ -558,3 +558,11 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 }
 
 .np-page[data-appearance] .np-r339-overlay .np-prayer-time { flex-direction: row; gap: 3px; }
+
+.np-page[data-appearance] .np-r331-tile .np-r323-rhythm .np-r322-timer-feature.is-day {
+  background: linear-gradient(145deg, #fff7e6, #f9e4bc) !important;
+  color: #5a390f !important;
+}
+.np-page[data-appearance] .np-r331-tile .np-r322-timer-feature.is-day :is(.np-r322-active-title,.np-r322-main-countdown,.np-r328-total-duration) {
+  color: #5a390f !important;
+}
