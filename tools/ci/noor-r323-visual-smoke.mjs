@@ -53,6 +53,8 @@ try{
  socket.addEventListener("message",event=>{const m=JSON.parse(event.data);if(m.id&&pending.has(m.id)){const [r,j]=pending.get(m.id);pending.delete(m.id);m.error?j(Error(JSON.stringify(m.error))):r(m.result);}});
  const cdp=(method,params={})=>new Promise((r,j)=>{const n=++id;pending.set(n,[r,j]);socket.send(JSON.stringify({id:n,method,params}));});
  await cdp("Page.enable");
+ await cdp("Page.bringToFront");
+ await cdp("Emulation.setFocusEmulationEnabled", {enabled:true});
  const run=async(expression)=>{const r=await cdp("Runtime.evaluate",{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
  const find=sel=>wait(()=>run("!!document.querySelector("+JSON.stringify(sel)+")"));
  const snap=async(name)=>{await sleep(250);const r=await cdp("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});await writeFile(resolve(output,name+".png"),Buffer.from(r.data,"base64"));};
@@ -82,7 +84,7 @@ try{
   const focusState = () => run(`(() => {
     const input = document.querySelector('input[name=email]');
     const style = getComputedStyle(input);
-    return {active: document.activeElement === input, border: style.borderTopWidth,
+    return {active: document.activeElement === input, pageFocused: document.hasFocus(), matchesFocus: input.matches(":focus"), border: style.borderTopWidth,
       radius: style.borderTopLeftRadius, outline: style.outlineStyle, outlineWidth: style.outlineWidth, labelRing: getComputedStyle(input.parentElement).boxShadow};
   })()`);
   await wait(async () => {
