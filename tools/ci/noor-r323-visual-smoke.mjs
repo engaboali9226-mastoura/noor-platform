@@ -321,16 +321,44 @@ try{
   await snap(screen.name+"-admin-code");
   await run("document.querySelector('.noor-welcome-submit').click()");
   await find(".na315-panel[data-step='complete']");
-  if (!screen.mobile) {
-   await cdp("Page.navigate",{url:url+"?screen=admin&factor=new"});
-   await find(".noor-admin-entry-panel input[name=email]");
-   await submitAdminLogin();
-   await find(".na315-panel[data-step='enroll']");
-   await run("document.querySelector('.na315-stage button').click()");
-   await expect("document.querySelector('.na315-panel[data-step=verify-setup] .na315-qr')?.naturalWidth>0","First-time enrollment still shows its QR code and verification form");
-   await run("document.querySelector('.na315-manual button').click()");
-   await expect("document.querySelector('.na315-secret')?.textContent==='TEST-KEY'","Manual enrollment key remains available on request");
-  }
+  await cdp("Page.navigate",{url:url+"?screen=admin&factor=new"});
+  await find(".noor-admin-entry-panel input[name=email]");
+  await submitAdminLogin();
+  await find(".noor-admin-entry-panel[data-step='enroll']");
+  await expect("document.querySelector('.noor-login-title').textContent.trim()==='إضافة تطبيق المصادقة'&&!document.querySelector('.noor-admin-setup-dialog')","Enrollment starts with the approved create action");
+  await snap(screen.name+"-admin-enroll");
+  if (screen.mobile) await cdp("Emulation.setDeviceMetricsOverride",{width:320,height:380,mobile:true,deviceScaleFactor:1});
+  await run("document.querySelector('.noor-welcome-submit').click()");
+  await expect("document.querySelector('.noor-admin-setup-dialog:modal .noor-admin-setup-qr')?.naturalWidth>0","Enrollment opens a modal with the QR code");
+  const checkSetupFit = () => expect(`(() => {
+    const dialog = document.querySelector('.noor-admin-setup-dialog:modal');
+    const box = dialog.getBoundingClientRect();
+    const action = dialog.querySelector('.noor-account-request-receipt-return').getBoundingClientRect();
+    return box.left >= 0 && box.right <= visualViewport.width && box.top >= 0
+      && box.bottom <= visualViewport.height && action.bottom <= box.bottom
+      && dialog.scrollHeight <= dialog.clientHeight + 1;
+  })()`,"Enrollment dialog and its primary action fit without scrolling");
+  await checkSetupFit();
+  await snap(screen.name+"-admin-setup-qr");
+  await run("document.querySelector('.noor-admin-setup-dialog .noor-auth-return-r312').click()");
+  await expect("document.querySelector('.noor-admin-setup-dialog:modal .noor-admin-setup-key')?.textContent==='TEST-KEY'&&!document.querySelector('.noor-admin-setup-qr')","Manual setup key appears on request");
+  await checkSetupFit();
+  await snap(screen.name+"-admin-setup-key");
+  await run("document.querySelector('.noor-admin-setup-dialog .noor-auth-return-r312').click()");
+  await find(".noor-admin-setup-dialog:modal .noor-admin-setup-qr");
+  await cdp("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
+  await cdp("Input.dispatchKeyEvent",{type:"keyUp",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
+  await expect("!document.querySelector('.noor-admin-setup-dialog')&&document.activeElement?.textContent.trim()==='عرض إعداد التطبيق'","Escape closes the modal and focuses the reopen action");
+  await run("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='عرض إعداد التطبيق').click()");
+  await find(".noor-admin-setup-dialog:modal");
+  await run("document.querySelector('.noor-admin-setup-dialog .noor-account-request-receipt-return').click()");
+  await expect("!document.querySelector('.noor-admin-setup-dialog')&&document.activeElement?.classList.contains('na315-code')","Continue closes setup and focuses the verification code");
+  if (screen.mobile) await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,mobile:true,deviceScaleFactor:1});
+  await cdp("Input.insertText",{text:"123456"});
+  await expect("document.querySelector('.na315-code').value==='123456'&&!document.querySelector('.noor-welcome-submit').disabled","First-time verification enables submit at six digits");
+  await run("document.querySelector('.noor-welcome-submit').click()");
+  await find(".na315-panel[data-step='complete']");
+  await expect("!document.querySelector('.noor-admin-setup-dialog, .noor-admin-setup-key, .noor-admin-setup-qr')","Completion removes setup material from the page");
   await cdp("Page.navigate",{url:url+"?screen=personal"});
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");

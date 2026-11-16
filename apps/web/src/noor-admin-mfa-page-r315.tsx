@@ -26,6 +26,17 @@ export function NoorAdminMfaPageR315({
    ?"recover-finish":"login"
  );
  const panel = useRef<HTMLElement>(null);
+ const setupDialog = useRef<HTMLDialogElement>(null);
+ const verificationInput = useRef<HTMLInputElement>(null);
+ const reopenSetupButton = useRef<HTMLButtonElement>(null);
+ const [setupView, setSetupView] = useState<"qr" | "key" | null>(null);
+ useEffect(() => {
+  const dialog = setupDialog.current;
+  if (setupView && dialog && !dialog.open) {
+   dialog.showModal();
+   dialog.querySelector<HTMLElement>(".noor-account-request-receipt-return")?.focus({ preventScroll: true });
+  }
+ }, [setupView]);
  useEffect(()=>{
   const element = panel.current;
   const viewport = window.visualViewport;
@@ -44,7 +55,6 @@ export function NoorAdminMfaPageR315({
  },[step]);
  const [qr,setQr]=useState("");
  const [secret,setSecret]=useState("");
- const [revealSecret,setRevealSecret]=useState(false);
  const [code,setCode]=useState("");
  const [loading,setLoading]=useState(false);
  const [error,setError]=useState("");
@@ -70,17 +80,16 @@ export function NoorAdminMfaPageR315({
    const image=noorTotpQrImageSourceR318(result.qrSvg);
    setQr(image??"");
    setSecret(result.secret);
-   setRevealSecret(false);
-   if(!image)setError("تعذر عرض صورة QR. استخدم مفتاح الإعداد اليدوي أدناه.");
+   setSetupView(image ? "qr" : result.secret ? "key" : null);
+   if (!image && !result.secret) setError("تعذر عرض بيانات إعداد التطبيق. عُد إلى دخول المدير وأعد المحاولة.");
    setStep("verify-setup");
-   setNotice("امسح رمز QR بتطبيق المصادقة ثم أدخل رمز التحقق المكوّن من ستة أرقام.");
   }finally{setLoading(false);}
  };
  const verify=async(e:FormEvent<HTMLFormElement>)=>{
   e.preventDefault();if(loading)return;setLoading(true);setError("");
   try{
    const result=await service.current!.verify(code.trim());
-   if(result==="aal2"){setStep("complete");setQr("");setSecret("");setRevealSecret(false);setCode("");setNotice("تم التحقق من العامل الثاني. ستظهر الحسابات إذا كانت الصلاحية معتمدة على الخادم.");}
+   if(result==="aal2"){setStep("complete");setQr("");setSecret("");setSetupView(null);setCode("");setNotice("تم التحقق من العامل الثاني. ستظهر الحسابات إذا كانت الصلاحية معتمدة على الخادم.");}
    else setError(result==="invalid"?"رمز التحقق غير صحيح أو منتهي الصلاحية.":"تعذر تأكيد مستوى الحماية. أعد المحاولة.");
   }finally{setLoading(false);}
  };
@@ -110,34 +119,43 @@ export function NoorAdminMfaPageR315({
    }else setError(result==="invalid"?"الرابط منتهي الصلاحية أو كلمة المرور غير مستوفية للشروط. أعد طلب الرابط.":"تعذر تغيير كلمة المرور. أعد فتح رابط الاستعادة أو اطلب رابطًا جديدًا.");
   }finally{setLoading(false);}
  };
- const logout=async()=>{await service.current?.signOut();setStep("login");setQr("");setSecret("");setRevealSecret(false);setCode("");setError("");setNotice("");};
- const showCodeOnly = step === "verify";
+ const logout=async()=>{await service.current?.signOut();setStep("login");setQr("");setSecret("");setSetupView(null);setCode("");setError("");setNotice("");};
+ const isEnrolling = step === "enroll";
+ const isVerifying = step === "verify" || step === "verify-setup";
+ const title = isEnrolling ? "إضافة تطبيق المصادقة" : isVerifying ? "المصادقة الثنائية" : "دخول المدير";
+ const showQr = setupView === "qr";
  const codeForm = (
-  <form className={showCodeOnly ? "noor-welcome-form" : undefined} onSubmit={event => { void verify(event); }}>
-   <label className={showCodeOnly ? "noor-login-field" : undefined}>
-    <span>{showCodeOnly ? "رمز التحقق من التطبيق" : "رمز التحقق"}</span>
-    <input type="text" value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+  <form className="noor-welcome-form" onSubmit={event => { void verify(event); }}>
+   <label className="noor-login-field">
+    <span>رمز التحقق من التطبيق</span>
+    <input ref={verificationInput} type="text" value={code} onChange={event => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
       className="na315-code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}"
       maxLength={6} required dir="ltr" disabled={loading} />
    </label>
-   <button type="submit" className={showCodeOnly ? "noor-welcome-submit" : undefined} disabled={loading || code.length !== 6}>
+   <button type="submit" className="noor-welcome-submit" disabled={loading || code.length !== 6}>
     {loading ? "جارٍ التحقق…" : "تحقق من الرمز"}
    </button>
   </form>
  );
 
- if (step === "login" || showCodeOnly) {
+ if (step === "login" || isEnrolling || isVerifying) {
   return (
    <main id="main-content" className="noor-welcome-gateway-r231 noor-r323-gateway noor-login-gateway noor-admin-entry-gateway"
-     data-auth-mode={showCodeOnly ? "admin-verify" : "admin-login"} dir="rtl">
+     data-auth-mode={isEnrolling ? "admin-enroll" : isVerifying ? "admin-verify" : "admin-login"} dir="rtl">
     <div className="noor-welcome-ambient" aria-hidden="true" />
     <section className="noor-welcome-panel noor-admin-entry-panel" ref={panel} data-step={step} aria-labelledby="noor-admin-entry-title">
      <NoorLoginBrand />
      <div className="noor-r323-auth-card noor-r332-auth">
       <h1 className="noor-login-title" id="noor-admin-entry-title">
-       {showCodeOnly ? "المصادقة الثنائية" : "دخول المدير"}
+       {title}
       </h1>
-      {showCodeOnly ? codeForm : (
+      {isEnrolling ? (
+       <div className="noor-welcome-form">
+        <button type="button" className="noor-welcome-submit" disabled={loading} onClick={() => { void enroll(); }}>
+         {loading ? "جارٍ الإعداد…" : "إنشاء رمز QR"}
+        </button>
+       </div>
+      ) : isVerifying ? codeForm : (
        <form className="noor-welcome-form" onSubmit={event => { void login(event); }}>
         <label className="noor-login-field">
          <span>البريد الإلكتروني لحساب الإدارة</span>
@@ -152,8 +170,14 @@ export function NoorAdminMfaPageR315({
         </button>
        </form>
       )}
+      {step === "verify-setup" && (qr || secret) && (
+       <button ref={reopenSetupButton} type="button" className="noor-auth-return-r312"
+         disabled={loading} onClick={() => setSetupView(qr ? "qr" : "key")}>
+        عرض إعداد التطبيق
+       </button>
+      )}
       <button type="button" className="noor-auth-return-r312" disabled={loading} onClick={() => {
-       if (showCodeOnly) {
+       if (step !== "login") {
         void logout();
        } else {
         setStep("recover-request");
@@ -161,12 +185,50 @@ export function NoorAdminMfaPageR315({
         setNotice("");
        }
       }}>
-       {showCodeOnly ? "العودة إلى دخول المدير" : "إعداد أو استعادة كلمة المرور"}
+       {step === "login" ? "إعداد أو استعادة كلمة المرور" : "العودة إلى دخول المدير"}
       </button>
       {notice && <p role="status" className="na315-notice">{notice}</p>}
       {error && <p role="alert" className="na315-error">{error}</p>}
      </div>
      <a className="noor-r322-admin-entry" href="/">العودة إلى منصة نور</a>
+     {setupView && (
+      <dialog ref={setupDialog} className="noor-account-request-receipt noor-admin-setup-dialog"
+        aria-labelledby="noor-admin-setup-title" aria-describedby="noor-admin-setup-details"
+        onClose={event => {
+         const target = event.currentTarget.returnValue === "verify" ? verificationInput : reopenSetupButton;
+         setSetupView(null);
+         target.current?.focus({ preventScroll: true });
+        }}>
+       <button type="button" className="noor-account-request-receipt-close" aria-label="إغلاق"
+         onClick={() => setupDialog.current?.close()}>
+        <svg aria-hidden="true" width={16} height={16} viewBox="0 0 16 16" fill="none"
+          stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+         <path d="m4 4 8 8m0-8-8 8" />
+        </svg>
+       </button>
+       <h2 id="noor-admin-setup-title">{showQr ? "ربط تطبيق المصادقة" : "مفتاح الإعداد اليدوي"}</h2>
+       <p id="noor-admin-setup-details">{showQr ? "امسح الرمز بتطبيق المصادقة." : "أدخل المفتاح في تطبيق المصادقة."}</p>
+       {showQr ? (
+        <img className="noor-admin-setup-qr" src={qr} alt="رمز QR لإعداد المصادقة الثنائية" onError={() => {
+         setQr("");
+         if (secret) setSetupView("key");
+         else {
+          setupDialog.current?.close();
+          setError("تعذر عرض بيانات إعداد التطبيق. عُد إلى دخول المدير وأعد المحاولة.");
+         }
+        }} />
+       ) : <code className="noor-admin-setup-key" dir="ltr">{secret}</code>}
+       {qr && secret && (
+        <button type="button" className="noor-auth-return-r312" onClick={() => setSetupView(showQr ? "key" : "qr")}>
+         {showQr ? "عرض مفتاح الإعداد اليدوي" : "العودة إلى رمز QR"}
+        </button>
+       )}
+       <button type="button" className="noor-account-request-receipt-return"
+         onClick={() => setupDialog.current?.close("verify")}>
+        إدخال رمز التحقق
+       </button>
+      </dialog>
+     )}
     </section>
    </main>
   );
@@ -192,19 +254,6 @@ export function NoorAdminMfaPageR315({
     <button type="submit" disabled={loading}>{loading?"جارٍ الحفظ…":"تعيين كلمة المرور"}</button>
    </form>
    <button type="button" className="na315-secondary" onClick={()=>{window.history.replaceState(null,"","/admin/security");setStep("recover-request");setError("");}}>طلب رابط جديد</button>
-  </div>:null}
-  {step==="enroll"?<div className="na315-stage"><h2>إضافة تطبيق المصادقة</h2><p>استخدم تطبيقًا مثل Microsoft Authenticator أو Google Authenticator لإنشاء رمز دوري مرتبط بهذا الحساب.</p><button type="button" disabled={loading} onClick={()=>{void enroll();}}>إنشاء رمز QR</button></div>:null}
-  {step==="verify-setup"?<div className="na315-stage">
-   {qr?<><h2>امسح رمز QR</h2>
-    <img className="na315-qr" src={qr} alt="رمز QR خاص بإعداد المصادقة الثنائية" onError={()=>{setQr("");setError("تعذر عرض صورة QR على هذا المتصفح. استخدم مفتاح الإعداد اليدوي أدناه.");}}/>
-    <p>لا تشارك هذا الرمز مع أحد. لن يُحفظ في نور.</p>
-   </>:<h2>التحقق من تطبيق المصادقة</h2>}
-   {secret?<div className="na315-manual">
-    <p>لو بتستخدم نفس الآيفون أو تعذر مسح رمز QR، افتح تطبيق المصادقة واختر إضافة حساب بمفتاح إعداد يدوي (Time-based / TOTP).</p>
-    <button type="button" className="na315-secondary" onClick={()=>setRevealSecret(value=>!value)}>{revealSecret?"إخفاء مفتاح الإعداد":"عرض مفتاح الإعداد اليدوي"}</button>
-    {revealSecret?<div><p>مفتاح سري خاص بحسابك؛ لا تشاركه أو تلتقط له صورة.</p><code className="na315-secret" dir="ltr">{secret}</code></div>:null}
-   </div>:null}
-   {codeForm}
   </div>:null}
   {step==="complete"?<div className="na315-stage na315-complete" role="status"><h2>اكتملت المصادقة الثنائية ✓</h2><p>تم تأكيد المصادقة الثنائية. لا يسمح الخادم بالإدارة إلا لحساب المدير المعتمد.</p><NoorAdminAccountsPanelR316 token={()=>service.current?.accessToken()??Promise.resolve(null)}/></div>:null}
   {notice?<p role="status" className="na315-notice">{notice}</p>:null}
