@@ -524,6 +524,7 @@ try{
   await expect("document.querySelectorAll('.np-r324-quick-sheet > button').length===3","Quick add exposes task habit and appointment");
   await snap(screen.name+"-quick-add");
   await run("document.querySelector('.np-r324-quick-sheet > button').click()");
+  await expect("Array.from(document.querySelector(\'#definition-kind\')?.options??[]).map(o=>o.value).includes(\'appointment\')","Add form exposes appointment as a selectable type");
   await find("#definition-title");
   await expect("document.querySelector('[data-testid=r324-nav-plus]').getAttribute('aria-current')==='page'","Quick task navigation active");
   await snap(screen.name+"-quick-task");
