@@ -83,42 +83,39 @@
   gap: 13px !important;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field,
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r328-password-wrap .noor-r332-field {
-  gap: 6px !important;
-  padding: 0 !important;
-  min-height: 0 !important;
-  border: 0 !important;
-  background: none !important;
-  box-shadow: none !important;
+.noor-login-field {
+  display: grid;
+  gap: 6px;
+  color: var(--login-label);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-field::before { display: none; }
-
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field:focus-within {
-  box-shadow: none !important;
+.noor-login-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--login-field-border);
+  border-radius: 10px;
+  background: var(--login-field);
+  color: var(--ng-ink);
+  font: inherit;
+  font-size: 16px;
+  text-align: start;
+  scroll-margin-block: 12px;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field > span {
-  font-size: 14px !important;
-  color: var(--login-label) !important;
+.noor-login-field input:focus {
+  border-color: var(--ng-focus, #24669d);
+  outline: 2px solid var(--ng-focus, #24669d);
+  outline-offset: 1px;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field input {
-  min-height: 48px !important;
-  padding: 8px 12px !important;
-  border: 1px solid var(--login-field-border) !important;
-  border-radius: 10px !important;
-  background: var(--login-field) !important;
-}
-
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field input:focus {
-  border-color: var(--ng-focus) !important;
-  box-shadow: 0 0 0 2px var(--ng-focus) !important;
-}
-
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r328-password-wrap input {
-  padding-left: 49px !important;
+.noor-login-field input[name="password"] {
+  padding-left: 49px;
 }
 
 .noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r328-password-toggle {

@@ -76,19 +76,19 @@ try{
     return Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
       && brand.bottom <= card.top + 1 && field.height >= 48 && wordmark.width >= tagline.width * 1.15;
   })()`,"Login card is centered, with full-size fields and a shorter tagline");
-  await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
+  await expect("document.querySelector('.noor-login-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-login-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
   await expect("document.querySelector('.noor-login-brand img').naturalWidth>0&&getComputedStyle(document.querySelector('.noor-welcome-ambient'),'::before').backgroundImage.includes('/brand/login-glass-header.webp')","Approved calligraphy and glass background");
   await run("document.querySelector('input[name=email]').focus()");
   const focusState = () => run(`(() => {
     const input = document.querySelector('input[name=email]');
     const style = getComputedStyle(input);
     return {active: document.activeElement === input, border: style.borderTopWidth,
-      radius: style.borderTopLeftRadius, ring: style.boxShadow, labelRing: getComputedStyle(input.parentElement).boxShadow};
+      radius: style.borderTopLeftRadius, outline: style.outlineStyle, outlineWidth: style.outlineWidth, labelRing: getComputedStyle(input.parentElement).boxShadow};
   })()`);
   await wait(async () => {
     const focus = await focusState();
     return focus.active && focus.border === '1px' && focus.radius === '10px'
-      && focus.ring !== 'none' && focus.labelRing === 'none';
+      && focus.outline === 'solid' && focus.outlineWidth === '2px' && focus.labelRing === 'none';
   }, 5000).catch(async () => {
     throw Error("Only the rounded field shows its focus ring: " + JSON.stringify(await focusState()));
   });

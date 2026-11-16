@@ -197,6 +197,7 @@ function SmartGateway({
   };
 
   const showLogin = !isAuth && mode === "login";
+  const fieldClassName = showLogin ? "noor-login-field" : "noor-welcome-field noor-r332-field";
 
   return (
     <main id="main-content" className="noor-welcome-gateway-r231 noor-r323-gateway" data-auth-mode={isAuth ? undefined : mode} dir="rtl">
@@ -227,12 +228,12 @@ function SmartGateway({
               <input name="name" type="text" minLength={2} maxLength={120} autoComplete="name"
                 required disabled={submitting} placeholder="اسمك"/>
             </label>:null}
-            {mode!=="recovery"?<label className="noor-welcome-field noor-r332-field">
+            {mode!=="recovery"?<label className={fieldClassName}>
               <span>{mode==="login"?"البريد الإلكتروني أو اسم المستخدم":"البريد الإلكتروني"}</span>
               <input name="email" type={mode==="login"?"text":"email"} dir="ltr" inputMode="email" autoCapitalize="none" spellCheck={false}
                 autoComplete="username" required disabled={submitting} placeholder={showLogin ? undefined : "name@example.com"} />
             </label>:null}
-            {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className="noor-welcome-field noor-r332-field">
+            {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className={fieldClassName}>
               <span>{mode==="recovery"?"كلمة المرور الجديدة":"كلمة المرور"}</span>
               <input name="password" type={showPassword?"text":"password"} dir="ltr" minLength={mode==="login"?undefined:mode==="register"?12:8}
                 autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder={showLogin ? undefined : "••••••••"} />
