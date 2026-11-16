@@ -543,7 +543,8 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 }
 .np-r339-overlay .np-prayer-times .np-r331-prayer-record { min-height: 27px; }
 .np-r339-overlay .np-prayer-times .np-countdown { display: none !important; }
-.np-r339-overlay .np-prayer-card .np-r324-prayer-next {
+.np-page[data-appearance] .np-r339-overlay .np-prayer-card .np-r324-prayer-next {
+  display: flex;
   justify-content: space-between;
   border: 1px solid #f6fbff;
   border-radius: 15px;
