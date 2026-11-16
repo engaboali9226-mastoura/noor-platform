@@ -1,25 +1,25 @@
-/* Shared presentation for sign-in and account requests. */
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) {
+/* Shared presentation for the platform entry forms. */
+.noor-r323-gateway.noor-login-gateway {
   --login-field: #ffffffc4;
   --login-field-border: #97a9bb;
   --login-label: #304a60;
   --login-link: #29577c;
 }
 
-:root[data-noor-appearance="dark"] .noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) {
+:root[data-noor-appearance="dark"] .noor-r323-gateway.noor-login-gateway {
   --login-field: #182c42;
   --login-field-border: #748ca4;
   --login-label: #dae6f1;
   --login-link: #bbd8f0;
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-welcome-ambient::before {
+.noor-r323-gateway.noor-login-gateway .noor-welcome-ambient::before {
   background-image: url("/brand/login-glass-header.webp");
   -webkit-mask-image: linear-gradient(#000 45%, transparent);
   mask-image: linear-gradient(#000 45%, transparent);
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-welcome-panel {
+.noor-r323-gateway.noor-login-gateway .noor-welcome-panel {
   display: grid;
   grid-template-rows: minmax(min-content, 1fr) auto minmax(min-content, 1fr);
   width: min(100%, 430px) !important;
@@ -59,7 +59,7 @@
   transform: scaleX(.81);
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-r332-auth {
+.noor-r323-gateway.noor-login-gateway .noor-r332-auth {
   margin: 0 !important;
   min-height: 414px;
   padding: 32px 31px 22px !important;
@@ -79,7 +79,7 @@
   margin: 0 0 17px;
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-r332-auth .noor-welcome-form {
+.noor-r323-gateway.noor-login-gateway .noor-r332-auth .noor-welcome-form {
   gap: 13px !important;
 }
 
@@ -118,7 +118,7 @@
   padding-left: 49px;
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-r332-auth .noor-r328-password-toggle {
+.noor-r323-gateway.noor-login-gateway .noor-r332-auth .noor-r328-password-toggle {
   left: 2px;
   bottom: 2px;
   top: auto;
@@ -134,7 +134,7 @@
   font-weight: 400;
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-r332-auth .noor-welcome-submit {
+.noor-r323-gateway.noor-login-gateway .noor-r332-auth .noor-welcome-submit {
   background: linear-gradient(140deg, #315d82, #254763) !important;
   border-radius: 11px !important;
   box-shadow: none !important;
@@ -156,7 +156,7 @@
   font-size: 14px;
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-welcome-panel > .noor-r322-admin-entry {
+.noor-r323-gateway.noor-login-gateway .noor-welcome-panel > .noor-r322-admin-entry {
   align-self: start;
   justify-self: center;
   display: inline-flex;
@@ -174,18 +174,18 @@
   font-weight: 400;
 }
 
-.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) :is(.noor-auth-forgot,.noor-r322-secondary-actions button,.noor-r322-admin-entry,.noor-r328-password-toggle):focus-visible {
+.noor-r323-gateway.noor-login-gateway :is(.noor-auth-forgot,.noor-r322-secondary-actions button,.noor-r322-admin-entry,.noor-r328-password-toggle):focus-visible {
   outline: 2px solid var(--ng-focus);
   outline-offset: 2px;
 }
 
 @media (max-width: 600px) {
-  .noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-welcome-panel { width: min(100%, 344px) !important; }
+  .noor-r323-gateway.noor-login-gateway .noor-welcome-panel { width: min(100%, 344px) !important; }
   .noor-login-brand img { width: 65px; }
   .noor-login-wordmark { font-size: 20px; letter-spacing: .62px; }
   .noor-login-tagline { font-size: 12px; transform: scaleX(.8); }
   .noor-login-title { font-size: 23px; }
-  .noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"], [data-auth-mode="reset"]) .noor-r332-auth { min-height: 401px; padding-inline: 22px !important; }
+  .noor-r323-gateway.noor-login-gateway .noor-r332-auth { min-height: 401px; padding-inline: 22px !important; }
 }
 
 @media (max-height: 550px) {
@@ -199,7 +199,7 @@
   .noor-r323-gateway[data-auth-mode="login"] .noor-welcome-panel > .noor-r322-admin-entry { margin-top: 2px; }
 }
 
-.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"]) .noor-login-tagline {
+.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"], [data-auth-mode="recovery"]) .noor-login-tagline {
   color: var(--ng-ink);
   font-weight: 700;
 }
@@ -208,7 +208,7 @@
   margin-block-end: 5px;
 }
 
-.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"]) .noor-login-title:focus {
+.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"], [data-auth-mode="recovery"]) .noor-login-title:focus {
   outline: none;
 }
 
@@ -217,7 +217,7 @@
   padding-block: 24px 8px !important;
 }
 
-.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"]) .noor-r332-auth .noor-welcome-form {
+.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"], [data-auth-mode="recovery"]) .noor-r332-auth .noor-welcome-form {
   gap: 0 !important;
 }
 
@@ -227,11 +227,11 @@
   margin-block-start: 21px;
 }
 
-.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"]) .noor-welcome-error {
+.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"], [data-auth-mode="recovery"]) .noor-welcome-error {
   margin-block-start: 10px;
 }
 
-.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"]) .noor-auth-return-r312 {
+.noor-r323-gateway:is([data-auth-mode="register"], [data-auth-mode="reset"], [data-auth-mode="recovery"]) .noor-auth-return-r312 {
   display: block;
   min-height: 44px;
   margin: 8px auto 0;
@@ -354,8 +354,29 @@
   margin-block-start: 24px;
 }
 
+.noor-r323-gateway[data-auth-mode="recovery"] .noor-r332-auth {
+  min-height: 350px;
+  padding-block: 25px 8px !important;
+}
+
+.noor-r323-gateway[data-auth-mode="recovery"] .noor-login-title {
+  margin-block-end: 13px;
+}
+
+.noor-r323-gateway[data-auth-mode="recovery"] .noor-r332-auth .noor-welcome-form {
+  gap: 10px !important;
+}
+
+.noor-r323-gateway[data-auth-mode="recovery"] .noor-r332-auth .noor-welcome-submit {
+  margin-block-start: 7px;
+}
+
+.noor-r323-gateway[data-auth-mode="recovery"] .noor-auth-return-r312 {
+  margin-block-start: 5px;
+}
+
 @media (max-height: 550px) {
-  .noor-r323-gateway[data-auth-mode="reset"] .noor-welcome-panel {
+  .noor-r323-gateway:is([data-auth-mode="reset"], [data-auth-mode="recovery"]) .noor-welcome-panel {
     min-height: 0;
     grid-template-rows: auto auto auto;
   }
@@ -363,4 +384,183 @@
   .noor-r323-gateway[data-auth-mode="reset"] .noor-login-title { margin-block-end: 9px; }
   .noor-r323-gateway[data-auth-mode="reset"] .noor-r332-auth .noor-welcome-submit { margin-block-start: 14px; }
   .noor-r323-gateway[data-auth-mode="reset"] .noor-welcome-panel > .noor-r322-admin-entry { margin-block-start: 2px; }
+  .noor-r323-gateway[data-auth-mode="recovery"] .noor-r332-auth { min-height: 0; padding-block: 12px 6px !important; }
+  .noor-r323-gateway[data-auth-mode="recovery"] .noor-login-title { margin-block-end: 9px; }
+  .noor-r323-gateway[data-auth-mode="recovery"] .noor-r332-auth .noor-welcome-form { gap: 7px !important; }
+  .noor-r323-gateway[data-auth-mode="recovery"] .noor-r332-auth .noor-welcome-submit { margin-block-start: 5px; }
+}
+
+.noor-admin-entry-gateway .noor-admin-entry-panel {
+  min-height: calc(var(--noor-admin-viewport, 100dvh) - max(10px, env(safe-area-inset-top, 0px)) - max(10px, env(safe-area-inset-bottom, 0px)));
+}
+
+.noor-admin-entry-gateway .noor-login-tagline {
+  color: var(--ng-ink);
+  font-weight: 700;
+}
+
+.noor-admin-entry-gateway.noor-login-gateway .noor-r332-auth {
+  min-height: 350px;
+  padding-block: 25px 8px !important;
+}
+
+.noor-admin-entry-gateway[data-auth-mode="admin-verify"] .noor-r332-auth {
+  min-height: 286px;
+}
+
+.noor-admin-entry-gateway[data-auth-mode="admin-enroll"] .noor-r332-auth {
+  min-height: 224px;
+  padding-block-end: 10px !important;
+}
+
+.noor-admin-entry-gateway[data-auth-mode="admin-recover-request"] .noor-r332-auth {
+  min-height: 286px;
+  padding-block: 26px 8px !important;
+}
+
+.noor-admin-entry-panel[data-step="verify-setup"] .noor-r332-auth > button + button {
+  margin-block-start: 0;
+}
+
+.noor-admin-entry-gateway .noor-login-title {
+  margin-block-end: 13px;
+}
+
+.noor-admin-entry-gateway.noor-login-gateway .noor-r332-auth .noor-welcome-form {
+  gap: 10px !important;
+}
+
+.noor-admin-entry-gateway.noor-login-gateway .noor-r332-auth .noor-welcome-submit {
+  margin-block-start: 7px;
+}
+
+.noor-admin-entry-gateway[data-auth-mode="admin-verify"] .noor-r332-auth .noor-welcome-submit {
+  margin-block-start: 12px;
+}
+
+.noor-admin-entry-gateway[data-auth-mode="admin-recover-request"] .noor-r332-auth .noor-welcome-submit {
+  margin-block-start: 13px;
+}
+
+.noor-admin-entry-gateway .noor-auth-return-r312 {
+  display: block;
+  min-height: 44px;
+  margin: 5px auto 0;
+  padding: 0 10px;
+  color: var(--login-link);
+  font-size: 14px;
+}
+
+.noor-admin-entry-gateway .noor-login-field input[name="password"] {
+  padding-inline: 12px;
+}
+
+.noor-admin-entry-gateway .noor-login-field .na315-code {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .42em;
+  text-indent: .42em;
+  text-align: center;
+}
+
+.noor-admin-entry-panel .noor-account-request-receipt {
+  max-height: calc(var(--noor-admin-viewport, 100dvh) - 32px);
+}
+
+.noor-admin-setup-dialog {
+  padding-block-start: 25px;
+}
+
+.noor-admin-setup-dialog h2 { margin: 5px 25px 10px; }
+.noor-admin-entry-gateway .noor-admin-setup-dialog .noor-auth-return-r312 { margin-block-start: 0; }
+.noor-admin-setup-dialog .noor-account-request-receipt-return { margin-block-start: 8px; }
+
+.noor-admin-setup-qr {
+  display: block;
+  box-sizing: border-box;
+  width: 126px;
+  aspect-ratio: 1;
+  object-fit: contain;
+  margin: 12px auto 6px;
+  border: 1px solid #d7e1eb;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.noor-admin-setup-key {
+  display: block;
+  margin: 15px 0 7px;
+  padding: 12px 9px;
+  border: 1px solid #cfdce7;
+  border-radius: 10px;
+  background: var(--login-field);
+  color: var(--ng-ink);
+  font: 650 14px/1.5 ui-monospace, monospace;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+@media (min-height: 551px) and (max-height: 740px) {
+  .noor-admin-entry-gateway .noor-login-brand { gap: 7px; padding-block-end: 19px; }
+  .noor-admin-entry-gateway .noor-login-brand img { width: 64px; }
+}
+
+.noor-admin-entry-gateway .noor-admin-entry-panel[data-compact-viewport] {
+  min-height: 0;
+  grid-template-rows: auto auto auto;
+}
+
+.noor-admin-entry-panel[data-compact-viewport] .noor-login-brand { gap: 3px; padding-block-end: 8px; }
+.noor-admin-entry-panel[data-compact-viewport] .noor-login-brand img { display: none; }
+.noor-admin-entry-panel[data-compact-viewport] .noor-login-title { font-size: 19px; margin-block-end: 8px; }
+.noor-admin-entry-gateway .noor-admin-entry-panel[data-compact-viewport] .noor-r332-auth {
+  min-height: 0;
+  padding-block: 12px 6px !important;
+}
+.noor-admin-entry-gateway .noor-admin-entry-panel[data-compact-viewport] .noor-welcome-form { gap: 7px !important; }
+.noor-admin-entry-gateway .noor-admin-entry-panel[data-compact-viewport] .noor-welcome-submit { margin-block-start: 5px; }
+.noor-admin-entry-panel[data-compact-viewport] .noor-admin-setup-dialog { padding-block: 17px; }
+.noor-admin-entry-panel[data-compact-viewport] .noor-admin-setup-qr { width: 104px; }
+
+.noor-r323-gateway[data-auth-mode="picker"] .noor-welcome-panel { width: min(100%, 630px) !important; }
+.noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth {
+  min-height: 0;
+  padding: 26px 28px 28px !important;
+}
+.noor-picker-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.noor-picker-heading .noor-login-title { margin: 0; }
+.noor-picker-appearance { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--login-label); }
+.noor-picker-appearance select {
+  font: inherit; color: var(--ng-ink); min-height: 38px; padding-inline: 10px;
+  border: 1px solid #a9bbcb; border-radius: 10px; background: var(--login-field);
+}
+.noor-space-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.noor-space-option {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr) 18px; align-items: center; gap: 12px;
+  min-height: 84px; padding: 11px 14px; color: var(--ng-ink);
+  border: 1px solid #a9bbcb; border-radius: 13px;
+  background: var(--login-field); text-decoration: none;
+}
+.noor-space-option img { display: block; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+.noor-space-option strong { font: 700 19px/1.4 Arial, sans-serif; text-align: right; }
+.noor-space-option svg { color: var(--login-link); }
+.noor-space-option:is(:hover, :focus-visible) { outline: 2px solid var(--ng-focus); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-welcome-panel { width: min(100%, 344px) !important; }
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth { padding: 20px 18px !important; }
+  .noor-space-choices { grid-template-columns: 1fr; gap: 9px; }
+  .noor-space-option { min-height: 68px; }
+}
+.noor-r323-gateway[data-auth-mode="picker"] .noor-login-tagline {
+  color: var(--ng-ink);
+  font-weight: 700;
+}
+
+@media (max-height: 550px) {
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-welcome-panel {
+    min-height: 0;
+    grid-template-rows: auto auto auto;
+  }
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth { padding-block: 12px !important; }
+  .noor-picker-heading { margin-bottom: 10px; }
 }

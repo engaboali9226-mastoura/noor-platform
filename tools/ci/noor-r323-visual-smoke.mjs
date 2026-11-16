@@ -36,11 +36,13 @@ try{
  'const root=createRoot(document.getElementById("root")!);',
  'const isLogin=new URLSearchParams(location.search).get("screen")==="login";',
  'const isSelector=new URLSearchParams(location.search).get("screen")==="selector";',
+ 'const setupFactor=new URLSearchParams(location.search).get("factor")==="new";',
  'import {applyAppearance,readAppearance} from "./src/appearance-preference-store";',
  'applyAppearance(readAppearance());',
- 'const accountService={requestPasswordReset:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,registerPendingAccount:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,completePasswordRecovery:async()=>"updated" as const,requestEmailChange:async()=>"sent" as const};',
+ 'const accountService={requestPasswordReset:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,registerPendingAccount:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,completePasswordRecovery:async(password:string)=>password==="ExpiredFixture!"?"invalid" as const:"updated" as const,requestEmailChange:async()=>"sent" as const};',
  'const appointments=[{id:"visual-appointment-1",kind:"Task",title:"اجتماع فريق العمل",state:"Active",category:"العمل",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-07",time:"15:00"}},{id:"visual-appointment-2",kind:"Task",title:"موعد طبي",state:"Active",category:"الصحة",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-08",time:"10:00"}}];',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>({signIn:async()=>"challenge-needed",enroll:async()=>null,verify:async()=>"invalid",accessToken:async()=>null,signOut:async()=>{}})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
+ 'const adminService={signIn:async()=>setupFactor?"enroll-needed" as const:"challenge-needed" as const,enroll:async()=>({factorId:"fixture",qrSvg:`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>`,secret:"TEST-KEY"}),verify:async(code:string)=>code==="123456"?"aal2" as const:"invalid" as const,accessToken:async()=>null,signOut:async()=>{}};',
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
  vite=spawn("npm",["--workspace","apps/web","run","dev","--","--host","127.0.0.1","--port","5179","--strictPort"],{stdio:"inherit",env:{...process.env,VITE_NOOR_SUPABASE_URL:"http://127.0.0.1:54321",VITE_NOOR_SUPABASE_PUBLISHABLE_KEY:"sb_publishable_noor_browser_fixture"}});
@@ -101,17 +103,26 @@ try{
   await run("document.activeElement.blur()");
   await snap(screen.name+"-login");
   await cdp("Page.navigate",{url:url+"?screen=selector"});
-  await find(".noor-welcome-app-card");
-  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>{const width=x.getBoundingClientRect().width;return width>=48&&width<=64&&x.querySelector('img').naturalWidth>0})","Both scoped circular logos are compact and decoded");
-  await expect("document.documentElement.scrollWidth<=innerWidth+1","Application picker fits viewport");
+  await find(".noor-space-option");
   await expect(`(() => {
-   const cards = [...document.querySelectorAll('.noor-welcome-app-card')];
+   const main = document.querySelector('main[data-auth-mode=picker]');
+   const cards = [...main.querySelectorAll('.noor-space-option')];
    const [personal, work] = cards.map(card => card.getBoundingClientRect());
-   return cards.length === 2 &&
-    cards.map(card => card.getAttribute('href')).join(',') === '/personal,/work' &&
-    (innerWidth >= 720 ? Math.abs(personal.top - work.top) < 1 && work.right < personal.left
-     : personal.bottom < work.top) && work.bottom <= innerHeight;
-  })()`,"Application links fit side by side on desktop and stack on mobile");
+   const panel = main.querySelector('.noor-r332-auth').getBoundingClientRect();
+   return cards.length === 2 && main.querySelector('.noor-login-brand img').naturalWidth > 0
+    && cards.map(card => card.querySelector('strong').textContent.trim()).join(',') === 'Noor Personal,Noor Work'
+    && cards.every(card => card.querySelector('img').naturalWidth > 0 && card.querySelector('img').clientWidth === 42)
+    && cards.map(card => card.getAttribute('href')).join(',') === '/personal,/work'
+    && Math.abs((panel.top + panel.bottom) / 2 - innerHeight / 2) <= 4
+    && document.documentElement.scrollWidth <= innerWidth
+    && (innerWidth > 600 ? Math.abs(personal.top - work.top) < 1 && work.right < personal.left
+     : personal.bottom < work.top) && work.bottom <= innerHeight
+    && main.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom <= innerHeight;
+  })()`,"Personal and Work match the approved artwork, centered layout, labels and compact logos");
+  for(const path of ["/personal","/work"]){
+   await run(`document.querySelector('.noor-space-option[href="${path}"]').click()`);
+   await expect(`window.pickerDestination===${JSON.stringify(path)}`,"Workspace card opens its existing destination");
+  }
   await snap(screen.name+"-selector");
   await run("(()=>{const s=document.querySelector('[aria-label=\\\"اختيار ألوان المنصة\\\"]');s.value='beige';s.dispatchEvent(new Event('change',{bubbles:true}))})()");
   await expect("document.documentElement.dataset.noorAppearance==='beige'&&localStorage.getItem('noor:appearance:v1')==='beige'","Beige selection applied and persisted");
@@ -227,20 +238,183 @@ try{
   }
   await run("document.querySelector('.noor-account-request-receipt-return').click()");
   await expect("document.querySelector('main').dataset.authMode==='login'&&!document.querySelector('.noor-account-request-receipt')","Reset receipt returns to the login view");
+
+  if(screen.mobile)await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,mobile:true,deviceScaleFactor:1});
+  await cdp("Page.navigate",{url:url+"?screen=login&auth=recovery"});
+  await find('main[data-auth-mode="recovery"] input[name=passwordConfirm]');
+  await expect(`(() => {
+    const card = document.querySelector('.noor-r332-auth').getBoundingClientRect();
+    const fields = [...document.querySelectorAll('.noor-login-field input')];
+    return document.querySelector('h1').textContent.trim() === 'تعيين كلمة مرور جديدة'
+      && document.querySelector('.noor-login-brand img').naturalWidth > 0
+      && Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
+      && fields.length === 2 && fields.every(input => input.type === 'password'
+        && input.autocomplete === 'new-password' && input.minLength === 8
+        && parseFloat(getComputedStyle(input).fontSize) >= 16)
+      && !document.querySelector('.noor-account-request-receipt, .noor-welcome-description');
+  })()`,"Recovery callback matches the approved two-field layout");
+  await snap(screen.name+"-new-password");
+  const submitNewPassword = (password, confirmation) => run(`(() => {
+    const form = document.querySelector('form');
+    form.elements.password.value = ${JSON.stringify(password)};
+    form.elements.passwordConfirm.value = ${JSON.stringify(confirmation)};
+    form.requestSubmit();
+  })()`);
+  await submitNewPassword("ValidFixturePass!","DifferentFixturePass!");
+  await expect("document.querySelector('.noor-welcome-error')?.textContent.includes('غير متطابقتين')&&!document.querySelector('dialog')","Password confirmation is checked");
+  await submitNewPassword("ExpiredFixture!","ExpiredFixture!");
+  await expect("document.querySelector('.noor-welcome-error')?.textContent.includes('رابط الاستعادة غير صالح')&&!document.querySelector('dialog')","Expired links can be retried without a success receipt");
+  await submitNewPassword("ValidFixturePass!","ValidFixturePass!");
+  await find(".noor-account-request-receipt:modal");
+  await expect(`(() => {
+    const dialog = document.querySelector('.noor-account-request-receipt');
+    const box = dialog.getBoundingClientRect();
+    return document.querySelector('main').dataset.authMode === 'login'
+      && location.pathname === '/' && !location.search && !location.hash
+      && !document.querySelector('input[name=password]').value
+      && dialog.querySelector('h2').textContent === 'تم تغيير كلمة المرور'
+      && document.activeElement === dialog.querySelector('.noor-account-request-receipt-return')
+      && box.top >= 0 && box.bottom <= visualViewport.height;
+  })()`,"A successful password update clears the fields and opens confirmation over login");
+  await snap(screen.name+"-new-password-receipt");
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await expect("document.querySelector('main').dataset.authMode==='login'&&!document.querySelector('.noor-account-request-receipt')","Password confirmation closes on sign-in");
   if(screen.mobile){
+   await cdp("Emulation.setDeviceMetricsOverride",{width:390,height:480,mobile:true,deviceScaleFactor:1});
    await run("document.querySelector('input[name=email]').focus()");
    await expect("document.activeElement.getBoundingClientRect().bottom<=visualViewport.height&&visualViewport.scale===1","Focused field fits the reduced mobile viewport");
    await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=visualViewport.height","Login controls fit the reduced mobile viewport");
    await snap(screen.name+"-focused");
-   await cdp("Page.navigate",{url:url+"?screen=admin"});
-   await find(".na315-panel input[name=email]");
-   await run("(()=>{const f=document.querySelector('.na315-panel form');f.elements.email.value='fixture@example.test';f.elements.password.value='fixture';f.requestSubmit()})()");
-   await find(".na315-code");
-   await run("document.querySelector('.na315-code').focus()");
-   await expect("(()=>{const input=document.querySelector('.na315-code'),panel=document.querySelector('.na315-panel'),r=panel.getBoundingClientRect();return document.activeElement===input&&parseFloat(getComputedStyle(input).fontSize)>=16&&r.bottom<=visualViewport.height&&r.right<=innerWidth&&input.getBoundingClientRect().bottom<=r.bottom})()","MFA code and panel fit reduced viewport without zoom");
-   await snap(screen.name+"-admin-code");
    await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,deviceScaleFactor:1,mobile:true});
   }
+  await cdp("Page.navigate",{url:url+"?screen=admin"});
+  await find(".noor-admin-entry-panel input[name=email]");
+  const checkAdminLayout = (mode, fields) => expect(`(() => {
+    const main = document.querySelector('main');
+    const card = main.querySelector('.noor-r332-auth').getBoundingClientRect();
+    return main.dataset.authMode === ${JSON.stringify(mode)}
+      && main.querySelector('.noor-login-brand img').naturalWidth > 0
+      && main.querySelectorAll('.noor-login-field input').length === ${fields}
+      && Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
+      && main.querySelector('a[href="/"]').getBoundingClientRect().bottom <= innerHeight
+      && !main.querySelector('.na315-caution, .noor-r329-brand-header');
+  })()`,"Administrator form matches the approved centered layout");
+  const submitAdminLogin = () => run(`(() => {
+    const form = document.querySelector('.noor-admin-entry-panel form');
+    form.elements.email.value = 'fixture@example.test';
+    form.elements.password.value = 'fixture';
+    form.requestSubmit();
+  })()`);
+  await checkAdminLayout("admin-login",2);
+  await snap(screen.name+"-admin-login");
+  await submitAdminLogin();
+  await find("main[data-auth-mode='admin-verify'] .na315-code");
+  await checkAdminLayout("admin-verify",1);
+  await expect("document.querySelector('.na315-code').autocomplete==='one-time-code'&&document.querySelector('.noor-welcome-submit').disabled","Existing factor requires a six-digit code");
+  if(screen.mobile){
+   await cdp("Emulation.setDeviceMetricsOverride",{width:390,height:480,mobile:true,deviceScaleFactor:1});
+   await run("document.querySelector('.na315-code').focus()");
+   await expect(`(() => {
+     const field = document.querySelector('.na315-code');
+     const card = document.querySelector('.noor-r332-auth').getBoundingClientRect();
+     return document.activeElement === field && visualViewport.scale === 1
+       && parseFloat(getComputedStyle(field).fontSize) >= 16 && card.right <= innerWidth
+       && card.bottom <= visualViewport.height && field.getBoundingClientRect().bottom <= card.bottom;
+   })()`,"Focused administrator code and submit fit the reduced mobile viewport");
+   await snap(screen.name+"-admin-code-compact");
+   await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,mobile:true,deviceScaleFactor:1});
+  }
+  await run("document.querySelector('.na315-code').focus()");
+  await cdp("Input.insertText",{text:"123456"});
+  await expect("document.querySelector('.na315-code').value==='123456'&&!document.querySelector('.noor-welcome-submit').disabled","Six digits enable administrator verification");
+  await snap(screen.name+"-admin-code");
+  await run("document.querySelector('.noor-welcome-submit').click()");
+  await find(".na315-panel[data-step='complete']");
+  await cdp("Page.navigate",{url:url+"?screen=admin&factor=new"});
+  await find(".noor-admin-entry-panel input[name=email]");
+  await submitAdminLogin();
+  await find(".noor-admin-entry-panel[data-step='enroll']");
+  await expect("document.querySelector('.noor-login-title').textContent.trim()==='إضافة تطبيق المصادقة'&&!document.querySelector('.noor-admin-setup-dialog')","Enrollment starts with the approved create action");
+  await snap(screen.name+"-admin-enroll");
+  if (screen.mobile) await cdp("Emulation.setDeviceMetricsOverride",{width:320,height:380,mobile:true,deviceScaleFactor:1});
+  await run("document.querySelector('.noor-welcome-submit').click()");
+  await expect("document.querySelector('.noor-admin-setup-dialog:modal .noor-admin-setup-qr')?.naturalWidth>0","Enrollment opens a modal with the QR code");
+  const checkSetupFit = () => expect(`(() => {
+    const dialog = document.querySelector('.noor-admin-setup-dialog:modal');
+    const box = dialog.getBoundingClientRect();
+    const action = dialog.querySelector('.noor-account-request-receipt-return').getBoundingClientRect();
+    return box.left >= 0 && box.right <= visualViewport.width && box.top >= 0
+      && box.bottom <= visualViewport.height && action.bottom <= box.bottom
+      && dialog.scrollHeight <= dialog.clientHeight + 1;
+  })()`,"Enrollment dialog and its primary action fit without scrolling");
+  await checkSetupFit();
+  await snap(screen.name+"-admin-setup-qr");
+  await run("document.querySelector('.noor-admin-setup-dialog .noor-auth-return-r312').click()");
+  await expect("document.querySelector('.noor-admin-setup-dialog:modal .noor-admin-setup-key')?.textContent==='TEST-KEY'&&!document.querySelector('.noor-admin-setup-qr')","Manual setup key appears on request");
+  await checkSetupFit();
+  await snap(screen.name+"-admin-setup-key");
+  await run("document.querySelector('.noor-admin-setup-dialog .noor-auth-return-r312').click()");
+  await find(".noor-admin-setup-dialog:modal .noor-admin-setup-qr");
+  await cdp("Input.dispatchKeyEvent",{type:"keyDown",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
+  await cdp("Input.dispatchKeyEvent",{type:"keyUp",key:"Escape",code:"Escape",windowsVirtualKeyCode:27});
+  await expect("!document.querySelector('.noor-admin-setup-dialog')&&document.activeElement?.textContent.trim()==='عرض إعداد التطبيق'","Escape closes the modal and focuses the reopen action");
+  await run("[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='عرض إعداد التطبيق').click()");
+  await find(".noor-admin-setup-dialog:modal");
+  await run("document.querySelector('.noor-admin-setup-dialog .noor-account-request-receipt-return').click()");
+  await expect("!document.querySelector('.noor-admin-setup-dialog')&&document.activeElement?.classList.contains('na315-code')","Continue closes setup and focuses the verification code");
+  if (screen.mobile) await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,mobile:true,deviceScaleFactor:1});
+  await cdp("Input.insertText",{text:"123456"});
+  await expect("document.querySelector('.na315-code').value==='123456'&&!document.querySelector('.noor-welcome-submit').disabled","First-time verification enables submit at six digits");
+  await run("document.querySelector('.noor-welcome-submit').click()");
+  await find(".na315-panel[data-step='complete']");
+  await expect("!document.querySelector('.noor-admin-setup-dialog, .noor-admin-setup-key, .noor-admin-setup-qr')","Completion removes setup material from the page");
+  await cdp("Page.navigate",{url:url+"?screen=admin"});
+  await find("main[data-auth-mode=admin-login]");
+  await run("document.querySelector('.noor-auth-return-r312').click()");
+  await find("main[data-auth-mode=admin-recover-request] input[name=email]");
+  await checkAdminLayout("admin-recover-request",1);
+  await snap(screen.name+"-admin-recover-request");
+  const requestAdminLink = email => run(`(() => {
+    const form = document.querySelector('form');
+    form.elements.email.value = ${JSON.stringify(email)};
+    form.requestSubmit();
+  })()`);
+  await requestAdminLink("failed@example.test");
+  await find(".na315-error");
+  await expect("!document.querySelector('dialog')&&document.querySelector('input[name=email]').value==='failed@example.test'","Admin delivery failure keeps the address for retry");
+  await requestAdminLink("fixture@example.test");
+  await find(".noor-account-request-receipt:modal");
+  await expect("document.querySelector('dialog h2').textContent==='تم استلام طلب الاستعادة'&&!document.querySelector('input[name=email]').value","Admin recovery confirms a request without claiming an account exists");
+  await snap(screen.name+"-admin-recover-sent");
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await find("main[data-auth-mode=admin-login]");
+
+  await cdp("Page.navigate",{url:url+"?screen=admin&auth=recovery"});
+  await find("main[data-auth-mode=admin-recover-finish] input[name=confirm]");
+  await checkAdminLayout("admin-recover-finish",2);
+  await expect("[...document.querySelectorAll('input')].every(i=>i.minLength===12&&i.maxLength===128&&i.autocomplete==='new-password')","Administrator password minimum remains distinct");
+  await snap(screen.name+"-admin-recover-finish");
+  const submitAdminPassword = (password, confirm) => run(`(() => {
+    const form = document.querySelector('form');
+    form.elements.password.value = ${JSON.stringify(password)};
+    form.elements.confirm.value = ${JSON.stringify(confirm)};
+    form.requestSubmit();
+  })()`);
+  await submitAdminPassword("FixturePassword1!","FixturePassword2!");
+  await expect("document.querySelector('.na315-error')?.textContent.includes('غير متطابقتين')","Administrator confirmation rejects mismatched passwords");
+  await submitAdminPassword("ExpiredFixturePass!","ExpiredFixturePass!");
+  await expect("document.querySelector('.na315-error')?.textContent.includes('الرابط منتهي')&&!document.querySelector('dialog')","Expired administrator link shows retry state");
+  await submitAdminPassword("FixturePassword1!","FixturePassword1!");
+  await find(".noor-account-request-receipt:modal");
+  await expect("location.pathname==='/admin/security'&&!location.search&&document.querySelector('main').dataset.authMode==='admin-login'&&!document.querySelector('input[name=password]').value&&document.querySelector('dialog h2').textContent==='تم تغيير كلمة المرور'","Update clears the form and returns to sign-in with confirmation");
+  if (screen.mobile) {
+   await cdp("Emulation.setDeviceMetricsOverride",{width:320,height:420,mobile:true,deviceScaleFactor:1});
+   await expect("document.querySelector('dialog').getBoundingClientRect().bottom<=visualViewport.height","Administrator recovery confirmation fits a short viewport");
+   await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,mobile:true,deviceScaleFactor:1});
+  }
+  await snap(screen.name+"-admin-recover-saved");
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await expect("!document.querySelector('dialog')&&document.querySelector('main').dataset.authMode==='admin-login'","Recovery receipt closes on administrator sign-in");
   await cdp("Page.navigate",{url:url+"?screen=personal"});
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");

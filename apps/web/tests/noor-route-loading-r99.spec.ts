@@ -134,7 +134,7 @@ test("R99 transition matches the Personal surface and preserves real failure sta
   assert.doesNotMatch(unavailable, /noor-entry-screen/);
 });
 
-test("R99 sign-in has its own title and the launcher and loading retain the welcome", () => {
+test("R99 sign-in has its own title and the launcher has its own title and loading retains the welcome", () => {
   const signIn = renderToStaticMarkup(
     createElement(PlatformShell, {
       state: { kind: "no-application-selected" },
@@ -152,7 +152,7 @@ test("R99 sign-in has its own title and the launcher and loading retain the welc
       authenticationState: "authenticated",
     }),
   );
-  assert.match(gateway, /مرحبا بك في منصة نور/u);
+  assert.match(gateway, /<h1[^>]*>اختر مساحتك<\/h1>/u);
   assert.doesNotMatch(gateway, /<h1 class="glass-title">Welcome<\/h1>/u);
 
   for (const lifecycleState of ["idle", "bootstrapping"] as const) {

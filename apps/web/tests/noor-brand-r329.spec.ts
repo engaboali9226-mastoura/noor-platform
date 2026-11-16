@@ -33,9 +33,9 @@ test("R329 scope-specific headers and circular logos have accessible names",()=>
   assert.ok(logo.includes('src="'+NOOR_BRAND[scope].logo+'"'));assert.ok(logo.includes('alt="'+NOOR_BRAND[scope].label+'"'));
  }
 });
-test("R329 authenticated selector uses Platform header and two distinct circular logos",()=>{
+test("R329 authenticated selector uses shared sign-in branding and two distinct circular logos",()=>{
  const h=renderToStaticMarkup(createElement(PlatformShell,{state:{kind:"no-application-selected"},authenticationState:"authenticated",navigate:()=>{}}));
- for(const name of ["platform-header.webp","personal-logo.webp","work-logo.webp"])assert.ok(h.includes("/brand/"+name),name);
+ for(const name of ["login-calligraphy.webp","personal-logo.webp","work-logo.webp"])assert.ok(h.includes("/brand/"+name),name);
 });
 test("R329 Work initial loading uses Work header",()=>{
  const h=renderToStaticMarkup(createElement(NoorWorkTeacherViewR264));assert.match(h,/src="\/brand\/work-header\.webp"/u);
