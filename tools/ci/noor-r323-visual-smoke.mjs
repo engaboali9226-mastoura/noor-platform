@@ -434,10 +434,11 @@ try{
     const prayers = [...document.querySelectorAll('.np-r339-overlay .np-prayer-times .np-prayer')].map(p => p.getBoundingClientRect());
     return prayers.length===5 && prayers.every((p,i) => p.width>=200 && p.height<=64 && (i===0 || p.top>prayers[i-1].bottom));
   })()`,"Each prayer is a readable full-width row");
+  await expect(visible("[data-testid=night-countdown-midnight]")+"&&"+visible("[data-testid=night-countdown-last-third]"),"Both night countdowns visible in the prayer sheet");
   await snap(screen.name+"-prayer-details");
   await run("document.querySelector('.np-r339-overlay .np-r331-sheet header button').click()");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
-  await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return b.bottom<=k.top+1&&k.bottom<=a.top+1&&Math.abs(p.width-p.height)<1&&getComputedStyle(s).borderTopLeftRadius==='50%'})()","Daily, weekly and drinks cards ordered without overlap");
+  await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return b.bottom<=k.top+1&&k.bottom<=a.top+1&&a.height<=200&&p.height<=34})()","Daily, weekly and drinks cards ordered without overlap");
   await expect("getComputedStyle(document.querySelector('.np-r323-header .np-brand'),'::before').display==='none'","No duplicated header art");
   await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),ring=c?.querySelector('.np-r332-week-ring'),rows=c?.querySelectorAll('.np-r332-week-counts>div'),bars=c?.querySelectorAll('.np-week-day .np-week-value');if(!c||!ring||rows?.length!==3||bars?.length!==7)return false;const b=c.getBoundingClientRect(),r=ring.getBoundingClientRect();return r.width>=80&&r.height>=80&&b.left>=-1&&b.right<=innerWidth+1&&Array.from(bars).every(x=>Math.abs(x.getBoundingClientRect().top-bars[0].getBoundingClientRect().top)<2)})()","R332 approved weekly ring, three count rows and seven aligned daily bars fit screen");
   await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),days=c?.querySelector('.np-week-days'),cells=days?.querySelectorAll('[data-week-date]');return !!days&&cells?.length===7&&getComputedStyle(days).direction==='rtl'&&cells[0].getBoundingClientRect().left>cells[6].getBoundingClientRect().left&&!c.querySelector('.np-r332-week-note')})()","R333 Saturday starts at the right and the weekly footer is absent");
@@ -545,7 +546,11 @@ try{
      await expect(`(() => {
        const rect = selector => document.querySelector(selector).getBoundingClientRect();
        const wordmark = rect(".np-r339-wordmark"), actions = rect(".np-top-actions"), settings = rect(".np-r340-settings");
-       return actions.right <= wordmark.left + 1 && wordmark.right <= settings.left + 1;
+       const profile = rect(".np-top-actions .np-r339-profile"), bell = rect(".np-r338-bell");
+       const brand = rect(".np-r339-brand");
+       const centered = box => Math.abs((box.top + box.bottom - brand.top - brand.bottom) / 2) < 2;
+       return actions.right <= wordmark.left + 1 && wordmark.right <= settings.left + 1 &&
+         [profile, bell, settings].every(box => centered(box) && Math.abs(box.width-profile.width)<1);
      })()`,"Header shortcuts fit width "+viewport.width);
      await snap(viewport.width+"-"+daylight+"-"+weather);
    }

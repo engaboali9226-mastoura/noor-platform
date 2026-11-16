@@ -54,6 +54,17 @@ export function remainingEventR332(atMs:number,nowMs:number):string{
  const time=[Math.floor(seconds%86400/3600),Math.floor(seconds%3600/60),seconds%60].map(n=>String(n).padStart(2,"0")).join(":");
  return days?days+" يوم · "+time:time;
 }
+export function remainingAppointment(atMs: number, nowMs: number): string {
+ const remaining = atMs - nowMs;
+ if (!Number.isFinite(remaining)) return "—";
+ if (remaining <= 0) return "حان الموعد";
+ const minutes = Math.ceil(remaining / 60000);
+ if (remaining <= 86400000) return `${Math.floor(minutes / 60)} س ${String(minutes % 60).padStart(2, "0")} د`;
+ const days = Math.floor(remaining / 86400000);
+ return days === 1 ? "يوم واحد" : days === 2 ? "يومان" : `${days} ${days <= 10 ? "أيام" : "يومًا"}`;
+}
+const eventRemaining = (event: ScheduleEvent, nowMs: number) =>
+ event.kind === "personal" ? remainingAppointment(event.atMs, nowMs) : remainingEventR332(event.atMs, nowMs);
 const clock=(ms:number,zone:string)=>new Intl.DateTimeFormat("ar-SA-u-nu-latn",{timeZone:zone,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(ms));
 const dateLabel=(ms:number,zone:string)=>new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{timeZone:zone,weekday:"long",day:"numeric",month:"long"}).format(new Date(ms));
 export function UnifiedUpcomingR324({definitions,religiousEvents,nowMs,timeZone,onAdd,personalDefault=false}:{definitions:readonly UpcomingDefinitionR301[];religiousEvents:readonly ReligiousEventR324[];nowMs:number;timeZone:string;onAdd?:()=>void;personalDefault?:boolean}):ReactElement{
@@ -69,8 +80,8 @@ export function UnifiedUpcomingR324({definitions,religiousEvents,nowMs,timeZone,
  <section className="np-r322-appointments-sheet np-r324-schedule-sheet np-r332-schedule-sheet" onKeyDown={event=>{if(event.key!=="Tab")return;const controls=Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)"));const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}} role="dialog" aria-modal={open} aria-label="جميع المواقيت القادمة" dir="rtl">
  <header className="np-r322-sheet-head"><div><h2>{personalDefault?"المواعيد":"المواقيت القادمة"}</h2><p>مرتبة زمنيًا حسب موقعك وسياسة الصلاة</p></div><button type="button" data-r324-close-upcoming aria-label="إغلاق المواعيد" onClick={()=>setOpen(false)}>×</button></header>
  <div className="np-r324-schedule-filters">{([["all","الكل"],["religious","الصلوات والليل"],["personal","مواعيدي"]] as const).map(([id,label])=><button type="button" key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)}>{label}</button>)}</div>
- {filtered[0]?<div className="np-r324-schedule-hero"><span>الموعد الأقرب</span><strong>{filtered[0].title}</strong><b dir="ltr" role="timer">{remainingEventR332(filtered[0].atMs,nowMs)}</b><small>{dateLabel(filtered[0].atMs,timeZone)} · {clock(filtered[0].atMs,timeZone)}</small></div>:null}
- <div className="np-r324-schedule-list">{filtered.map((e,i)=><div key={e.id}>{(i===0||localParts(e.atMs,timeZone).slice(0,10)!==localParts(filtered[i-1]!.atMs,timeZone).slice(0,10))?<h3>{dateLabel(e.atMs,timeZone)}</h3>:null}<article className="np-r324-event-row" data-testid={"r324-event-"+e.kind}><span className="np-r332-event-icon" aria-hidden="true"><NoorR323Icon name={e.kind==="prayer"?"mosque":e.kind==="personal"?"check":"bars"}/></span><div className="np-r332-event-copy"><strong>{e.title}</strong><small>{e.detail} · <time dateTime={new Date(e.atMs).toISOString()}>{clock(e.atMs,timeZone)}</time></small></div><div className="np-r332-event-countdown"><small>المتبقي</small><b dir="ltr" role="timer" aria-label={"المتبقي على "+e.title}>{remainingEventR332(e.atMs,nowMs)}</b></div></article></div>)}</div>
+ {filtered[0]?<div className="np-r324-schedule-hero"><span>الموعد الأقرب</span><strong>{filtered[0].title}</strong><b dir="auto" role="timer">{eventRemaining(filtered[0],nowMs)}</b><small>{dateLabel(filtered[0].atMs,timeZone)} · {clock(filtered[0].atMs,timeZone)}</small></div>:null}
+ <div className="np-r324-schedule-list">{filtered.map((e,i)=><div key={e.id}>{(i===0||localParts(e.atMs,timeZone).slice(0,10)!==localParts(filtered[i-1]!.atMs,timeZone).slice(0,10))?<h3>{dateLabel(e.atMs,timeZone)}</h3>:null}<article className="np-r324-event-row" data-testid={"r324-event-"+e.kind}><span className="np-r332-event-icon" aria-hidden="true"><NoorR323Icon name={e.kind==="prayer"?"mosque":e.kind==="personal"?"check":"bars"}/></span><div className="np-r332-event-copy"><strong>{e.title}</strong><small>{e.detail} · <time dateTime={new Date(e.atMs).toISOString()}>{clock(e.atMs,timeZone)}</time></small></div><div className="np-r332-event-countdown"><small>المتبقي</small><b dir="auto" role="timer" aria-label={"المتبقي على "+e.title}>{eventRemaining(e,nowMs)}</b></div></article></div>)}</div>
  {!filtered.length?<p role="status">لا توجد مواقيت في هذا القسم.</p>:null}
  <p className="np-r324-schedule-note">يظهر كل توقيت مستقبلي متاح من مصدر نور المعتمد. لا تُقدّر المواقيت غير المتوفرة من أوقات يوم آخر.</p>
  {onAdd?<button type="button" className="np-r324-add-event" data-testid="r302-add-countdown" onClick={()=>{setOpen(false);onAdd();}}>+ إضافة موعد شخصي</button>:null}
@@ -78,7 +89,7 @@ export function UnifiedUpcomingR324({definitions,religiousEvents,nowMs,timeZone,
  return <section className="np-card np-upcoming-r301 np-upcoming-r303 np-r324-upcoming" data-testid="r301-upcoming-countdowns" data-countdown-empty={!events.length} aria-label="المواقيت القادمة">
  <header className="np-r324-upcoming-head"><span className="np-r324-clock-icon" aria-hidden="true"><NoorR323Icon name="calendar"/></span><h2>{personalDefault?"الموعد القادم":"المواقيت القادمة"}</h2></header>
  <button className="np-r324-next-event" type="button" onClick={show} aria-haspopup="dialog" aria-expanded={open} data-testid="r322-open-appointments">
- {next?<><strong>{next.title}</strong><b dir="ltr" role="timer">{next.atMs>nowMs?countdown(next.atMs,nowMs):"حان الموعد"}</b><small>{dateLabel(next.atMs,timeZone)} · {clock(next.atMs,timeZone)}</small></>:<small>{personalDefault?"لا مواعيد قادمة":"لا توجد مواقيت مؤكدة بعد"}</small>}
+ {next?<><strong>{next.title}</strong><b dir="auto" role="timer">{next.kind==="personal"?remainingAppointment(next.atMs,nowMs):countdown(next.atMs,nowMs)}</b><small>{dateLabel(next.atMs,timeZone)} · {clock(next.atMs,timeZone)}</small></>:<small>{personalDefault?"لا مواعيد قادمة":"لا توجد مواقيت مؤكدة بعد"}</small>}
  <span>{personalDefault?"عرض المواعيد":"عرض جميع المواقيت"} ({featured.length}) ‹</span></button>
  {open?createPortal(overlay,document.body):overlay}</section>;
 }

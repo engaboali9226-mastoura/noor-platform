@@ -8,7 +8,7 @@ import {TaskSessionPlannerR254,TaskSessionListR254,sessionFinishedR254,sessionPr
 import {NoorBeverageTrackerR294,type BeverageRowR294} from "./noor-beverage-tracker-r294.js";
 import type {NoorBeveragePlanR294,NoorCountdownPlanR301} from "./noor-personal-today-client.js";
 import {UpcomingCountdownR301} from "./noor-upcoming-countdown-r301.js";
-import {appointmentInstantR324,remainingEventR332,religiousEventsR324} from "./noor-upcoming-events-r324.js";
+import {appointmentInstantR324,remainingAppointment,religiousEventsR324} from "./noor-upcoming-events-r324.js";
 import {shouldRefreshNoorOnResume} from "./noor-resume-sync-r259.js";
 import {revokeNoorBrowserSessionR269} from "./noor-session-logout-client-r269.js";
 import type {NoorTaskSessionDraft} from "./noor-personal-today-client.js";
@@ -3031,7 +3031,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       if(atMs===null||atMs<=nowMs)return [];
       return [{id:definition.id,title:definition.title,atMs,scheduledFor:new Date(atMs).toISOString(),when:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{
         timeZone:view.timeZone,weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit",hour12:true,
-      }).format(new Date(atMs)),remaining:remainingEventR332(atMs,nowMs)}];
+      }).format(new Date(atMs)),remaining:remainingAppointment(atMs,nowMs)}];
     })
     .sort((a,b)=>a.atMs-b.atMs)
     .slice(0,5)
@@ -3178,15 +3178,10 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         {eventTimes.filter(p=>R331_PRAYERS.includes(p.key as PrayerKeyR331)).map(prayer => {
           const [prayerClock,prayerPeriod] = formatTime(prayer.at,view.timeZone).split(/\s+/);
           const isNext = prayer.key === nextKey;
-          const isNightEvent = prayer.key === "midnight" || prayer.key === "last-third";
-          const lastThirdStarted=prayer.key==="last-third"&&nowMs>=Date.parse(prayer.at);
-           const countdownTarget=lastThirdStarted&&night?night.endsAt:prayer.at;
-           const nightRemaining=isNightEvent?remainingPrayerSeconds(countdownTarget,nowMs):0;
-          const showNightCountdown = isNightEvent && night?.enabled && nightRemaining > 0;
           const record=prayerRecords.find(r=>r.key===prayer.key);
           const prayerStarted=Date.parse(view.prayerTimes.find(p=>p.key===prayer.key)?.at??"")<=nowMs;
 
-          return <div className={`np-prayer ${isNext ? "is-next" : ""} ${isNightEvent ? "np-night-event" : ""}`} data-prayer-key={prayer.key} data-event-at={prayer.at} data-night-countdown-active={isNightEvent ? String(Boolean(night?.enabled)) : undefined} key={prayer.key}>
+          return <div className={`np-prayer ${isNext ? "is-next" : ""}`} data-prayer-key={prayer.key} data-event-at={prayer.at} key={prayer.key}>
             <span className="np-prayer-symbol">{prayerSymbol(prayer.key)}</span>
             <span className="np-prayer-label">{prayer.label}</span>
             {!historyDate?<span className="np-prayer-time"><span>{prayerClock}</span>{" "}<span className="np-prayer-period">{prayerPeriod}</span></span>:null}
@@ -3195,16 +3190,24 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
               <svg aria-hidden="true" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" stroke="currentColor" strokeWidth="1.5"/><path d="M12 7.8v4.6l3 1.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5"/></svg>
               <span className="np-countdown-digits">{formatCountdown(countdown)}</span>
             </span> : null}
-            {showNightCountdown ? <span className="np-countdown" aria-label={lastThirdStarted?"المتبقي من الثلث الأخير حتى الفجر":`المتبقي حتى ${prayer.label}`} data-testid={`night-countdown-${prayer.key}`}>
-              <svg aria-hidden="true" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" stroke="currentColor" strokeWidth="1.5"/><path d="M12 7.8v4.6l3 1.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5"/></svg>
-              <span className="np-countdown-digits">{formatCountdown(nightRemaining)}</span>
-            </span> : null}
           </div>;
         })}
       </div>
     </section>
 
-    <div className="np-r339-night-times">{eventTimes.filter(p=>p.key==="midnight"||p.key==="last-third").map(p=><div key={p.key}><strong>{p.label}</strong><span>{formatTime(p.at,view.timeZone)}</span></div>)}</div><section className="np-r339-friday-times"><h3>ساعات الجمعة الخمس</h3><div className="np-r339-friday-grid">{([1,2,3,4,5] as const).map(n=>{const hour=fridayHoursForPrayer?.find(h=>h.number===n),virtue=fridayVirtueR284(n);return <div key={n}><span aria-hidden="true">{virtue.icon}</span><strong>{["الأولى","الثانية","الثالثة","الرابعة","الخامسة"][n-1]}</strong>{hour?<small>{formatTime(new Date(hour.startMs).toISOString(),view.timeZone)} — {formatTime(new Date(hour.endMs).toISOString(),view.timeZone)}</small>:<small>—</small>}</div>})}</div></section></div></div>
+    <div className="np-r339-night-times">{night && ([
+      ["midnight", "منتصف الليل", night.midnight],
+      ["last-third", "الثلث الأخير", night.lastThird],
+    ] as const).map(([key,label,at])=>{
+      const started=nowMs>=Date.parse(at);
+      const countsToFajr=key==="last-third"&&started&&nowMs<Date.parse(night.endsAt);
+      const seconds=remainingPrayerSeconds(countsToFajr?night.endsAt:at,nowMs);
+      return <div key={key}>
+        <strong>{label}</strong><span>{formatTime(at,view.timeZone)}</span>
+        {seconds>0?<><small>{countsToFajr?"المتبقي حتى الفجر":key==="last-third"?"المتبقي حتى بدايته":"المتبقي حتى منتصف الليل"}</small>
+          <b role="timer" dir="ltr" data-testid={`night-countdown-${key}`}>{formatCountdown(seconds)}</b></>:<small>{key==="midnight"?"مضى منتصف الليل":"انتهى الثلث الأخير"}</small>}
+      </div>;
+    })}</div><section className="np-r339-friday-times"><h3>ساعات الجمعة الخمس</h3><div className="np-r339-friday-grid">{([1,2,3,4,5] as const).map(n=>{const hour=fridayHoursForPrayer?.find(h=>h.number===n),virtue=fridayVirtueR284(n);return <div key={n}><span aria-hidden="true">{virtue.icon}</span><strong>{["الأولى","الثانية","الثالثة","الرابعة","الخامسة"][n-1]}</strong>{hour?<small>{formatTime(new Date(hour.startMs).toISOString(),view.timeZone)} — {formatTime(new Date(hour.endMs).toISOString(),view.timeZone)}</small>:<small>—</small>}</div>})}</div></section></div></div>
     {prayerEditor?createPortal(<div className="np-r331-overlay" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setPrayerEditor(null);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label={"تسجيل صلاة "+prayerEditor.label} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setPrayerEditor(null);}}><header><h2>صلاة {prayerEditor.label}</h2><button type="button" disabled={busy} onClick={()=>setPrayerEditor(null)} aria-label="إغلاق تسجيل الصلاة">×</button></header><h3>كيفية الأداء</h3><div className="np-r331-options">{([["group","في جماعة"],["excused","منفردًا بعذر"],["unexcused","منفردًا دون عذر"]] as const).map(([mode,label])=><button type="button" key={mode} aria-pressed={prayerEditor.mode===mode} onClick={()=>setPrayerEditor({...prayerEditor,mode})}>{label}</button>)}</div><h3>وقت الأداء</h3><div className="np-r331-options">{([["ontime","في وقتها"],["late","بعد خروج وقتها"]] as const).map(([timing,label])=><button type="button" key={timing} aria-pressed={prayerEditor.timing===timing} onClick={()=>setPrayerEditor({...prayerEditor,timing})}>{label}</button>)}</div><p>{prayerDays.some(p=>p.date===achievementDate)?"يُحتسب الأداء وفق السياسة المعتمدة كمؤشر تنظيمي، وليس حكمًا شرعيًا.":"سجل مستقل عن أوزان المهام والعادات حتى اعتماد سياسة الصلوات."}</p>{prayerSaveError?<p role="alert">{prayerSaveError}</p>:null}<div className="np-r331-options"><button type="button" disabled={busy} onClick={()=>{void savePrayer()}}>حفظ الأداء</button>{prayerRecords.some(r=>r.key===prayerEditor.key)?<button type="button" disabled={busy} onClick={()=>{void savePrayer(true)}}>حذف التسجيل</button>:null}</div></section></div>,document.body):null}
 
 

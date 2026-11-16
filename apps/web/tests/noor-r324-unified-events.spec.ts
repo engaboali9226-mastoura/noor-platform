@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {religiousEventsR324,mergeUpcomingR324,appointmentInstantR324,remainingEventR332} from "../src/noor-upcoming-events-r324.js";
+import {religiousEventsR324,mergeUpcomingR324,appointmentInstantR324,remainingEventR332,remainingAppointment} from "../src/noor-upcoming-events-r324.js";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {UpcomingCountdownR301} from "../src/noor-upcoming-countdown-r301.js";
@@ -15,3 +15,11 @@ test("R324 shows verified prayer-only schedule and full filter controls even wit
 test("R324 preserves header and places single navigation in authenticated shell",()=>{const s=readFileSync(new URL("../src/noor-personal-application-view.tsx",import.meta.url),"utf8");assert.equal((s.match(/data-testid="r324-persistent-navigation"/g)||[]).length,1);assert.doesNotMatch(s,/aria-label="فتح مركز التحكم" className="np-icon-btn np-control-icon"/);assert.match(s,/data-testid="platform-topbar"/);assert.match(s,/data-testid="header-information"/);assert.doesNotMatch(s,/data-testid="r296-reconnect-button"/);assert.match(s,/np-reconnect-notice-r296/);assert.match(s,/onSectionChanged=/);assert.match(s,/initialQuickCreateKind/);assert.match(s,/religiousEvents=\{religiousEventsR324/);});
 
 test("R332 each event has a countdown including days",()=>{assert.equal(remainingEventR332(nowMs+90061000,nowMs),"1 يوم · 01:01:01");assert.equal(remainingEventR332(nowMs+61000,nowMs),"00:01:01");assert.equal(remainingEventR332(nowMs,nowMs),"حان الموعد");const html=renderToStaticMarkup(createElement(UpcomingCountdownR301,{definitions:[],nowMs,timeZone,religiousEvents:religiousEventsR324(input)}));assert.equal((html.match(/class="np-r332-event-countdown"/g)||[]).length,3);});
+
+test("personal appointments show days until the final 24 hours, then hours and minutes",()=>{
+ assert.equal(remainingAppointment(nowMs+11*86400000+3600000,nowMs),"11 يومًا");
+ assert.equal(remainingAppointment(nowMs+86400001,nowMs),"يوم واحد");
+ assert.equal(remainingAppointment(nowMs+86400000,nowMs),"24 س 00 د");
+ assert.equal(remainingAppointment(nowMs+61000,nowMs),"0 س 02 د");
+ assert.equal(remainingAppointment(nowMs,nowMs),"حان الموعد");
+});
