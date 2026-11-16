@@ -432,7 +432,7 @@ try{
   await expect("document.querySelectorAll('.np-r339-friday-grid>div').length===5","Five Friday hours retained");
   await expect(`(() => {
     const prayers = [...document.querySelectorAll('.np-r339-overlay .np-prayer-times .np-prayer')].map(p => p.getBoundingClientRect());
-    return prayers.length===5 && prayers.every((p,i) => p.width>=200 && (i===0 || p.top>prayers[i-1].bottom));
+    return prayers.length===5 && prayers.every((p,i) => p.width>=200 && p.height<=64 && (i===0 || p.top>prayers[i-1].bottom));
   })()`,"Each prayer is a readable full-width row");
   await snap(screen.name+"-prayer-details");
   await run("document.querySelector('.np-r339-overlay .np-r331-sheet header button').click()");

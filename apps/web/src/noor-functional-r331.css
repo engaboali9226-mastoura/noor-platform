@@ -531,6 +531,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-r339-overlay .np-prayer-card .np-prayer-times .np-prayer {
   display: grid !important;
   grid-template-columns: 24px minmax(0, 1fr) auto 48px;
+  grid-template-rows: auto !important;
   grid-auto-rows: auto !important;
   width: 100% !important;
   min-height: 35px !important;
@@ -555,3 +556,5 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   grid-row: 1 !important;
   position: static !important;
 }
+
+.np-page[data-appearance] .np-r339-overlay .np-prayer-time { flex-direction: row; gap: 3px; }
