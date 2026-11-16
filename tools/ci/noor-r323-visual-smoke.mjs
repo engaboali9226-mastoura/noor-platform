@@ -80,8 +80,16 @@ try{
   await snap(screen.name+"-login");
   await cdp("Page.navigate",{url:url+"?screen=selector"});
   await find(".noor-welcome-app-card");
-  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>{const width=x.getBoundingClientRect().width;return width>=84&&width<=112&&x.querySelector('img').naturalWidth>0})","Both scoped circular logos are compact and decoded");
+  await expect("Array.from(document.querySelectorAll('.noor-welcome-app-mark')).length===2&&Array.from(document.querySelectorAll('.noor-welcome-app-mark')).every(x=>{const width=x.getBoundingClientRect().width;return width>=48&&width<=64&&x.querySelector('img').naturalWidth>0})","Both scoped circular logos are compact and decoded");
   await expect("document.documentElement.scrollWidth<=innerWidth+1","Application picker fits viewport");
+  await expect(`(() => {
+   const cards = [...document.querySelectorAll('.noor-welcome-app-card')];
+   const [personal, work] = cards.map(card => card.getBoundingClientRect());
+   return cards.length === 2 &&
+    cards.map(card => card.getAttribute('href')).join(',') === '/personal,/work' &&
+    (innerWidth >= 720 ? Math.abs(personal.top - work.top) < 1 && work.right < personal.left
+     : personal.bottom < work.top) && work.bottom <= innerHeight;
+  })()`,"Application links fit side by side on desktop and stack on mobile");
   await snap(screen.name+"-selector");
   await run("(()=>{const s=document.querySelector('[aria-label=\\\"اختيار ألوان المنصة\\\"]');s.value='beige';s.dispatchEvent(new Event('change',{bubbles:true}))})()");
   await expect("document.documentElement.dataset.noorAppearance==='beige'&&localStorage.getItem('noor:appearance:v1')==='beige'","Beige selection applied and persisted");
@@ -136,6 +144,23 @@ try{
   await expect("document.documentElement.scrollWidth<=innerWidth+2","Dashboard horizontal overflow");
   await expect("document.querySelector('.np-r323-home-grid').querySelectorAll('.np-r323-rhythm').length===1","No duplicate timer");
   await expect("document.querySelectorAll(\'[data-testid=r331-announcement-board] .np-r331-board-grid>.np-r331-tile\').length===6&&document.querySelectorAll(\'#noor-r331-prayers [data-prayer-key]\').length===5&&!document.querySelector(\'[data-testid=r296-reconnect-button]\')","Six functional tiles, five prayers, no refresh icon");
+  await expect(`(() => {
+   const board = document.querySelector('[data-testid=r331-announcement-board]');
+   const tiles = [...board.querySelectorAll('.np-r331-board-grid > .np-r331-tile')];
+   const bounds = board.getBoundingClientRect();
+   const cells = tiles.map(tile => tile.getBoundingClientRect());
+   return cells.length === 6 && cells.every((cell, i) => {
+    const column = i % 3;
+    const row = Math.floor(i / 3);
+    return cell.width > 0 && cell.height > 0 &&
+     cell.left >= bounds.left && cell.right <= bounds.right && cell.bottom <= bounds.bottom &&
+     Math.abs(cell.top - cells[row * 3].top) < 1 &&
+     Math.abs(cell.left - cells[column].left) < 1 &&
+     Math.abs(cell.height - cells[0].height) < 1 &&
+     (column === 0 || cell.right < cells[i - 1].left) &&
+     (row === 0 || cell.top > cells[column].bottom);
+   });
+  })()`,"One outer card contains two aligned rows of three equal-height RTL tiles");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect("!document.querySelector(\'.np-r323-header [aria-label=\\\"فتح مركز التحكم\\\"]\')","No top control shortcut");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
