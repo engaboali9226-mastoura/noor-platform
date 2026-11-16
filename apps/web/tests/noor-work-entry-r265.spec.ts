@@ -16,7 +16,7 @@ test("R265: authenticated Noor gateway exposes working, accessible Work navigati
  const dom=new JSDOM(html);
  const work=dom.window.document.querySelector<HTMLAnchorElement>('a[href="/work"]');
  assert.ok(work,"Work must be an actual app link");
- assert.match(work.textContent??"",/noor work/);
+ assert.equal(work.textContent,"Noor Work");
  assert.doesNotMatch(work.className,/disabled/);
  assert.doesNotMatch(html,/قريبًا/);
  assert.ok(dom.window.document.querySelector('a[href="/personal"]'),"Personal remains accessible");

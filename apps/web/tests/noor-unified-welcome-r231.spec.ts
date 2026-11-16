@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import {applicationCatalog} from "@worktracker/core";
+import {JSDOM} from "jsdom";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {PlatformShell} from "../src/platform-shell.js";
@@ -50,7 +51,7 @@ test("R231 sign-in invalid/retry and success gateway retain brand without reveal
  assert.match(waiting,/disabled=""/u);
  const authorizedHome=markup({kind:"no-application-selected"},"authenticated");
  assert.match(authorizedHome,/href="\/personal"/u);
- assert.match(authorizedHome,/<strong[^>]*>noor personal<\/strong>/u);
+ assert.match(authorizedHome,/data-auth-mode="picker"/u);
  assert.doesNotMatch(authorizedHome,/name="password"/u);
  // A stale client "authenticated" flag MUST NOT bypass the direct-route gate.
  const stale=markup({kind:"authentication-required",application:personal,authenticationState:"authenticated"},"authenticated");
@@ -59,11 +60,11 @@ test("R231 sign-in invalid/retry and success gateway retain brand without reveal
 
 test("R337 app selector uses the approved English app names",()=>{
  const authorizedHome=markup({kind:"no-application-selected"},"authenticated");
- assert.match(authorizedHome,/<strong[^>]*lang="en"[^>]*dir="ltr"[^>]*>noor personal<\/strong>/u);
- assert.match(authorizedHome,/<strong[^>]*lang="en"[^>]*dir="ltr"[^>]*>noor work<\/strong>/u);
+ const dom=new JSDOM(authorizedHome);
+ const names=[...dom.window.document.querySelectorAll('nav strong[lang="en"][dir="ltr"]')];
+ assert.deepEqual(names.map(label=>label.textContent),["Noor Personal","Noor Work"]);
  assert.doesNotMatch(authorizedHome,/نور الشخصي|نور ورك/u);
- assert.match(source,/lang="en" dir="ltr">noor personal/u);
- assert.match(source,/lang="en" dir="ltr">noor work/u);
+ dom.window.close();
 });
 
 test("R231 protected access errors remain truthful but use branded styling",()=>{
