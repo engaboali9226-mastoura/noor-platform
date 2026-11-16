@@ -1,4 +1,5 @@
 export * from "./domain/model.js";
+export * from "./domain/personal-records.js";
 export * from "./domain/time.js";
 export * from "./domain/materialization.js";
 export * from "./ports.js";

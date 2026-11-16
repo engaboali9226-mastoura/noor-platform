@@ -8,7 +8,10 @@ import type {
     IsoInstant,
     LocalDate,
     LocationProfileRevision,
+    PersonalHistoricalEvent,
+    PersonalNotificationHistoryEntry,
     PersonalDay,
+    PersonalProfile,
     PrayerCalculation,
     PrayerTimePolicyRevision,
 } from "./domain/model.js";
@@ -85,6 +88,13 @@ export interface IslamicHistoryCatalogPort {
 }
 
 export interface FoundationTransaction {
+    getPersonalProfile?(userId:string): PersonalProfile | null;
+    savePersonalProfile?(userId:string,profile:PersonalProfile):void;
+    listHistoricalEvents?(userId:string): readonly PersonalHistoricalEvent[];
+    saveHistoricalEvent?(userId:string,event:PersonalHistoricalEvent):void;
+    deleteHistoricalEvent?(userId:string,eventId:string):void;
+    listNotificationHistory?(userId:string): readonly PersonalNotificationHistoryEntry[];
+    saveNotificationHistory?(userId:string,entry:PersonalNotificationHistoryEntry):void;
     getPrayerScorePolicyR334?(userId:string):import("./domain/completion-r331.js").PrayerScoreSnapshotR334|null;
     savePrayerScorePolicyR334?(userId:string,policy:import("./domain/completion-r331.js").PrayerScoreSnapshotR334):void;
     getFridayMosqueVisit?(userId:string,localDate:string):FridayMosqueVisit|null;
@@ -172,6 +182,9 @@ export interface LocalTransactionPort {
 }
 
 export interface PersonalFoundationSnapshotPort {
+    getPersonalProfile?(userId:string): PersonalProfile | null;
+    listHistoricalEvents?(userId:string): readonly PersonalHistoricalEvent[];
+    listNotificationHistory?(userId:string): readonly PersonalNotificationHistoryEntry[];
     getPrayerScorePolicyR334?(userId:string):import("./domain/completion-r331.js").PrayerScoreSnapshotR334|null;
     listDailyIslamicContexts?(userId:string):readonly DailyIslamicContext[];
     listFridayMosqueVisits?(userId:string):readonly FridayMosqueVisit[];

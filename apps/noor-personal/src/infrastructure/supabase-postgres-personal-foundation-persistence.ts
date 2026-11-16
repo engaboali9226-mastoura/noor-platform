@@ -1,4 +1,5 @@
 import {validPrayerScoreSnapshotR334,type PrayerScoreSnapshotR334} from "../domain/completion-r331.js";
+import {validPersonalHistoricalEvent,validPersonalNotificationHistoryEntry,validPersonalProfile} from "../domain/personal-records.js";
 import { emptyFinanceLedger, financeSummary, type FinanceLedger } from "../domain/model.js";
 import type {
   SupabaseClient,
@@ -11,7 +12,10 @@ import type {
   ExecutionDefinition,
   IsoInstant,
   LocationProfileRevision,
+    PersonalHistoricalEvent,
+    PersonalNotificationHistoryEntry,
   PersonalDay,
+    PersonalProfile,
   PrayerTimePolicyRevision,
 } from "../domain/model.js";
 
@@ -104,6 +108,9 @@ export interface NoorPersonalFoundationDatabase {
 }
 
 interface FoundationState {
+  personalProfile?: PersonalProfile;
+  historicalEvents?: PersonalHistoricalEvent[];
+  notificationHistory?: PersonalNotificationHistoryEntry[];
   prayerScorePolicyR334?: PrayerScoreSnapshotR334;
   fridayMosqueVisits?: FridayMosqueVisit[];
   categories?: string[];
@@ -146,6 +153,8 @@ T {
 function emptyState():
 FoundationState {
   return {
+    historicalEvents:[],
+    notificationHistory:[],
     fridayMosqueVisits:[],
     locations:
       [],
@@ -205,7 +214,7 @@ FoundationState {
   const actualKeys =
     Object.keys(
       value,
-    ).filter(key=>key!=="finance" && key!=="categories" && key!=="fridayMosqueVisits" && key!=="prayerScorePolicyR334").sort();
+    ).filter(key=>!['finance','categories','fridayMosqueVisits','prayerScorePolicyR334','personalProfile','historicalEvents','notificationHistory'].includes(key)).sort();
 
   if (
     actualKeys.length
@@ -260,6 +269,13 @@ FoundationState {
     const f=value.finance;
     if(!isRecord(f) || typeof f.userId!=="string" || f.currency!=="SAR" || !Array.isArray(f.accounts) || !Array.isArray(f.debts) || !Array.isArray(f.entries) || !Array.isArray(f.requests))throw new ProductionAdapterError("PersistenceCorruptRecord","Invalid finance ledger.");
     financeSummary(f as unknown as FinanceLedger);
+  }
+  if(value.personalProfile!==undefined&&!validPersonalProfile(value.personalProfile))throw new ProductionAdapterError("PersistenceCorruptRecord","Invalid personal profile.");
+  if(value.historicalEvents!==undefined&&(!Array.isArray(value.historicalEvents)||value.historicalEvents.length>500||value.historicalEvents.some(event=>!validPersonalHistoricalEvent(event)))){
+    throw new ProductionAdapterError("PersistenceCorruptRecord","Invalid historical event history.");
+  }
+  if(value.notificationHistory!==undefined&&(!Array.isArray(value.notificationHistory)||value.notificationHistory.length>500||value.notificationHistory.some(entry=>!validPersonalNotificationHistoryEntry(entry)))){
+    throw new ProductionAdapterError("PersistenceCorruptRecord","Invalid notification history.");
   }
   return clone(
     value as unknown as FoundationState,
@@ -389,6 +405,42 @@ function createTransaction(
 ):
 FoundationTransaction {
   return {
+    getPersonalProfile:(userId)=>{
+      if(userId!==owner)throw new Error("PROFILE_OWNER_MISMATCH");
+      return clone(state.personalProfile??null);
+    },
+    savePersonalProfile:(userId,profile)=>{
+      if(userId!==owner||profile.userId!==owner||!validPersonalProfile(profile))throw new Error("PROFILE_INVALID");
+      state.personalProfile=clone(profile);
+    },
+    listHistoricalEvents:(userId)=>{
+      if(userId!==owner)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");
+      return clone(state.historicalEvents??[]);
+    },
+    saveHistoricalEvent:(userId,event)=>{
+      if(userId!==owner||event.userId!==owner||!validPersonalHistoricalEvent(event))throw new Error("HISTORICAL_EVENT_INVALID");
+      state.historicalEvents??=[];
+      const prior=state.historicalEvents.findIndex(x=>x.id===event.id);
+      if(prior<0){if(state.historicalEvents.length>=500)throw new Error("HISTORICAL_EVENT_LIMIT");state.historicalEvents.push(clone(event));}
+      else {if(state.historicalEvents[prior]!.userId!==owner)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");state.historicalEvents[prior]=clone(event);}
+    },
+    deleteHistoricalEvent:(userId,eventId)=>{
+      if(userId!==owner)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");
+      state.historicalEvents??=[];
+      const prior=state.historicalEvents.findIndex(x=>x.id===eventId);
+      if(prior>=0){if(state.historicalEvents[prior]!.userId!==owner)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");state.historicalEvents.splice(prior,1);}
+    },
+    listNotificationHistory:(userId)=>{
+      if(userId!==owner)throw new Error("NOTIFICATION_OWNER_MISMATCH");
+      return clone(state.notificationHistory??[]);
+    },
+    saveNotificationHistory:(userId,entry)=>{
+      if(userId!==owner||entry.userId!==owner||!validPersonalNotificationHistoryEntry(entry))throw new Error("NOTIFICATION_INVALID");
+      state.notificationHistory??=[];
+      const prior=state.notificationHistory.findIndex(x=>x.id===entry.id);
+      if(prior<0){if(state.notificationHistory.length>=500)throw new Error("NOTIFICATION_HISTORY_LIMIT");state.notificationHistory.push(clone(entry));}
+      else {if(state.notificationHistory[prior]!.userId!==owner)throw new Error("NOTIFICATION_OWNER_MISMATCH");state.notificationHistory[prior]=clone(entry);}
+    },
     replaceLocationRevision:(userId,expectedRevisionId,revision,instant)=>{
       if(userId!==owner||revision.userId!==owner ||revision.effectiveFrom!==instant)
         throw new ProductionAdapterError("PersistenceTransactionAborted","Location owner or effective instant mismatch.");
@@ -766,6 +818,9 @@ implements PersonalFoundationOperation {
 
     this.snapshot =
       Object.freeze({
+        getPersonalProfile:(userId:string)=>{this.assertUser(userId);const profile=this.loaded.state.personalProfile;if(profile&&profile.userId!==userId)throw new ProductionAdapterError("PersistenceCorruptRecord","Foundation profile owner mismatch.");return clone(profile??null);},
+        listHistoricalEvents:(userId:string)=>{this.assertUser(userId);return clone((this.loaded.state.historicalEvents??[]).filter(event=>event.userId===userId));},
+        listNotificationHistory:(userId:string)=>{this.assertUser(userId);return clone((this.loaded.state.notificationHistory??[]).filter(entry=>entry.userId===userId));},
         getPrayerScorePolicyR334:(userId:string)=>{this.assertUser(userId);return clone(this.loaded.state.prayerScorePolicyR334??null);},
         listDailyIslamicContexts:(userId:string)=>{
           this.assertUser(userId);
@@ -1135,15 +1190,16 @@ implements
       );
     }
 
+    const state=decodeState(row.state);
+    if(state.personalProfile && state.personalProfile.userId!==userId){
+      throw new ProductionAdapterError("PersistenceCorruptRecord","Personal Foundation profile owner mismatch.");
+    }
     return {
       existed:
         true,
       revision:
         row.revision,
-      state:
-        decodeState(
-          row.state,
-        ),
+      state,
     };
   }
 

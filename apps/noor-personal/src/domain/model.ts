@@ -4,6 +4,49 @@ import type { NoorReminderPlanR314 } from "./reminder-plan-r314.js";
 export type IsoInstant = string;
 export type LocalDate = string;
 
+/** Owner-scoped profile data. AvatarUrl is deliberately a URL/path reference;
+ * binary media stays out of the foundation JSONB document. */
+export interface PersonalProfile {
+    readonly userId: string;
+    readonly displayName: string;
+    readonly avatarUrl: string | null;
+    readonly birthDate: LocalDate | null;
+    readonly updatedAt: IsoInstant;
+}
+
+export type PersonalHistoricalEventCalendar = "gregorian" | "hijri";
+
+/** Owner-authored historical/anniversary event. Approved Islamic history is
+ * kept in the separate versioned catalog and is never fabricated here. */
+export interface PersonalHistoricalEvent {
+    readonly id: string;
+    readonly userId: string;
+    readonly calendar: PersonalHistoricalEventCalendar;
+    readonly year: number | null;
+    readonly month: number;
+    readonly day: number;
+    readonly title: string;
+    readonly details: string;
+    readonly source: string;
+    readonly enabled: boolean;
+    readonly createdAt: IsoInstant;
+    readonly updatedAt: IsoInstant;
+}
+
+export type PersonalNotificationHistoryKind = "reminder" | "appointment";
+
+/** Persisted, owner-scoped observations from the in-app notification center. */
+export interface PersonalNotificationHistoryEntry {
+    readonly id: string;
+    readonly userId: string;
+    readonly kind: PersonalNotificationHistoryKind;
+    readonly title: string;
+    readonly targetId: string;
+    readonly scheduledFor: IsoInstant;
+    readonly occurredAt: IsoInstant;
+    readonly readAt: IsoInstant | null;
+}
+
 export type PersonalDayState =
     | "Open"
     | "Reviewed"

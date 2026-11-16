@@ -15,6 +15,9 @@ import type {
     BeverageHabitPlan,
     CountdownPlan,
     LocalDate,
+    PersonalHistoricalEvent,
+    PersonalNotificationHistoryEntry,
+    PersonalProfile,
     PersonalDay,
     Schedule,
 } from "../domain/model.js";
@@ -35,6 +38,12 @@ function orderedDefinitions(definitions:readonly ExecutionDefinition[]):Executio
 function categoryNames(snapshot:Pick<PersonalFoundationSnapshotPort,"getCategories"|"listDefinitions">,userId:string):string[]{return [...new Set([...(snapshot.getCategories?.(userId)??DEFAULT_PERSONAL_CATEGORIES),...snapshot.listDefinitions(userId).map(d=>d.category??"عام")])];}
 
 export type PersonalCommand =
+    | Readonly<{type:"set-personal-profile";expectedUpdatedAt:string|null;displayName:string;avatarUrl:string|null;birthDate:LocalDate|null}>
+    | Readonly<{type:"create-historical-event";id:string;calendar:"gregorian"|"hijri";year:number|null;month:number;day:number;title:string;details:string;source:string;enabled:boolean}>
+    | Readonly<{type:"update-historical-event";eventId:string;expectedUpdatedAt:string;calendar:"gregorian"|"hijri";year:number|null;month:number;day:number;title:string;details:string;source:string;enabled:boolean}>
+    | Readonly<{type:"delete-historical-event";eventId:string;expectedUpdatedAt:string}>
+    | Readonly<{type:"observe-notification";id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string}>
+    | Readonly<{type:"mark-notification-read";notificationId:string;expectedReadAt:string|null}>
     | PrayerScoreApprovalR334
     | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:LocalDate;taskSessionId:string;entryId:string;amount:number;note:string}>
     | Readonly<{type:"recover-historical-execution";executionId:string;localDate:LocalDate;expectedStatus:ExecutionStatus}>
@@ -115,6 +124,9 @@ export interface PersonalInsights {
 
 export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;}
 export interface PersonalWorkspace {
+    readonly profile?: PersonalProfile | null;
+    readonly historicalEvents?: readonly PersonalHistoricalEvent[];
+    readonly notificationHistory?: readonly PersonalNotificationHistoryEntry[];
     readonly prayerScorePolicyR334?: PrayerScoreSnapshotR334;
     readonly prayerAchievementR334?: readonly Readonly<{date:LocalDate;score:PrayerDayScoreR334}>[];
     readonly prayerHistoryR331: readonly Readonly<{date:LocalDate;records:readonly PrayerRecordR331[]}>[];
@@ -222,6 +234,33 @@ function localDate(
         : null;
 }
 
+function isoInstant(value: unknown): string | null {
+    return typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : null;
+}
+
+function optionalAvatarUrl(value: unknown): string | null | undefined {
+    if (value === null) return null;
+    if (typeof value !== "string" || value.length === 0 || value.length > 2048) return undefined;
+    if (value.startsWith("/")) return value;
+    try { return new URL(value).protocol === "https:" ? value : undefined; } catch { return undefined; }
+}
+
+function historicalDateFields(value: Record<string, unknown>): {calendar:"gregorian"|"hijri";year:number|null;month:number;day:number} | null {
+    if (value.calendar !== "gregorian" && value.calendar !== "hijri") return null;
+    if (value.year !== null && (!Number.isInteger(value.year) || Number(value.year) < 1 || Number(value.year) > 20000)) return null;
+    if (!Number.isInteger(value.month) || Number(value.month) < 1 || Number(value.month) > 12) return null;
+    const maxDay = value.calendar === "hijri" ? 30 : 31;
+    if (!Number.isInteger(value.day) || Number(value.day) < 1 || Number(value.day) > maxDay) return null;
+    if (value.calendar === "gregorian" && !localDate(`${String(value.year ?? 2000).padStart(4,"0")}-${String(value.month).padStart(2,"0")}-${String(value.day).padStart(2,"0")}`)) return null;
+    return {calendar:value.calendar as "gregorian"|"hijri",year:value.year as number|null,month:value.month as number,day:value.day as number};
+}
+
+function historicalText(value: unknown, max: number, empty = true): string | null {
+    if (typeof value !== "string" || value.length > max) return null;
+    const text = value.trim();
+    return empty || text.length > 0 ? text : null;
+}
+
 function weekdays(
     value: unknown,
 ): readonly number[] | null {
@@ -301,6 +340,39 @@ export function parsePersonalCommand(
         return null;
     }
 
+    if(value.type==="set-personal-profile"){
+        if(!exactKeys(value,["type","expectedUpdatedAt","displayName","avatarUrl","birthDate"])||
+           !(value.expectedUpdatedAt===null||isoInstant(value.expectedUpdatedAt))||
+           !boundedText(value.displayName,120))return null;
+        const avatarUrl=optionalAvatarUrl(value.avatarUrl);
+        const birthDate=value.birthDate===null?null:localDate(value.birthDate);
+        if(avatarUrl===undefined||(value.birthDate!==null&&!birthDate))return null;
+        return {type:"set-personal-profile",expectedUpdatedAt:value.expectedUpdatedAt as string|null,displayName:(value.displayName as string).trim(),avatarUrl,birthDate:birthDate as LocalDate|null};
+    }
+    if(value.type==="create-historical-event"){
+        if(!exactKeys(value,["type","id","calendar","year","month","day","title","details","source","enabled"])||!boundedIdentifier(value.id)||typeof value.enabled!=="boolean")return null;
+        const date=historicalDateFields(value),title=boundedText(value.title,160),details=historicalText(value.details,2000),source=historicalText(value.source,500);
+        if(!date||!title||details===null||source===null)return null;
+        return {type:"create-historical-event",id:value.id, ...date,title,details,source,enabled:value.enabled};
+    }
+    if(value.type==="update-historical-event"){
+        if(!exactKeys(value,["type","eventId","expectedUpdatedAt","calendar","year","month","day","title","details","source","enabled"])||!boundedIdentifier(value.eventId)||!isoInstant(value.expectedUpdatedAt)||typeof value.enabled!=="boolean")return null;
+        const date=historicalDateFields(value),title=boundedText(value.title,160),details=historicalText(value.details,2000),source=historicalText(value.source,500);
+        if(!date||!title||details===null||source===null)return null;
+        return {type:"update-historical-event",eventId:value.eventId as string,expectedUpdatedAt:value.expectedUpdatedAt as string,...date,title,details,source,enabled:value.enabled};
+    }
+    if(value.type==="delete-historical-event"){
+        if(!exactKeys(value,["type","eventId","expectedUpdatedAt"])||!boundedIdentifier(value.eventId)||!isoInstant(value.expectedUpdatedAt))return null;
+        return {type:"delete-historical-event",eventId:value.eventId as string,expectedUpdatedAt:value.expectedUpdatedAt as string};
+    }
+    if(value.type==="observe-notification"){
+        if(!exactKeys(value,["type","id","kind","title","targetId","scheduledFor"])||!boundedIdentifier(value.id)||!boundedIdentifier(value.targetId)||!boundedText(value.title,200)||!(["reminder","appointment"] as readonly string[]).includes(String(value.kind))||!isoInstant(value.scheduledFor))return null;
+        return {type:"observe-notification",id:value.id as string,kind:value.kind as "reminder"|"appointment",title:(value.title as string).trim(),targetId:value.targetId as string,scheduledFor:value.scheduledFor as string};
+    }
+    if(value.type==="mark-notification-read"){
+        if(!exactKeys(value,["type","notificationId","expectedReadAt"])||!boundedIdentifier(value.notificationId)||!(value.expectedReadAt===null||isoInstant(value.expectedReadAt)))return null;
+        return {type:"mark-notification-read",notificationId:value.notificationId,expectedReadAt:value.expectedReadAt as string|null};
+    }
     if(value.type==="configure-prayer-score-r334")return parsePrayerScoreApprovalR334(value);
     if(value.type==="configure-reminder"){
         if(!exactKeys(value,["type","definitionId","expectedRevisionId","plan"])
@@ -809,6 +881,62 @@ export class PersonalCommandService {
 
         await this.dependencies.transaction.runInTransaction(
             transaction => {
+
+                if(command.type==="set-personal-profile"){
+                    const parsed=parsePersonalCommand(command);
+                    if(!parsed||parsed.type!=="set-personal-profile"||!transaction.getPersonalProfile||!transaction.savePersonalProfile)throw new Error("PROFILE_STORAGE_UNAVAILABLE");
+                    const current=transaction.getPersonalProfile(userId);
+                    if((current?.updatedAt??null)!==parsed.expectedUpdatedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    if(current&&current.displayName===parsed.displayName&&current.avatarUrl===parsed.avatarUrl&&current.birthDate===parsed.birthDate)return;
+                    transaction.savePersonalProfile(userId,{userId,displayName:parsed.displayName,avatarUrl:parsed.avatarUrl,birthDate:parsed.birthDate,updatedAt:now});
+                    return;
+                }
+                if(command.type==="create-historical-event"){
+                    const parsed=parsePersonalCommand(command);
+                    if(!parsed||parsed.type!=="create-historical-event"||!transaction.listHistoricalEvents||!transaction.saveHistoricalEvent)throw new Error("HISTORICAL_EVENT_STORAGE_UNAVAILABLE");
+                    if(transaction.listHistoricalEvents(userId).some(event=>event.id===parsed.id))throw new Error("HISTORICAL_EVENT_ID_CONFLICT");
+                    transaction.saveHistoricalEvent(userId,{id:parsed.id,calendar:parsed.calendar,year:parsed.year,month:parsed.month,day:parsed.day,title:parsed.title,details:parsed.details,source:parsed.source,enabled:parsed.enabled,userId,createdAt:now,updatedAt:now});
+                    return;
+                }
+                if(command.type==="update-historical-event"){
+                    const parsed=parsePersonalCommand(command);
+                    if(!parsed||parsed.type!=="update-historical-event"||!transaction.listHistoricalEvents||!transaction.saveHistoricalEvent)throw new Error("HISTORICAL_EVENT_STORAGE_UNAVAILABLE");
+                    const current=transaction.listHistoricalEvents(userId).find(event=>event.id===parsed.eventId);
+                    if(!current)throw new Error("HISTORICAL_EVENT_NOT_FOUND");
+                    if(current.updatedAt!==parsed.expectedUpdatedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    transaction.saveHistoricalEvent(userId,{...current,calendar:parsed.calendar,year:parsed.year,month:parsed.month,day:parsed.day,title:parsed.title,details:parsed.details,source:parsed.source,enabled:parsed.enabled,updatedAt:now});
+                    return;
+                }
+                if(command.type==="delete-historical-event"){
+                    const parsed=parsePersonalCommand(command);
+                    if(!parsed||parsed.type!=="delete-historical-event"||!transaction.listHistoricalEvents||!transaction.deleteHistoricalEvent)throw new Error("HISTORICAL_EVENT_STORAGE_UNAVAILABLE");
+                    const current=transaction.listHistoricalEvents(userId).find(event=>event.id===parsed.eventId);
+                    if(!current)return;
+                    if(current.updatedAt!==parsed.expectedUpdatedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    transaction.deleteHistoricalEvent(userId,parsed.eventId);
+                    return;
+                }
+                if(command.type==="observe-notification"){
+                    const parsed=parsePersonalCommand(command);
+                    if(!parsed||parsed.type!=="observe-notification"||!transaction.listNotificationHistory||!transaction.saveNotificationHistory)throw new Error("NOTIFICATION_STORAGE_UNAVAILABLE");
+                    const current=transaction.listNotificationHistory(userId).find(entry=>entry.id===parsed.id);
+                    if(current){
+                        if(current.kind!==parsed.kind||current.title!==parsed.title||current.targetId!==parsed.targetId||current.scheduledFor!==parsed.scheduledFor)throw new Error("NOTIFICATION_ID_CONFLICT");
+                        return;
+                    }
+                    transaction.saveNotificationHistory(userId,{id:parsed.id,userId,kind:parsed.kind,title:parsed.title,targetId:parsed.targetId,scheduledFor:parsed.scheduledFor,occurredAt:now,readAt:null});
+                    return;
+                }
+                if(command.type==="mark-notification-read"){
+                    const parsed=parsePersonalCommand(command);
+                    if(!parsed||parsed.type!=="mark-notification-read"||!transaction.listNotificationHistory||!transaction.saveNotificationHistory)throw new Error("NOTIFICATION_STORAGE_UNAVAILABLE");
+                    const current=transaction.listNotificationHistory(userId).find(entry=>entry.id===parsed.notificationId);
+                    if(!current)return;
+                    if(current.readAt!==parsed.expectedReadAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    if(current.readAt===now)return;
+                    transaction.saveNotificationHistory(userId,{...current,readAt:now});
+                    return;
+                }
 
                 const activePolicy=transaction.getPrayerScorePolicyR334?.(userId);
                 const permittedWeight=(id:string,kind:string,weight:number)=>{
@@ -1685,6 +1813,9 @@ export function buildPersonalWorkspace(
         }
     }
     const prayerScorePolicyR334=snapshot.getPrayerScorePolicyR334?.(userId);
+    const profile=snapshot.getPersonalProfile?.(userId);
+    const historicalEvents=snapshot.listHistoricalEvents?.(userId);
+    const notificationHistory=snapshot.listNotificationHistory?.(userId);
     // Preserve legacy insights when no prayer policy is effective. For effective
     // days the server and UI both consume the same frozen execution weights and
     // separately projected prayer credit.
@@ -1716,6 +1847,9 @@ export function buildPersonalWorkspace(
         }
     }
     return Object.freeze({
+        ...(profile!==undefined?{profile}:{}),
+        ...(historicalEvents!==undefined?{historicalEvents:[...historicalEvents]}:{}),
+        ...(notificationHistory!==undefined?{notificationHistory:[...notificationHistory]}:{}),
         ...(validPrayerScoreSnapshotR334(prayerScorePolicyR334)?{prayerScorePolicyR334}:{}),
         ...(prayerAchievementR334.length?{prayerAchievementR334}:{}),
         prayerHistoryR331:personalDays.filter(day=>selectedDayIds.has(day.id)&&day.userId===userId&&day.prayerRecordsR331?.length).map(day=>({date:day.boundary.localDate,records:(day.prayerRecordsR331??[]).filter(validPrayerRecordR331)})),
