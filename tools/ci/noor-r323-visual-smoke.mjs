@@ -53,6 +53,8 @@ try{
  socket.addEventListener("message",event=>{const m=JSON.parse(event.data);if(m.id&&pending.has(m.id)){const [r,j]=pending.get(m.id);pending.delete(m.id);m.error?j(Error(JSON.stringify(m.error))):r(m.result);}});
  const cdp=(method,params={})=>new Promise((r,j)=>{const n=++id;pending.set(n,[r,j]);socket.send(JSON.stringify({id:n,method,params}));});
  await cdp("Page.enable");
+ await cdp("Page.bringToFront");
+ await cdp("Emulation.setFocusEmulationEnabled", {enabled:true});
  const run=async(expression)=>{const r=await cdp("Runtime.evaluate",{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value;};
  const find=sel=>wait(()=>run("!!document.querySelector("+JSON.stringify(sel)+")"));
  const snap=async(name)=>{await sleep(250);const r=await cdp("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});await writeFile(resolve(output,name+".png"),Buffer.from(r.data,"base64"));};
@@ -65,13 +67,33 @@ try{
   await find(".noor-r323-auth-card");
   await expect("document.documentElement.scrollWidth<=innerWidth+1","Login horizontal overflow");
   await expect("!document.querySelector('.noor-auth-switch-r312')","Account tabs are absent");
-  await expect("document.querySelector('.noor-welcome-eyebrow').textContent==='NOOR Platform'","Platform branding");
+  await expect("document.querySelector('.noor-login-wordmark').textContent==='NOOR Platform'","Platform branding");
   await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=innerHeight","Login controls fit without scrolling");
-  await expect("document.querySelector('.noor-welcome-logo').getBoundingClientRect().top<80","Brand begins near the top of the screen");
-  await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
-  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Shared login logo");
+  await expect(`(() => {
+    const card = document.querySelector('.noor-r332-auth').getBoundingClientRect();
+    const brand = document.querySelector('.noor-login-brand').getBoundingClientRect();
+    const field = document.querySelector('input[name=email]').getBoundingClientRect();
+    const wordmark = document.querySelector('.noor-login-wordmark').getBoundingClientRect();
+    const tagline = document.querySelector('.noor-login-tagline').getBoundingClientRect();
+    return Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
+      && brand.bottom <= card.top + 1 && field.height >= 48 && wordmark.width >= tagline.width * 1.15;
+  })()`,"Login card is centered, with full-size fields and a shorter tagline");
+  await expect("document.querySelector('.noor-login-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-login-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
+  await expect("document.querySelector('.noor-login-brand img').naturalWidth>0&&getComputedStyle(document.querySelector('.noor-welcome-ambient'),'::before').backgroundImage.includes('/brand/login-glass-header.webp')","Approved calligraphy and glass background");
   await run("document.querySelector('input[name=email]').focus()");
-  await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='0px'&&s.boxShadow==='none'&&s.outlineStyle==='none'})()","No nested focus border");
+  const focusState = () => run(`(() => {
+    const input = document.querySelector('input[name=email]');
+    const style = getComputedStyle(input);
+    return {active: document.activeElement === input, pageFocused: document.hasFocus(), matchesFocus: input.matches(":focus"), border: style.borderTopWidth,
+      radius: style.borderTopLeftRadius, outline: style.outlineStyle, outlineWidth: style.outlineWidth, labelRing: getComputedStyle(input.parentElement).boxShadow};
+  })()`);
+  await wait(async () => {
+    const focus = await focusState();
+    return focus.active && focus.border === '1px' && focus.radius === '10px'
+      && focus.outline === 'solid' && focus.outlineWidth === '2px' && focus.labelRing === 'none';
+  }, 5000).catch(async () => {
+    throw Error("Only the rounded field shows its focus ring: " + JSON.stringify(await focusState()));
+  });
   await run("document.querySelector('.noor-r328-password-toggle').click()");
   await expect("document.querySelector('input[name=password]').type==='text'","Password visibility works");
   await run("document.querySelector('.noor-r328-password-toggle').click()");

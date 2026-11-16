@@ -205,7 +205,7 @@ test(
         rendered.container.querySelector(
           "h1",
         )?.textContent?.trim(),
-        "مرحبا بك في منصة نور",
+        "تسجيل الدخول",
       );
 
       const text =
