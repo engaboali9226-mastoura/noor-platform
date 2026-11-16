@@ -53,8 +53,8 @@ const shortDateR303=(date:string)=>{
  catch{return date;}
 };
 const paddedR303=(value:number)=>String(value).padStart(2,"0");
-export function UpcomingCountdownR301({definitions,nowMs,timeZone,onAdd,religiousEvents}:{definitions:readonly UpcomingDefinitionR301[];nowMs:number;timeZone:string;onAdd?:()=>void;religiousEvents?:readonly ReligiousEventR324[]}):ReactElement{
- if(religiousEvents)return <UnifiedUpcomingR324 definitions={definitions} nowMs={nowMs} timeZone={timeZone} religiousEvents={religiousEvents} {...(onAdd?{onAdd}:{})}/>;
+export function UpcomingCountdownR301({definitions,nowMs,timeZone,onAdd,religiousEvents,personalDefault=false}:{definitions:readonly UpcomingDefinitionR301[];nowMs:number;timeZone:string;onAdd?:()=>void;religiousEvents?:readonly ReligiousEventR324[];personalDefault?:boolean}):ReactElement{
+ if(religiousEvents)return <UnifiedUpcomingR324 definitions={definitions} nowMs={nowMs} timeZone={timeZone} religiousEvents={religiousEvents} personalDefault={personalDefault} {...(onAdd?{onAdd}:{})}/>;
  return <PersonalUpcomingR301 definitions={definitions} nowMs={nowMs} timeZone={timeZone} {...(onAdd?{onAdd}:{})}/>;
 }
 function PersonalUpcomingR301({definitions,nowMs,timeZone,onAdd}:{definitions:readonly UpcomingDefinitionR301[];nowMs:number;timeZone:string;onAdd?:()=>void}):ReactElement{
