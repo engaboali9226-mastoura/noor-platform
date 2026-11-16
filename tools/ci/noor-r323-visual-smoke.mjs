@@ -29,8 +29,10 @@ try{
  'import {NoorAdminMfaPageR315} from "./src/noor-admin-mfa-page-r315";',
  'import {PlatformShell} from "./src/platform-shell";',
  'import {NoorPersonalApplicationView} from "./src/noor-personal-application-view";',
- 'Date.now=()=>Date.parse("2026-11-06T18:02:00Z");',
- 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22}}),{status:200,headers:{"Content-Type":"application/json"}});'
+ 'const fixtureParams=new URLSearchParams(location.search);',
+ 'const fixtureDay=fixtureParams.get("daylight")==="day";',
+ 'Date.now=()=>Date.parse(fixtureDay?"2026-11-06T08:02:00Z":"2026-11-06T18:02:00Z");',
+ 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,weather_code:fixtureParams.get("weather")==="unknown"?undefined:fixtureParams.get("weather")==="cloudy"?3:0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
  ].join("\n");
  const render=[
  'const root=createRoot(document.getElementById("root")!);',
@@ -428,6 +430,7 @@ try{
   await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
   await expect(visible("[data-testid=prayer-card]"),"Prayer card visible after opening sheet");
   await expect("document.querySelectorAll('.np-r339-friday-grid>div').length===5","Five Friday hours retained");
+  await snap(screen.name+"-prayer-details");
   await run("document.querySelector('.np-r339-overlay .np-r331-sheet header button').click()");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
   await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return b.bottom<=k.top+1&&k.bottom<=a.top+1&&Math.abs(p.width-p.height)<1&&getComputedStyle(s).borderTopLeftRadius==='50%'})()","Daily, weekly and drinks cards ordered without overlap");
@@ -456,8 +459,24 @@ try{
   })()`,"One outer card contains two aligned rows of three equal-height RTL tiles");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect(visible(".np-r339-profile"),"Profile shortcut in header");
+  await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-check,r324-nav-plus,r324-nav-bell,r324-nav-grid'","Approved RTL navigation order");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
+  await run("window.scrollTo(0, document.querySelector('[data-testid=today-summary]').getBoundingClientRect().top + scrollY)");
+  await snap(screen.name+"-achievement");
+  await run("window.scrollTo(0, 0)");
+  for (const [tile,sheet,name] of [
+    [".np-r331-board-grid > :nth-child(5)", ".np-r339-task-sheet", "tasks"],
+    [".np-r331-board-grid > :nth-child(6)", '[aria-label="الأحداث التاريخية"][role=dialog]', "history"],
+    [".np-r339-mini-days button", '[aria-label="تدارك الفائت"][role=dialog]', "recovery"],
+  ]) {
+    await run("(()=>{const trigger=document.querySelector("+JSON.stringify(tile)+");trigger.focus({preventScroll:true});trigger.click()})()");
+    await expect(visible(sheet),name+" sheet opens when selected");
+    await snap(screen.name+"-"+name+"-details");
+    await run("document.querySelector("+JSON.stringify(sheet)+").closest('[role=dialog]').querySelector('header button').click()");
+    await expect("!("+visible(sheet)+")",name+" sheet closes");
+    await expect("document.activeElement===document.querySelector("+JSON.stringify(tile)+")",name+" sheet returns focus to its trigger");
+  }
   await run("document.querySelector('.np-caffeine-details-r296 > summary').click()");
   await expect("document.querySelector('.np-caffeine-details-r296').open","Beverage details can open on demand");
   const liveBoardDate=await run("document.querySelector('[data-testid=r331-announcement-board]').dataset.boardDate");
@@ -486,8 +505,12 @@ try{
   await run("document.querySelector('[data-testid=r334-prayer-policy-editor]').scrollIntoView({block:'start'})");
   await snap(screen.name+"-prayer-policy");
 
-  await run("document.querySelector('[data-testid=r324-nav-settings]').click()");
-  await expect("document.querySelector('[data-testid=r324-nav-settings]').getAttribute('aria-current')==='page'","Settings navigation active");
+  await run("document.querySelector('[data-testid=r324-nav-bell]').click()");
+  await expect("document.querySelector('[data-testid=r324-nav-bell]').getAttribute('aria-current')==='page'","Reminders navigation active");
+  await run("document.querySelector('[data-testid=r324-nav-home]').click()");
+  await find(".np-r340-settings");
+  await run("document.querySelector('.np-r340-settings').click()");
+  await expect("document.querySelector('.np-cc-nav-item[aria-current=page]')?.textContent==='المظهر'","Settings opens from the top bar");
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find("[data-testid=r323-approved-dashboard]");
   await expect("document.querySelector('[data-testid=r324-nav-home]').getAttribute('aria-current')==='page'","Home navigation active");
@@ -500,6 +523,28 @@ try{
   await expect("document.querySelector('[data-testid=r324-nav-plus]').getAttribute('aria-current')==='page'","Quick task navigation active");
   await snap(screen.name+"-quick-task");
   report.push({viewport:screen.name,width:screen.width,height:screen.height,appointmentFixtureVisible:more,layout:await run("Array.from(document.querySelectorAll('.np-r323-home-grid>.np-card')).filter(x=>x.getBoundingClientRect().height>0).map(x=>({className:x.className,width:Math.round(x.getBoundingClientRect().width),height:Math.round(x.getBoundingClientRect().height),top:Math.round(x.getBoundingClientRect().top)}))")});
+ }
+ for (const viewport of [
+   {width:320,height:568,mobile:true},
+   {width:390,height:844,mobile:true},
+   {width:430,height:932,mobile:true},
+   {width:1440,height:900,mobile:false},
+ ]) {
+   await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
+   for (const [daylight,weather] of [["day","clear"],["day","cloudy"],["night","clear"],["night","cloudy"],["day","unknown"]]) {
+     await cdp("Page.navigate",{url:url+"?screen=personal&daylight="+daylight+"&weather="+weather});
+     await expect("!!document.querySelector('.np-r339-header[data-daylight="+daylight+"][data-sky="+weather+"]')","Confirmed weather and solar state applied: "+daylight+"/"+weather).catch(async error => {
+       console.error("Weather fixture state",await run("JSON.stringify(document.querySelector('.np-r339-header')?.dataset)"));
+       throw error;
+     });
+     await expect("document.documentElement.scrollWidth<=innerWidth+2","Weather dashboard fits width "+viewport.width);
+     await expect(`(() => {
+       const rect = selector => document.querySelector(selector).getBoundingClientRect();
+       const wordmark = rect(".np-r339-wordmark"), actions = rect(".np-top-actions"), settings = rect(".np-r340-settings");
+       return actions.right <= wordmark.left + 1 && wordmark.right <= settings.left + 1;
+     })()`,"Header shortcuts fit width "+viewport.width);
+     await snap(viewport.width+"-"+daylight+"-"+weather);
+   }
  }
  await writeFile(resolve(output,"report.json"),JSON.stringify(report,null,2));
  console.log("R323_BROWSER_SMOKE_PASS "+JSON.stringify(report));
