@@ -272,18 +272,14 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 
 /* R339 — approved compact Personal home, genuine frosted surfaces and bounded sheets. */
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
- position:relative!important;grid-template-areas:"brand brand brand" "status greeting greeting" "calendar calendar calendar"!important;
+ position:relative!important;grid-template-areas:"brand brand brand" "greeting status status" "calendar calendar calendar"!important;
  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
  margin:0 0 12px!important;width:100%!important;padding:8px 10px 12px!important;border-radius:24px!important;
- background:linear-gradient(150deg,var(--ng-top),var(--ng-sub))!important;overflow:visible!important;
+ background:transparent!important;overflow:visible!important;border:0!important;box-shadow:none!important;
 }
-.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="day"]{background:radial-gradient(ellipse at 26% 82%,#ffe2af9c,transparent 45%),linear-gradient(155deg,#c0dbee88,var(--ng-sub))!important}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"]{background:radial-gradient(ellipse at 30% 92%,#7996c559,transparent 55%),linear-gradient(155deg,#18395b,#284966)!important;color:#f0f6ff}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-sky="cloudy"],.np-page[data-appearance] .np-topbar.np-r339-header[data-sky="fog"]{background-image:radial-gradient(ellipse at 20% 75%,#b1c3d1aa,transparent 65%),radial-gradient(ellipse at 85% 30%,#aabccbaa,transparent 50%),linear-gradient(150deg,var(--ng-top),var(--ng-sub))!important}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-sky="precipitation"]{background-image:linear-gradient(150deg,#8298b0aa,#46658099),linear-gradient(90deg,var(--ng-bg),var(--ng-sub))!important}
 .np-page[data-appearance] .np-r339-header[data-daylight="night"] :is(.np-r323-greeting,.np-header-day,.np-header-date-main,.np-header-date-caption,.np-header-clock,.np-header-location,.np-header-temperature,.np-weather-caption,.np-weather-details){color:#f0f6ff!important}
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-brand.np-r339-brand{
- position:relative!important;display:grid!important;place-items:center!important;min-height:75px!important;width:100%!important;height:auto!important;max-width:none!important;margin:0!important;padding:0!important;
+ position:relative!important;display:grid!important;place-items:center!important;min-height:76px!important;width:100%!important;height:auto!important;max-width:none!important;margin:0!important;padding:0!important;
  background:linear-gradient(140deg,#ffffff40,#ffffff15)!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid #ffffff65!important;border-radius:23px!important;box-sizing:border-box;
 }
 .np-page[data-appearance] .np-r339-header .np-brand:before,.np-page[data-appearance] .np-r339-header .np-brand:after{display:none!important}
@@ -293,17 +289,17 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-r339-smile{position:relative;display:inline-block}
 .np-r339-smile::after{position:absolute;inset:auto -1px -7px;height:9px;border-bottom:3px solid #dfac45;border-radius:0 0 50% 50%;content:""}
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{
- position:absolute!important;left:15px!important;right:auto!important;top:25px!important;z-index:3!important;display:flex!important;flex-direction:row!important;gap:4px!important;align-items:center!important;margin:0!important;transform:none!important;direction:ltr
+ position:absolute!important;grid-area:auto!important;inset:28px auto auto 15px!important;z-index:3!important;display:flex!important;flex-direction:row!important;gap:4px!important;align-items:center!important;margin:0!important;transform:none!important;direction:ltr
 }
 .np-r339-profile{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid #ffffff70;color:var(--ng-ink);background:#ffffff40;cursor:pointer;padding:7px}
 .np-r339-profile svg{width:20px;height:20px}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-r323-greeting{grid-column:2/-1!important;grid-row:2!important;justify-self:end!important;padding:8px 0!important}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{grid-column:1!important;grid-row:2!important;justify-self:start!important;padding:4px 0!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-r323-greeting{grid-area:greeting!important;justify-self:start!important;padding:8px 0!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{grid-area:status!important;justify-self:end!important;padding:4px 0!important}
 .np-page[data-appearance] .np-r339-header .np-header-calendar{background:none!important}
-@media(max-width:480px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{left:14px!important;top:27px!important;gap:3px!important}.np-r339-profile{width:30px;height:30px;padding:5px}.np-r339-wordmark{font-size:clamp(16px,4.35vw,23px)}}
-@media(max-width:350px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{top:60px!important;left:18px!important}.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-brand.np-r339-brand{min-height:96px!important;align-items:start!important;padding-top:12px!important}}
-.np-page[data-appearance] .np-r331-board{background:color-mix(in srgb,var(--ng-card) 84%,transparent)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;border:1px solid #ffffff60!important;border-radius:24px!important}
-.np-page[data-appearance] .np-r331-tile{border-radius:18px!important;background:linear-gradient(145deg,#ffffff28,transparent),var(--ng-card)!important;box-shadow:inset 0 1px 1px #ffffff80,0 3px 10px #234d7015;min-height:112px}
+@media(max-width:480px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{inset:27px auto auto 15px!important;gap:3px!important;flex-wrap:nowrap!important}.np-r339-profile{width:30px;height:30px;padding:5px}.np-r339-wordmark{font-size:clamp(16px,4.35vw,23px)}}
+
+.np-page[data-appearance] .np-r331-board{background:var(--noor-board-glass,var(--ng-card))!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;border:1px solid #ffffff60!important;border-radius:24px!important}
+.np-page[data-appearance] .np-r331-tile{border-radius:18px!important;background:var(--noor-tile-glass,var(--ng-card))!important;box-shadow:inset 0 1px 1px #ffffff80,0 3px 10px #234d7015;min-height:112px}
 .np-r331-tile .np-r322-friday-preview:not(.np-r322-modal *){display:none!important}
 .np-r339-tile-action{display:grid;justify-items:center;gap:3px;background:transparent;color:inherit;border:0;cursor:pointer;font:inherit;padding:0;width:100%}
 .np-r339-tile-action>span{font-size:11px;color:var(--ng-muted)}
@@ -322,19 +318,13 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-r339-night-times{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
 .np-r339-night-times>div{padding:12px 6px;border-radius:14px;background:var(--ng-card);border:1px solid var(--ng-line);display:grid;text-align:center;gap:4px}
 .np-r339-overlay .np-prayer-card{margin:0!important;width:100%!important;box-sizing:border-box}
-.np-r339-overlay .np-prayer-times{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:4px!important}
+.np-page[data-appearance] .np-r339-overlay .np-prayer-times{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:4px!important}
 .np-r339-overlay .np-prayer{min-width:0!important;min-height:70px!important;padding:5px 2px!important;box-sizing:border-box;max-width:none!important}
 .np-page[data-appearance] :is(.np-day-achievement,.np-r332-week,.np-caffeine-card-r299,.np-habit-category,.np-tasks-card){margin-block:10px!important}
 .np-page[data-appearance] .np-r324-bottom-nav{position:fixed!important;backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important;border:1px solid #ffffff80!important;background:color-mix(in srgb,var(--ng-bg) 86%,transparent)!important;box-shadow:0 5px 24px #19365638}
 
 .np-r339-friday-times{margin-top:10px}.np-r339-friday-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.np-r339-friday-grid>div{background:var(--ng-card);border:1px solid var(--ng-line);border-radius:12px;padding:8px 3px;display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}.np-r339-friday-grid>div>span{font-size:24px}.np-r339-friday-grid strong,.np-r339-friday-grid small{font-size:10px;overflow-wrap:anywhere}
 
-/* R339 sky is illustrative, visible only according to confirmed weather and solar state. */
-.np-r339-sky-scene{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;border-radius:24px;opacity:.65;color:#668cab}
-.np-r339-sky-scene svg{position:absolute;inset:0;width:100%;height:100%}
-.np-r339-header[data-daylight="night"] .np-r339-sky-scene{color:#91b3da;opacity:.82}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="cloudy"],.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="fog"]{background-image:linear-gradient(145deg,#33465c,#21334a)!important}
-.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="precipitation"]{background-image:linear-gradient(145deg,#2f4055,#182b43)!important}
 .np-r339-history-event{border:1px solid var(--ng-line);border-radius:16px;padding:12px;margin-block:10px;background:var(--ng-card);overflow-wrap:anywhere}
 .np-r339-history-event h3{font-size:17px;margin:6px 0}
 .np-r339-history-event p{white-space:pre-wrap}
@@ -344,3 +334,246 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 
 /* R339: the beverage card is now a direct sibling after weekly progress. Keep the original compact drink geometry independent of its former parent. */
 .np-page[data-appearance] .np-wrap>.np-caffeine-card-r299{position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:auto!important;float:none!important;clear:both!important;height:auto!important;max-height:none!important;min-height:0!important;min-width:0!important;width:100%!important;transform:none!important;box-sizing:border-box;margin:0 0 12px!important;}
+
+/* The weather illustration extends underneath the glass surfaces on Personal home. */
+.np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid) {
+  --noor-board-glass: linear-gradient(145deg, #f4f7ffbd, #b6d8ef8c);
+  --noor-tile-glass: linear-gradient(145deg, #faffffb3, #c2ddf5a6);
+  --noor-sky: linear-gradient(154deg, #b5ccdf, #e0e9ef 52%, #9ebad0);
+  background: var(--noor-sky) fixed center top / cover !important;
+}
+.np-page:has(.np-r339-header[data-daylight="day"][data-sky="clear"]),
+.np-page:has(.np-r339-header[data-daylight="day"][data-sky="partly"]) {
+  --noor-sky: linear-gradient(180deg, #a8cef234 8%, #b5c9e446 36%, #c7d7e9d9 95%), url("/brand/personal-day-r340.webp");
+}
+.np-page:has(.np-r339-header[data-daylight="night"]) {
+  --noor-sky: linear-gradient(165deg, #132846, #233e60 55%, #485f7b);
+}
+.np-page:has(.np-r339-header[data-daylight="night"][data-sky="clear"]),
+.np-page:has(.np-r339-header[data-daylight="night"][data-sky="partly"]) {
+  --noor-sky: linear-gradient(180deg, #1833570d 10%, #192c5355 44%, #182b4ae0 95%), url("/brand/personal-night-r340.webp");
+}
+.np-page:has(.np-r339-header[data-sky="cloudy"]),
+.np-page:has(.np-r339-header[data-sky="fog"]),
+.np-page:has(.np-r339-header[data-sky="precipitation"]) {
+  --noor-sky: linear-gradient(180deg, #a8b7cde6, #cad6e4f0), url("/brand/personal-day-r340.webp");
+}
+.np-page:has(.np-r339-header[data-daylight="night"]:is([data-sky="cloudy"], [data-sky="fog"], [data-sky="precipitation"])) {
+  --noor-sky: linear-gradient(180deg, #273c55ed, #384b65f2), url("/brand/personal-night-r340.webp");
+}
+.np-page[data-appearance="dark"]:has(.np-r339-header) {
+  --noor-board-glass: linear-gradient(145deg, #283e58e6, #253f58b8);
+  --noor-tile-glass: linear-gradient(145deg, #334f6bd9, #223952e6);
+}
+.np-page[data-appearance] .np-r339-header .np-brand.np-r339-brand {
+  box-shadow: inset 0 1px 2px #ffffffe0, inset 0 -5px 16px #dcf1ff5e, 0 5px 18px #233d6721 !important;
+}
+.np-r340-settings {
+  position: absolute;
+  right: 15px;
+  top: 28px;
+  z-index: 3;
+}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] > .np-r323-greeting {
+  font-size: clamp(18px, 5vw, 31px) !important;
+  font-weight: 800;
+  text-shadow: 0 1px 8px #d8eafa7a;
+}
+.np-page[data-appearance] .np-r331-board {
+  box-shadow: inset 0 1px 2px #fff9, 0 9px 30px #193d6840 !important;
+}
+.np-r331-tile {
+  --noor-tile-accent: #09639e;
+  --noor-tile-icon: #b4def6;
+}
+.np-r331-tile-next { --noor-tile-accent: #553da8; --noor-tile-icon: #d8ceff; }
+.np-r331-tile-time { --noor-tile-accent: #925000; --noor-tile-icon: #ffdc8c; }
+.np-r339-recovery { --noor-tile-accent: #086273; --noor-tile-icon: #aee5e8; }
+.np-r331-tile:nth-child(5) { --noor-tile-accent: #146137; --noor-tile-icon: #b3e7c9; }
+.np-r331-tile:nth-child(6) { --noor-tile-accent: #89542b; --noor-tile-icon: #f5d6ae; }
+.np-r331-tile :is(.np-r322-timer-icon, .np-r324-clock-icon),
+.np-r331-tile > svg,
+.np-r339-tile-action > svg {
+  display: inline-grid !important;
+  place-items: center;
+  width: 32px !important;
+  height: 29px !important;
+  padding: 4px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  color: var(--noor-tile-accent) !important;
+  background: linear-gradient(145deg, #ffffffba, var(--noor-tile-icon));
+  box-shadow: inset 0 1px 1px #ffffffbd;
+}
+.np-r331-tile :is(.np-r322-timer-icon, .np-r324-clock-icon) svg { width: 20px; height: 20px; }
+.np-r331-tile :is(.np-r322-timer-head, .np-r324-upcoming-head) {
+  display: grid !important;
+  justify-items: center;
+}
+.np-r331-tile.np-r331-small > span,
+.np-r339-tile-action > span {
+  color: var(--ng-ink);
+  font-size: 12px;
+  font-weight: 750;
+}
+.np-r339-mini-days {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+}
+.np-r339-mini-days button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.np-page[data-appearance] .np-r324-bottom-nav {
+  background: linear-gradient(154deg, #f7fcffe8, #bcd8efde) !important;
+  border-radius: 27px !important;
+  box-shadow: inset 0 1px 3px #fff, 0 8px 25px #183c6a53 !important;
+}
+.np-page[data-appearance="dark"] .np-r324-bottom-nav {
+  background: linear-gradient(154deg, #304e6fe8, #19344de8) !important;
+}
+.np-page[data-appearance] .np-r324-bottom-nav .np-r323-nav-add > svg {
+  background: radial-gradient(ellipse at 50% 15%, #84d8fb, #175b96 65%, #3087c1) !important;
+  box-shadow: inset 0 1px 4px #fff, 0 0 0 2px #d8f5ffbd, 0 4px 12px #216eab85 !important;
+}
+.np-page[data-appearance]:has(.np-r339-header) :is(.np-day-achievement,.np-r332-week,.np-caffeine-card-r299,.np-habit-category,.np-tasks-card) {
+  background: var(--noor-board-glass) !important;
+  box-shadow: inset 0 1px 2px #fff8, 0 5px 17px #24457030 !important;
+}
+@media(max-width: 480px) {
+  .np-r340-settings { right: 15px; top: 29px; }
+  .np-page[data-appearance] .np-r339-header .np-r339-wordmark { font-size: clamp(16px, 5vw, 24px); }
+}
+
+.np-page[data-appearance] .np-r331-tile .np-r322-timer-head > .np-r322-timer-icon {
+  display: inline-grid !important;
+}
+.np-r339-mini-days button {
+  font-size: 8px;
+  padding-inline: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.np-page[data-appearance] .np-r339-header[data-daylight="night"] .np-brand {
+  background: linear-gradient(140deg, #294d739c, #28476dbb) !important;
+}
+.np-page[data-appearance] .np-r339-header[data-daylight="night"] .np-header-date-main * {
+  color: #f0f6ff !important;
+}
+.np-r331-overlay,
+.np-page[data-appearance] .np-r322-modal[data-open=true],
+.np-r332-schedule-overlay[data-open=true] {
+  top: var(--noor-dialog-top, 0px) !important;
+  height: var(--noor-dialog-height, 100dvh) !important;
+  bottom: auto !important;
+  align-items: center !important;
+  padding: 12px !important;
+  box-sizing: border-box;
+}
+.np-r331-overlay > .np-r331-sheet,
+.np-page[data-appearance] .np-r322-modal > .np-r322-sheet,
+.np-r332-schedule-overlay > .np-r332-schedule-sheet {
+  width: min(100%,620px) !important;
+  max-height: calc(var(--noor-dialog-height, 100dvh) - 24px) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--ng-bg) 91%, transparent), color-mix(in srgb, var(--ng-top) 86%, transparent)) !important;
+  border: 1px solid #ffffffa6 !important;
+  box-shadow: inset 0 1px 2px #fff9, 0 15px 40px #1c39546b !important;
+}
+.np-page[data-appearance] .np-r322-modal[data-open=true] {
+  background: #11344c54;
+  backdrop-filter: blur(4px);
+}
+.np-r339-overlay .np-prayer-times .np-r331-prayer-record {
+  min-width: 0;
+  overflow-wrap: normal;
+  font-size: clamp(8px, 2.4vw, 11px);
+  padding-inline: 0;
+}
+
+.np-r331-tile .np-r340-task-progress {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: min(100%, 140px);
+}
+.np-r340-task-progress progress { min-width: 0; flex: 1; accent-color: #2b8a61; }
+.np-page[data-appearance] .np-r324-bottom-nav {
+  width: min(1120px, calc(100% - 16px));
+}
+.np-page[data-appearance] .np-r324-bottom-nav .np-r323-nav-add > svg {
+  width: 24px;
+  height: 24px;
+  padding: 11px;
+  margin-top: -19px;
+}
+.np-r340-rhythm-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 17px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #f6fcff;
+  background: linear-gradient(145deg, #fff6ded9, #e7f3ffd9);
+  color: #193b5a;
+}
+.np-r340-rhythm-feature strong { display: block; }
+.np-r340-rhythm-feature b { margin-inline-start: auto; font-size: clamp(17px, 5vw, 25px); }
+.np-r340-rhythm-feature-icon { color: #835111; }
+.np-r340-rhythm-feature-icon svg { width: 32px; height: 32px; vertical-align: middle; }
+.np-page[data-appearance] .np-r322-sheet .np-r322-sheet-head {
+  background: transparent !important;
+  border: 0 !important;
+}
+.np-page[data-appearance] .np-r322-sheet .np-r323-sheet-handle { display: none !important; }
+.np-page[data-appearance] .np-r339-overlay .np-prayer-card .np-prayer-times .np-prayer {
+  display: grid !important;
+  grid-template-columns: 24px minmax(0, 1fr) auto 48px;
+  grid-template-rows: auto !important;
+  grid-auto-rows: auto !important;
+  width: 100% !important;
+  min-height: 35px !important;
+  align-items: center;
+  justify-items: start;
+  gap: 6px !important;
+  padding: 3px 6px !important;
+  border-radius: 12px !important;
+}
+.np-r339-overlay .np-prayer-times .np-r331-prayer-record { min-height: 27px; }
+.np-r339-overlay .np-prayer-times .np-countdown { display: none !important; }
+.np-page[data-appearance] .np-r339-overlay .np-prayer-card .np-r324-prayer-next {
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #f6fbff;
+  border-radius: 15px;
+  padding: 12px;
+  background: linear-gradient(120deg, #f4f9ffc7, #ffe9bfab);
+  color: #194364 !important;
+}
+
+.np-page[data-appearance] .np-r339-overlay .np-prayer :is(.np-prayer-symbol,.np-prayer-label,.np-prayer-time,.np-r331-prayer-record) {
+  grid-row: 1 !important;
+  position: static !important;
+}
+
+.np-page[data-appearance] .np-r339-overlay .np-prayer-time { flex-direction: row; gap: 3px; }
+
+.np-page[data-appearance] .np-r331-tile .np-r323-rhythm .np-r322-timer-feature.is-day {
+  background: linear-gradient(145deg, #fff7e6, #f9e4bc) !important;
+  color: #5a390f !important;
+}
+.np-page[data-appearance] .np-r331-tile .np-r322-timer-feature.is-day :is(.np-r322-active-title,.np-r322-main-countdown,.np-r328-total-duration) {
+  color: #5a390f !important;
+}
+
+/* Inline sheets sit above the fixed dock, including when the viewport shrinks. */
+.np-page[data-appearance] .np-r339-overlay:not([hidden]),
+.np-page[data-appearance] .np-r322-modal[data-open=true] {
+  padding-block-end: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+}
+.np-page[data-appearance] .np-r339-overlay:not([hidden]) > .np-r331-sheet,
+.np-page[data-appearance] .np-r322-modal[data-open=true] > .np-r322-sheet {
+  max-height: calc(var(--noor-dialog-height, 100dvh) - 94px - env(safe-area-inset-bottom, 0px)) !important;
+}

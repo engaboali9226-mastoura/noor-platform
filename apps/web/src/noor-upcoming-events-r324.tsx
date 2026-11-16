@@ -1,3 +1,4 @@
+import {useDashboardDialog} from "./noor-dashboard-dialog.js";
 import {useEffect,useState,type ReactElement} from "react";
 import {createPortal} from "react-dom";
 import {NoorR323Icon} from "./noor-r323-icons.js";
@@ -57,13 +58,14 @@ const clock=(ms:number,zone:string)=>new Intl.DateTimeFormat("ar-SA-u-nu-latn",{
 const dateLabel=(ms:number,zone:string)=>new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{timeZone:zone,weekday:"long",day:"numeric",month:"long"}).format(new Date(ms));
 export function UnifiedUpcomingR324({definitions,religiousEvents,nowMs,timeZone,onAdd,personalDefault=false}:{definitions:readonly UpcomingDefinitionR301[];religiousEvents:readonly ReligiousEventR324[];nowMs:number;timeZone:string;onAdd?:()=>void;personalDefault?:boolean}):ReactElement{
  const [open,setOpen]=useState(false),[filter,setFilter]=useState<"all"|"religious"|"personal">(personalDefault?"personal":"all");
+ const viewport = useDashboardDialog(open ? ".np-r332-schedule-overlay[data-open=true] .np-r332-schedule-sheet" : null);
  const events=mergeUpcomingR324(definitions,religiousEvents,nowMs,timeZone);
  const featured=personalDefault?events.filter(e=>e.kind==='personal'):events;
  const next=featured.find(e=>e.atMs>nowMs)??featured[0];
  const filtered=events.filter(e=>filter==="all"||(filter==="personal"?e.kind==="personal":e.kind!=="personal"));
- useEffect(()=>{if(!open)return;const trigger=document.activeElement as HTMLElement|null;const close=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();setOpen(false);}};document.addEventListener("keydown",close);document.querySelector<HTMLElement>("[data-r324-close-upcoming]")?.focus();return()=>{document.removeEventListener("keydown",close);trigger?.focus();};},[open]);
+ useEffect(()=>{if(!open)return;const close=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();setOpen(false);}};document.addEventListener("keydown",close);return()=>{document.removeEventListener("keydown",close);};},[open]);
  const show=()=>{setFilter(personalDefault?"personal":"all");setOpen(true);};
- const overlay=<div className="np-r322-appointments-overlay np-r324-schedule-overlay np-r332-schedule-overlay" data-open={open} aria-hidden={!open} onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false);}}>
+ const overlay=<div className="np-r322-appointments-overlay np-r324-schedule-overlay np-r332-schedule-overlay" style={viewport} data-open={open} aria-hidden={!open} onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false);}}>
  <section className="np-r322-appointments-sheet np-r324-schedule-sheet np-r332-schedule-sheet" onKeyDown={event=>{if(event.key!=="Tab")return;const controls=Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)"));const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}} role="dialog" aria-modal={open} aria-label="جميع المواقيت القادمة" dir="rtl">
  <header className="np-r322-sheet-head"><div><h2>{personalDefault?"المواعيد":"المواقيت القادمة"}</h2><p>مرتبة زمنيًا حسب موقعك وسياسة الصلاة</p></div><button type="button" data-r324-close-upcoming aria-label="إغلاق المواعيد" onClick={()=>setOpen(false)}>×</button></header>
  <div className="np-r324-schedule-filters">{([["all","الكل"],["religious","الصلوات والليل"],["personal","مواعيدي"]] as const).map(([id,label])=><button type="button" key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)}>{label}</button>)}</div>
@@ -74,7 +76,7 @@ export function UnifiedUpcomingR324({definitions,religiousEvents,nowMs,timeZone,
  {onAdd?<button type="button" className="np-r324-add-event" data-testid="r302-add-countdown" onClick={()=>{setOpen(false);onAdd();}}>+ إضافة موعد شخصي</button>:null}
  </section></div>;
  return <section className="np-card np-upcoming-r301 np-upcoming-r303 np-r324-upcoming" data-testid="r301-upcoming-countdowns" data-countdown-empty={!events.length} aria-label="المواقيت القادمة">
- <header className="np-r324-upcoming-head"><span className="np-r324-clock-icon" aria-hidden="true">◷</span><h2>{personalDefault?"الموعد القادم":"المواقيت القادمة"}</h2></header>
+ <header className="np-r324-upcoming-head"><span className="np-r324-clock-icon" aria-hidden="true"><NoorR323Icon name="calendar"/></span><h2>{personalDefault?"الموعد القادم":"المواقيت القادمة"}</h2></header>
  <button className="np-r324-next-event" type="button" onClick={show} aria-haspopup="dialog" aria-expanded={open} data-testid="r322-open-appointments">
  {next?<><strong>{next.title}</strong><b dir="ltr" role="timer">{next.atMs>nowMs?countdown(next.atMs,nowMs):"حان الموعد"}</b><small>{dateLabel(next.atMs,timeZone)} · {clock(next.atMs,timeZone)}</small></>:<small>{personalDefault?"لا مواعيد قادمة":"لا توجد مواقيت مؤكدة بعد"}</small>}
  <span>{personalDefault?"عرض المواعيد":"عرض جميع المواقيت"} ({featured.length}) ‹</span></button>

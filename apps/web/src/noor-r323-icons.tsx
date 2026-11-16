@@ -15,6 +15,11 @@ const paths={
  plus:"M12 4v16 M4 12h16",
  bell:"M18 8a6 6 0 0 0-12 0c0 7-3 8-3 9h18c0-1-3-2-3-9 M10 21h4",
  settings:"M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6",
+ calendar:"M4 5h16v16H4z M8 3v4 M16 3v4 M4 10h16 M12 13v4 M10 15h4",
+ history:"M3 11a9 9 0 1 1 2 7 M3 5v6h6 M12 7v5l4 3",
+ circleCheck:"M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0 M7 12l3 3 7-7",
+ moon:"M20.2 15.5A8.5 8.5 0 0 1 8.5 3.8a9 9 0 1 0 11.7 11.7z",
+ sun:"M16 12a4 4 0 1 1-8 0 4 4 0 1 1 8 0 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2",
  arrow:"M15 4l-8 8 8 8"
 } as const;
 export function NoorR323Icon({name}:{name:keyof typeof paths}):ReactElement{return <svg className="noor-r323-line-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>}
