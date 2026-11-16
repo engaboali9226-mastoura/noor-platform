@@ -134,14 +134,15 @@ test("R99 transition matches the Personal surface and preserves real failure sta
   assert.doesNotMatch(unavailable, /noor-entry-screen/);
 });
 
-test("R99 welcome headline is consistent across the gateway and loading transition", () => {
+test("R99 sign-in has its own title and the launcher and loading retain the welcome", () => {
   const signIn = renderToStaticMarkup(
     createElement(PlatformShell, {
       state: { kind: "no-application-selected" },
       navigate: () => {},
     }),
   );
-  assert.match(signIn, /مرحبا بك في منصة نور/u);
+  assert.match(signIn, /خصّص مساحتك، عزّز إنتاجيتك/u);
+  assert.match(signIn, /<h1[^>]*>تسجيل الدخول<\/h1>/u);
   assert.doesNotMatch(signIn, /<h1 class="glass-title">Noor Platform<\/h1>/u);
 
   const gateway = renderToStaticMarkup(

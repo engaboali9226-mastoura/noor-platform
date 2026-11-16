@@ -65,13 +65,21 @@ try{
   await find(".noor-r323-auth-card");
   await expect("document.documentElement.scrollWidth<=innerWidth+1","Login horizontal overflow");
   await expect("!document.querySelector('.noor-auth-switch-r312')","Account tabs are absent");
-  await expect("document.querySelector('.noor-welcome-eyebrow').textContent==='NOOR Platform'","Platform branding");
+  await expect("document.querySelector('.noor-login-wordmark').textContent==='NOOR Platform'","Platform branding");
   await expect("document.querySelector('.noor-r322-admin-entry').getBoundingClientRect().bottom<=innerHeight","Login controls fit without scrolling");
-  await expect("document.querySelector('.noor-welcome-logo').getBoundingClientRect().top<80","Brand begins near the top of the screen");
+  await expect(`(() => {
+    const card = document.querySelector('.noor-r332-auth').getBoundingClientRect();
+    const brand = document.querySelector('.noor-login-brand').getBoundingClientRect();
+    const field = document.querySelector('input[name=email]').getBoundingClientRect();
+    const wordmark = document.querySelector('.noor-login-wordmark').getBoundingClientRect();
+    const tagline = document.querySelector('.noor-login-tagline').getBoundingClientRect();
+    return Math.abs((card.top + card.bottom) / 2 - innerHeight / 2) <= 4
+      && brand.bottom <= card.top + 1 && field.height >= 48 && wordmark.width >= tagline.width * 1.15;
+  })()`,"Login card is centered, with full-size fields and a shorter tagline");
   await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
-  await expect("document.querySelector('.noor-welcome-logo').getAttribute('src')==='/brand/platform-header.webp'&&document.querySelector('.noor-welcome-logo').naturalWidth>0","Shared login logo");
+  await expect("document.querySelector('.noor-login-brand img').naturalWidth>0&&getComputedStyle(document.querySelector('.noor-welcome-ambient'),'::before').backgroundImage.includes('/brand/login-glass-header.webp')","Approved calligraphy and glass background");
   await run("document.querySelector('input[name=email]').focus()");
-  await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='0px'&&s.boxShadow==='none'&&s.outlineStyle==='none'})()","No nested focus border");
+  await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='1px'&&s.boxShadow!=='none'&&getComputedStyle(i.parentElement).boxShadow==='none'})()","Only the field shows its focus ring");
   await run("document.querySelector('.noor-r328-password-toggle').click()");
   await expect("document.querySelector('input[name=password]').type==='text'","Password visibility works");
   await run("document.querySelector('.noor-r328-password-toggle').click()");

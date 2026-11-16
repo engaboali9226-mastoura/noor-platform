@@ -27,8 +27,9 @@ test("R231 root and /personal auth-required share identical premium Noor login s
  for(const view of [root,personalEntry]){
   assert.match(view,/class="[^"]*\bnoor-welcome-gateway-r231\b[^"]*"/u);
   assert.match(view,/class="noor-welcome-panel"/u);
-  assert.match(view,/src="\/brand\/platform-header\.webp"/u);
-  assert.match(view,/مرحبا بك في منصة نور/u);
+  assert.match(view,/src="\/brand\/login-calligraphy\.webp"/u);
+  assert.match(view,/خصّص مساحتك، عزّز إنتاجيتك/u);
+  assert.match(view,/<h1[^>]*>تسجيل الدخول<\/h1>/u);
   assert.match(view,/name="email"/u);
   assert.match(view,/name="password"/u);
   assert.match(view,/type="submit"/u);
@@ -41,7 +42,7 @@ test("R231 sign-in invalid/retry and success gateway retain brand without reveal
  const invalid=markup({kind:"authentication-required",application:personal,authenticationState:"invalid-credentials"});
  assert.match(invalid,/role="alert"/u);
  assert.match(invalid,/غير صحيحة/u);
- assert.match(invalid,/src="\/brand\/platform-header\.webp"/u);
+ assert.match(invalid,/src="\/brand\/login-calligraphy\.webp"/u);
  const unavailable=markup({kind:"authentication-required",application:personal,authenticationState:"unavailable"});
  assert.match(unavailable,/تعذر الاتصال بخدمة الدخول/u);
  const waiting=markup({kind:"authentication-required",application:personal,authenticationState:"submitting"});
