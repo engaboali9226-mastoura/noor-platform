@@ -413,6 +413,11 @@
   padding-block-end: 10px !important;
 }
 
+.noor-admin-entry-gateway[data-auth-mode="admin-recover-request"] .noor-r332-auth {
+  min-height: 286px;
+  padding-block: 26px 8px !important;
+}
+
 .noor-admin-entry-panel[data-step="verify-setup"] .noor-r332-auth > button + button {
   margin-block-start: 0;
 }
@@ -431,6 +436,10 @@
 
 .noor-admin-entry-gateway[data-auth-mode="admin-verify"] .noor-r332-auth .noor-welcome-submit {
   margin-block-start: 12px;
+}
+
+.noor-admin-entry-gateway[data-auth-mode="admin-recover-request"] .noor-r332-auth .noor-welcome-submit {
+  margin-block-start: 13px;
 }
 
 .noor-admin-entry-gateway .noor-auth-return-r312 {
@@ -454,8 +463,11 @@
   text-align: center;
 }
 
-.noor-admin-setup-dialog {
+.noor-admin-entry-panel .noor-account-request-receipt {
   max-height: calc(var(--noor-admin-viewport, 100dvh) - 32px);
+}
+
+.noor-admin-setup-dialog {
   padding-block-start: 25px;
 }
 

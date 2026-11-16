@@ -42,7 +42,7 @@ try{
  'const accountService={requestPasswordReset:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,registerPendingAccount:async(email:string)=>email==="unavailable@example.test"?"unavailable" as const:"sent" as const,completePasswordRecovery:async(password:string)=>password==="ExpiredFixture!"?"invalid" as const:"updated" as const,requestEmailChange:async()=>"sent" as const};',
  'const appointments=[{id:"visual-appointment-1",kind:"Task",title:"اجتماع فريق العمل",state:"Active",category:"العمل",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-07",time:"15:00"}},{id:"visual-appointment-2",kind:"Task",title:"موعد طبي",state:"Active",category:"الصحة",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-08",time:"10:00"}}];',
  'const adminService={signIn:async()=>setupFactor?"enroll-needed" as const:"challenge-needed" as const,enroll:async()=>({factorId:"fixture",qrSvg:`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>`,secret:"TEST-KEY"}),verify:async(code:string)=>code==="123456"?"aal2" as const:"invalid" as const,accessToken:async()=>null,signOut:async()=>{}};',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={()=>{}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...workspace.workspace.definitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
  vite=spawn("npm",["--workspace","apps/web","run","dev","--","--host","127.0.0.1","--port","5179","--strictPort"],{stdio:"inherit",env:{...process.env,VITE_NOOR_SUPABASE_URL:"http://127.0.0.1:54321",VITE_NOOR_SUPABASE_PUBLISHABLE_KEY:"sb_publishable_noor_browser_fixture"}});
@@ -359,6 +359,53 @@ try{
   await run("document.querySelector('.noor-welcome-submit').click()");
   await find(".na315-panel[data-step='complete']");
   await expect("!document.querySelector('.noor-admin-setup-dialog, .noor-admin-setup-key, .noor-admin-setup-qr')","Completion removes setup material from the page");
+  await cdp("Page.navigate",{url:url+"?screen=admin"});
+  await find("main[data-auth-mode=admin-login]");
+  await run("document.querySelector('.noor-auth-return-r312').click()");
+  await find("main[data-auth-mode=admin-recover-request] input[name=email]");
+  await checkAdminLayout("admin-recover-request",1);
+  await snap(screen.name+"-admin-recover-request");
+  const requestAdminLink = email => run(`(() => {
+    const form = document.querySelector('form');
+    form.elements.email.value = ${JSON.stringify(email)};
+    form.requestSubmit();
+  })()`);
+  await requestAdminLink("failed@example.test");
+  await find(".na315-error");
+  await expect("!document.querySelector('dialog')&&document.querySelector('input[name=email]').value==='failed@example.test'","Admin delivery failure keeps the address for retry");
+  await requestAdminLink("fixture@example.test");
+  await find(".noor-account-request-receipt:modal");
+  await expect("document.querySelector('dialog h2').textContent==='تم استلام طلب الاستعادة'&&!document.querySelector('input[name=email]').value","Admin recovery confirms a request without claiming an account exists");
+  await snap(screen.name+"-admin-recover-sent");
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await find("main[data-auth-mode=admin-login]");
+
+  await cdp("Page.navigate",{url:url+"?screen=admin&auth=recovery"});
+  await find("main[data-auth-mode=admin-recover-finish] input[name=confirm]");
+  await checkAdminLayout("admin-recover-finish",2);
+  await expect("[...document.querySelectorAll('input')].every(i=>i.minLength===12&&i.maxLength===128&&i.autocomplete==='new-password')","Administrator password minimum remains distinct");
+  await snap(screen.name+"-admin-recover-finish");
+  const submitAdminPassword = (password, confirm) => run(`(() => {
+    const form = document.querySelector('form');
+    form.elements.password.value = ${JSON.stringify(password)};
+    form.elements.confirm.value = ${JSON.stringify(confirm)};
+    form.requestSubmit();
+  })()`);
+  await submitAdminPassword("FixturePassword1!","FixturePassword2!");
+  await expect("document.querySelector('.na315-error')?.textContent.includes('غير متطابقتين')","Administrator confirmation rejects mismatched passwords");
+  await submitAdminPassword("ExpiredFixturePass!","ExpiredFixturePass!");
+  await expect("document.querySelector('.na315-error')?.textContent.includes('الرابط منتهي')&&!document.querySelector('dialog')","Expired administrator link shows retry state");
+  await submitAdminPassword("FixturePassword1!","FixturePassword1!");
+  await find(".noor-account-request-receipt:modal");
+  await expect("location.pathname==='/admin/security'&&!location.search&&document.querySelector('main').dataset.authMode==='admin-login'&&!document.querySelector('input[name=password]').value&&document.querySelector('dialog h2').textContent==='تم تغيير كلمة المرور'","Update clears the form and returns to sign-in with confirmation");
+  if (screen.mobile) {
+   await cdp("Emulation.setDeviceMetricsOverride",{width:320,height:420,mobile:true,deviceScaleFactor:1});
+   await expect("document.querySelector('dialog').getBoundingClientRect().bottom<=visualViewport.height","Administrator recovery confirmation fits a short viewport");
+   await cdp("Emulation.setDeviceMetricsOverride",{width:screen.width,height:screen.height,mobile:true,deviceScaleFactor:1});
+  }
+  await snap(screen.name+"-admin-recover-saved");
+  await run("document.querySelector('.noor-account-request-receipt-return').click()");
+  await expect("!document.querySelector('dialog')&&document.querySelector('main').dataset.authMode==='admin-login'","Recovery receipt closes on administrator sign-in");
   await cdp("Page.navigate",{url:url+"?screen=personal"});
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");
