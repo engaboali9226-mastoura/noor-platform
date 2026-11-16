@@ -6,7 +6,10 @@ import type {
     ExecutionDefinition,
     IsoInstant,
     LocationProfileRevision,
+    PersonalHistoricalEvent,
+    PersonalNotificationHistoryEntry,
     PersonalDay,
+    PersonalProfile,
     PrayerTimePolicyRevision,
 } from "../domain/model.js";
 import type {
@@ -20,6 +23,9 @@ import type {
 } from "../ports.js";
 
 interface FoundationState {
+    personalProfiles?: PersonalProfile[];
+    historicalEvents?: PersonalHistoricalEvent[];
+    notificationHistory?: PersonalNotificationHistoryEntry[];
     prayerScorePoliciesR334?: {userId:string;policy:PrayerScoreSnapshotR334}[];
     fridayMosqueVisits?: {userId:string;localDate:string;hour:FridayMosqueHour}[];
     categories?: {userId:string;names:string[]}[];
@@ -102,6 +108,9 @@ function effectiveAt(
 }
 
 export interface FoundationStoreSeed {
+    readonly personalProfiles?: readonly PersonalProfile[];
+    readonly historicalEvents?: readonly PersonalHistoricalEvent[];
+    readonly notificationHistory?: readonly PersonalNotificationHistoryEntry[];
     readonly locations?:
         readonly LocationProfileRevision[];
     readonly prayerPolicies?:
@@ -143,6 +152,9 @@ implements
         seed: FoundationStoreSeed = {},
     ) {
         this.#state = {
+            personalProfiles: clone([...(seed.personalProfiles??[])]),
+            historicalEvents: clone([...(seed.historicalEvents??[])]),
+            notificationHistory: clone([...(seed.notificationHistory??[])]),
             fridayMosqueVisits:clone([...(seed.fridayMosqueVisits??[])]),
             locations:
                 clone(
@@ -439,6 +451,34 @@ implements
         state: FoundationState,
     ): FoundationTransaction {
         return {
+            getPersonalProfile:(userId)=>clone(state.personalProfiles?.find(x=>x.userId===userId)??null),
+            savePersonalProfile:(userId,profile)=>{
+                if(profile.userId!==userId)throw new Error("PROFILE_OWNER_MISMATCH");
+                state.personalProfiles??=[];
+                const prior=state.personalProfiles.findIndex(x=>x.userId===userId);
+                if(prior<0)state.personalProfiles.push(clone(profile));else state.personalProfiles[prior]=clone(profile);
+            },
+            listHistoricalEvents:(userId)=>clone((state.historicalEvents??[]).filter(x=>x.userId===userId)),
+            saveHistoricalEvent:(userId,event)=>{
+                if(event.userId!==userId)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");
+                state.historicalEvents??=[];
+                const prior=state.historicalEvents.findIndex(x=>x.id===event.id);
+                if(prior<0){if(state.historicalEvents.filter(x=>x.userId===userId).length>=500)throw new Error("HISTORICAL_EVENT_LIMIT");state.historicalEvents.push(clone(event));}
+                else {if(state.historicalEvents[prior]!.userId!==userId)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");state.historicalEvents[prior]=clone(event);}
+            },
+            deleteHistoricalEvent:(userId,eventId)=>{
+                state.historicalEvents??=[];
+                const prior=state.historicalEvents.findIndex(x=>x.id===eventId);
+                if(prior>=0){if(state.historicalEvents[prior]!.userId!==userId)throw new Error("HISTORICAL_EVENT_OWNER_MISMATCH");state.historicalEvents.splice(prior,1);}
+            },
+            listNotificationHistory:(userId)=>clone((state.notificationHistory??[]).filter(x=>x.userId===userId)),
+            saveNotificationHistory:(userId,entry)=>{
+                if(entry.userId!==userId)throw new Error("NOTIFICATION_OWNER_MISMATCH");
+                state.notificationHistory??=[];
+                const prior=state.notificationHistory.findIndex(x=>x.id===entry.id);
+                if(prior<0){if(state.notificationHistory.filter(x=>x.userId===userId).length>=500)throw new Error("NOTIFICATION_HISTORY_LIMIT");state.notificationHistory.push(clone(entry));}
+                else {if(state.notificationHistory[prior]!.userId!==userId)throw new Error("NOTIFICATION_OWNER_MISMATCH");state.notificationHistory[prior]=clone(entry);}
+            },
             getPrayerScorePolicyR334:(userId)=>clone(state.prayerScorePoliciesR334?.find(x=>x.userId===userId)?.policy??null),
             savePrayerScorePolicyR334:(userId,policy)=>{if(!validPrayerScoreSnapshotR334(policy))throw new Error("PRAYER_POLICY_INVALID");state.prayerScorePoliciesR334=[...(state.prayerScorePoliciesR334??[]).filter(x=>x.userId!==userId),{userId,policy:clone(policy)}];},
             getFridayMosqueVisit:(userId,localDate)=>{const x=state.fridayMosqueVisits?.find(v=>v.userId===userId&&v.localDate===localDate);return x?{localDate:x.localDate,hour:x.hour}:null;},

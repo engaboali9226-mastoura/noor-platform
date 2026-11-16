@@ -27,6 +27,12 @@ export type NoorPersonalWorkspaceResult =
     };
 
 export type NoorPersonalCommandInput =
+  | Readonly<{type:"set-personal-profile";expectedUpdatedAt:string|null;displayName:string;avatarUrl:string|null;birthDate:string|null}>
+  | Readonly<{type:"create-historical-event";id:string;calendar:"gregorian"|"hijri";year:number|null;month:number;day:number;title:string;details:string;source:string;enabled:boolean}>
+  | Readonly<{type:"update-historical-event";eventId:string;expectedUpdatedAt:string;calendar:"gregorian"|"hijri";year:number|null;month:number;day:number;title:string;details:string;source:string;enabled:boolean}>
+  | Readonly<{type:"delete-historical-event";eventId:string;expectedUpdatedAt:string}>
+  | Readonly<{type:"observe-notification";id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string}>
+  | Readonly<{type:"mark-notification-read";notificationId:string;expectedReadAt:string|null}>
   | import("../../noor-personal/src/domain/completion-r331.js").PrayerScoreApprovalR334
   | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:string;taskSessionId:string;entryId:string;amount:number;note:string}>
   | Readonly<{type:"recover-historical-execution";executionId:string;localDate:string;expectedStatus:"Missed"|"Pending"|"Planned"|"InProgress"}>
