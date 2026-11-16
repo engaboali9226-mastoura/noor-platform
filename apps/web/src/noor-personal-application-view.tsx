@@ -3087,11 +3087,12 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const weatherState=weather?.weatherCode;
   const sunAt=Date.parse(view.prayerTimes.find(p=>p.key==="sunrise")?.at??"");
   const sunsetAt=Date.parse(view.prayerTimes.find(p=>p.key==="maghrib")?.at??"");
-  const isDaylight=weather?.isDay??(Number.isFinite(sunAt)&&Number.isFinite(sunsetAt)?nowMs>=sunAt&&nowMs<sunsetAt:undefined);
-  const sky=weatherState==null?"unknown":weatherState===0?"clear":weatherState<4?"cloudy":weatherState<50?"fog":"precipitation";
+  const isDaylight=Number.isFinite(sunAt)&&Number.isFinite(sunsetAt)?nowMs>=sunAt&&nowMs<sunsetAt:weather?.isDay??undefined;
+  const sky=weatherState==null?"unknown":weatherState===0?"clear":weatherState<=2?"partly":weatherState===3?"cloudy":weatherState<50?"fog":"precipitation";
   return <>
     <div className="np-topbar np-r323-header np-r339-header" data-testid="platform-topbar" data-daylight={isDaylight===undefined?"unknown":isDaylight?"day":"night"} data-sky={sky}>
-      <div className="np-r323-greeting">{isDaylight===undefined?"أهلًا بك":isDaylight?"صباح الخير":"مساء الخير"} <span aria-hidden="true">{sky==="clear"?(isDaylight?"☀":"☾"):sky==="precipitation"?"☔":sky==="cloudy"||sky==="fog"?"☁":""}</span></div><div className="np-header-calendar" data-testid="header-information">
+      <div className="np-r339-sky-scene" aria-hidden="true"><svg viewBox="0 0 900 220" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="r339-ridge" x1="0" y1="0" x2="0" y2="1"><stop stopColor="currentColor" stopOpacity=".5"/><stop offset="1" stopColor="currentColor" stopOpacity=".08"/></linearGradient></defs>{(sky==="clear"||sky==="partly")&&isDaylight!==undefined?<g className="np-r339-celestial">{isDaylight?<circle cx="165" cy="110" r="30" fill="#ffebbd"/>:<><path d="M179 57a26 26 0 1 0 20 40 23 23 0 0 1-20-40" fill="#fff2c6"/>{[45,110,240,310,415,520,650,810].map((x,i)=><circle key={x} cx={x} cy={25+(i*37)%79} r={i%3===0?1.9:1.1} fill="#f3f6ff"/>)}</>}</g>:null}{(sky==="partly"||sky==="cloudy"||sky==="fog"||sky==="precipitation")?<g fill="#e6edf3" opacity={sky==="partly"?".44":".72"}><path d="M-20 90h260c6-17-9-29-30-27-4-22-32-34-54-18-20-18-57-6-64 17-25-12-62 1-64 20H-20z"/><path d="M570 84h350V51c-21-12-47-6-56 3-14-28-59-34-76-6-27-15-58-4-65 16-39-13-79-4-88 10z"/></g>:null}<path d="M0 191 82 159 156 181 248 124 334 181 430 142 525 176 634 128 758 177 843 151 900 174V220H0Z" fill="url(#r339-ridge)"/><path d="M0 207 155 183 255 201 420 179 586 204 746 182 900 202V220H0Z" fill="currentColor" opacity=".12"/></svg></div>
+      <div className="np-r323-greeting">{isDaylight===undefined?"أهلًا بك":isDaylight?"صباح الخير":"مساء الخير"} <span aria-hidden="true">{sky==="clear"?(isDaylight?"☀":"☾"):sky==="precipitation"?"☔":sky==="partly"?(isDaylight?"⛅":"☁"):sky==="cloudy"||sky==="fog"?"☁":""}</span></div><div className="np-header-calendar" data-testid="header-information">
         <div className="np-header-day">{weekday}</div>
         <div className="np-header-date-pair">
           <div className="np-header-date-block">
