@@ -326,3 +326,5 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-r339-overlay .np-prayer{min-width:0!important;min-height:70px!important;padding:5px 2px!important;box-sizing:border-box;max-width:none!important}
 .np-page[data-appearance] :is(.np-day-achievement,.np-r332-week,.np-caffeine-card-r299,.np-habit-category,.np-tasks-card){margin-block:10px!important}
 .np-page[data-appearance] .np-r324-bottom-nav{position:fixed!important;backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important;border:1px solid #ffffff80!important;background:color-mix(in srgb,var(--ng-bg) 86%,transparent)!important;box-shadow:0 5px 24px #19365638}
+
+.np-r339-friday-times{margin-top:10px}.np-r339-friday-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.np-r339-friday-grid>div{background:var(--ng-card);border:1px solid var(--ng-line);border-radius:12px;padding:8px 3px;display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}.np-r339-friday-grid>div>span{font-size:24px}.np-r339-friday-grid strong,.np-r339-friday-grid small{font-size:10px;overflow-wrap:anywhere}
