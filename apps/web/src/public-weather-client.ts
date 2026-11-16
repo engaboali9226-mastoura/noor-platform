@@ -32,8 +32,8 @@ export async function loadCurrentWeather(location:Readonly<{latitude:number;long
     const current=payload.current;
     return {
       temperatureC:finite(current.temperature_2m),
-      weatherCode:finite(current.weather_code),
-      isDay:current.is_day===1?true:current.is_day===0?false:null,
+      ...(typeof current.weather_code==="number"&&Number.isInteger(current.weather_code)&&current.weather_code>=0&&current.weather_code<=99?{weatherCode:current.weather_code}:{}),
+      ...(current.is_day===0||current.is_day===1?{isDay:current.is_day===1}:{}),
       uvIndex:finite(current.uv_index),
       windSpeedKmh:finite(current.wind_speed_10m),
       windDirectionDeg:finite(current.wind_direction_10m),
