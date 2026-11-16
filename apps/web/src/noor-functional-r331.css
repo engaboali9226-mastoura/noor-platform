@@ -92,13 +92,13 @@
 .np-r331-prayer-record[data-prayer-mode="group"]{background:#bde0d2;color:#215742}.np-r331-prayer-record[data-prayer-mode="excused"]{background:#c1d9ee;color:#284d6e}.np-r331-prayer-record[data-prayer-mode="unexcused"]{background:#f0dfc0;color:#704d1d}.np-r331-prayer-record:disabled:not([data-prayer-mode="pending"]){opacity:1}
 .np-page .np-r331-home-grid .np-prayer .np-countdown{font-size:9px!important;gap:0!important}.np-page .np-r331-home-grid .np-countdown svg{display:none}
 .np-page .np-r331-home-grid .np-r324-prayer-next{display:none}
-.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299{padding:9px 10px!important;gap:5px!important}
-.np-page .np-r331-home-grid .np-caffeine-card-content-r299{display:block!important;margin:0!important}.np-page .np-r331-home-grid .np-caffeine-cup-r299{display:none!important}
-.np-page .np-r331-home-grid .np-caffeine-summary-r295{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px!important;align-items:center!important}
-.np-page .np-r331-home-grid .np-caffeine-tally-r295{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}.np-page .np-r331-home-grid .np-caffeine-tally-r295>div{padding:3px!important;min-height:0!important}
-.np-page .np-r331-home-grid .np-caffeine-signal-r295{width:auto!important;height:auto!important;aspect-ratio:auto!important;min-height:0!important;padding:5px!important;border-radius:10px!important}
-.np-page .np-r331-home-grid .np-caffeine-reason-r296{display:none!important}.np-page .np-r331-home-grid .np-caffeine-quick-r295{display:flex!important;gap:6px!important}
-.np-page .np-r331-home-grid .np-caffeine-quick-r295 button{min-height:34px!important;padding:4px!important;font-size:12px!important}
+.np-page[data-appearance] .np-wrap .np-caffeine-card-r299{padding:9px 10px!important;gap:5px!important}
+.np-page .np-wrap .np-caffeine-card-content-r299{display:block!important;margin:0!important}.np-page .np-wrap .np-caffeine-cup-r299{display:none!important}
+.np-page .np-wrap .np-caffeine-summary-r295{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px!important;align-items:center!important}
+.np-page .np-wrap .np-caffeine-tally-r295{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}.np-page .np-wrap .np-caffeine-tally-r295>div{padding:3px!important;min-height:0!important}
+.np-page .np-wrap .np-caffeine-signal-r295{width:auto!important;height:auto!important;aspect-ratio:auto!important;min-height:0!important;padding:5px!important;border-radius:10px!important}
+.np-page .np-wrap .np-caffeine-reason-r296{display:none!important}.np-page .np-wrap .np-caffeine-quick-r295{display:flex!important;gap:6px!important}
+.np-page .np-wrap .np-caffeine-quick-r295 button{min-height:34px!important;padding:4px!important;font-size:12px!important}
 .np-page .np-week-rate,.np-r331-week-rate{color:var(--ng-accent);font-size:18px;white-space:nowrap}
 .np-page .np-week-day .np-week-value{position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;min-height:45px;border-radius:10px;background:var(--ng-sub)!important}
 .np-r331-week-bar{position:absolute;inset:auto 0 0;z-index:-1;background:linear-gradient(0deg,var(--ng-accent),var(--ng-top));opacity:.5;border-radius:6px 6px 0 0}
@@ -183,9 +183,9 @@
 .np-page[data-appearance] .np-wrap>.np-r331-home-grid> :is(.np-r331-board,.np-prayer-card,.np-caffeine-card-r299){position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:1/-1!important;align-self:stretch!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;transform:none!important;min-width:0!important}
 .np-page[data-appearance] .np-wrap> :is(.np-day-achievement,.np-r332-week){position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:auto!important;float:none!important;clear:both!important;height:auto!important;max-height:none!important;min-height:0!important;transform:none!important;margin:0 0 12px!important;box-sizing:border-box}
 @media(min-width:800px){.np-page[data-appearance] .np-wrap>.np-r331-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.np-page[data-appearance] .np-wrap>.np-r331-home-grid> :is(.np-prayer-card,.np-caffeine-card-r299){grid-column:auto!important}}
-.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;justify-self:end!important;flex:0 0 auto!important;width:76px!important;height:76px!important;min-width:76px!important;min-height:76px!important;max-width:76px!important;max-height:76px!important;aspect-ratio:1!important;border-radius:50%!important;padding:5px!important;border-width:4px!important;text-align:center!important;gap:0!important}
-.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295 strong{font-size:11px!important;line-height:1.25!important}
-@media(max-width:360px){.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295{width:66px!important;height:66px!important;min-width:66px!important;min-height:66px!important;max-width:66px!important;max-height:66px!important}}
+.np-page[data-appearance] .np-wrap .np-caffeine-card-r299 .np-caffeine-signal-r295{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;justify-self:end!important;flex:0 0 auto!important;width:76px!important;height:76px!important;min-width:76px!important;min-height:76px!important;max-width:76px!important;max-height:76px!important;aspect-ratio:1!important;border-radius:50%!important;padding:5px!important;border-width:4px!important;text-align:center!important;gap:0!important}
+.np-page[data-appearance] .np-wrap .np-caffeine-card-r299 .np-caffeine-signal-r295 strong{font-size:11px!important;line-height:1.25!important}
+@media(max-width:360px){.np-page[data-appearance] .np-wrap .np-caffeine-card-r299 .np-caffeine-signal-r295{width:66px!important;height:66px!important;min-width:66px!important;min-height:66px!important;max-width:66px!important;max-height:66px!important}}
 /* A single feathered header artwork, no second copy behind it. */
 .np-page[data-appearance] .np-r323-header .np-brand:before,.np-page[data-appearance] .np-r323-header .np-brand:after{display:none!important;content:none!important}
 .np-page[data-appearance] .np-r323-header .np-brand .noor-r329-brand-header{position:relative!important;height:clamp(105px,32vw,208px);background:none!important}
@@ -269,3 +269,78 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page .np-habits-section .np-habit-category .np-category-progress>span{box-sizing:border-box;inset:9px!important;font-size:12px!important;line-height:1!important;gap:0!important;white-space:nowrap;letter-spacing:-.25px;font-variant-numeric:tabular-nums}
 .np-page .np-habits-section .np-habit-category .np-category-progress>span small{font-size:9px!important;line-height:1!important;margin:0!important;flex-shrink:0}
 .np-page .np-habits-section .np-habit-category .np-category-progress.is-complete>span{font-size:11px!important}
+
+/* R339 — approved compact Personal home, genuine frosted surfaces and bounded sheets. */
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
+ position:relative!important;grid-template-areas:"brand brand brand" "status greeting greeting" "calendar calendar calendar"!important;
+ grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+ margin:0 0 12px!important;width:100%!important;padding:8px 10px 12px!important;border-radius:24px!important;
+ background:linear-gradient(150deg,var(--ng-top),var(--ng-sub))!important;overflow:visible!important;
+}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="day"]{background:radial-gradient(ellipse at 26% 82%,#ffe2af9c,transparent 45%),linear-gradient(155deg,#c0dbee88,var(--ng-sub))!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"]{background:radial-gradient(ellipse at 30% 92%,#7996c559,transparent 55%),linear-gradient(155deg,#18395b,#284966)!important;color:#f0f6ff}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-sky="cloudy"],.np-page[data-appearance] .np-topbar.np-r339-header[data-sky="fog"]{background-image:radial-gradient(ellipse at 20% 75%,#b1c3d1aa,transparent 65%),radial-gradient(ellipse at 85% 30%,#aabccbaa,transparent 50%),linear-gradient(150deg,var(--ng-top),var(--ng-sub))!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-sky="precipitation"]{background-image:linear-gradient(150deg,#8298b0aa,#46658099),linear-gradient(90deg,var(--ng-bg),var(--ng-sub))!important}
+.np-page[data-appearance] .np-r339-header[data-daylight="night"] :is(.np-r323-greeting,.np-header-day,.np-header-date-main,.np-header-date-caption,.np-header-clock,.np-header-location,.np-header-temperature,.np-weather-caption,.np-weather-details){color:#f0f6ff!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-brand.np-r339-brand{
+ position:relative!important;display:grid!important;place-items:center!important;min-height:75px!important;width:100%!important;height:auto!important;max-width:none!important;margin:0!important;padding:0!important;
+ background:linear-gradient(140deg,#ffffff40,#ffffff15)!important;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid #ffffff65!important;border-radius:23px!important;box-sizing:border-box;
+}
+.np-page[data-appearance] .np-r339-header .np-brand:before,.np-page[data-appearance] .np-r339-header .np-brand:after{display:none!important}
+.np-r339-wordmark{display:block;font-size:clamp(18px,4.6vw,34px);font-weight:650;letter-spacing:-.6px;color:var(--ng-ink);line-height:1.25;white-space:nowrap;text-align:center}
+.np-r339-header[data-daylight="night"] .np-r339-wordmark{color:#f0f6ff}
+.np-r339-wordmark>span{font-weight:800}
+.np-r339-smile{position:relative;display:inline-block}
+.np-r339-smile::after{position:absolute;inset:auto -1px -7px;height:9px;border-bottom:3px solid #dfac45;border-radius:0 0 50% 50%;content:""}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{
+ position:absolute!important;left:15px!important;right:auto!important;top:25px!important;z-index:3!important;display:flex!important;flex-direction:row!important;gap:4px!important;align-items:center!important;margin:0!important;transform:none!important;direction:ltr
+}
+.np-r339-profile{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid #ffffff70;color:var(--ng-ink);background:#ffffff40;cursor:pointer;padding:7px}
+.np-r339-profile svg{width:20px;height:20px}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-r323-greeting{grid-column:2/-1!important;grid-row:2!important;justify-self:end!important;padding:8px 0!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{grid-column:1!important;grid-row:2!important;justify-self:start!important;padding:4px 0!important}
+.np-page[data-appearance] .np-r339-header .np-header-calendar{background:none!important}
+@media(max-width:480px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{left:14px!important;top:27px!important;gap:3px!important}.np-r339-profile{width:30px;height:30px;padding:5px}.np-r339-wordmark{font-size:clamp(16px,4.35vw,23px)}}
+@media(max-width:350px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{top:60px!important;left:18px!important}.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-brand.np-r339-brand{min-height:96px!important;align-items:start!important;padding-top:12px!important}}
+.np-page[data-appearance] .np-r331-board{background:color-mix(in srgb,var(--ng-card) 84%,transparent)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;border:1px solid #ffffff60!important;border-radius:24px!important}
+.np-page[data-appearance] .np-r331-tile{border-radius:18px!important;background:linear-gradient(145deg,#ffffff28,transparent),var(--ng-card)!important;box-shadow:inset 0 1px 1px #ffffff80,0 3px 10px #234d7015;min-height:112px}
+.np-r331-tile .np-r322-friday-preview:not(.np-r322-modal *){display:none!important}
+.np-r339-tile-action{display:grid;justify-items:center;gap:3px;background:transparent;color:inherit;border:0;cursor:pointer;font:inherit;padding:0;width:100%}
+.np-r339-tile-action>span{font-size:11px;color:var(--ng-muted)}
+.np-r339-mini-days{display:flex;flex-wrap:wrap;gap:2px;justify-content:center;width:100%}
+.np-r339-mini-days button{font:inherit;font-size:9px;padding:3px 2px;min-width:23px;min-height:24px;border:1px solid var(--ng-line);border-radius:7px;background:var(--ng-sub);color:var(--ng-ink);cursor:pointer}
+.np-r339-recovery-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:10px 0}
+.np-r339-recovery-days button{min-width:0;padding:5px 1px;font-size:clamp(9px,2.6vw,12px);overflow-wrap:anywhere}
+.np-r331-overlay[hidden]{display:none!important}
+.np-r339-overlay,.np-r331-overlay{align-items:center!important;padding:12px!important;box-sizing:border-box;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.np-r331-overlay>.np-r331-sheet{position:relative;width:min(100%,620px)!important;max-height:calc(100dvh - 24px)!important;border-radius:25px!important;background:linear-gradient(145deg,color-mix(in srgb,var(--ng-bg,#e5eff9) 90%,transparent),color-mix(in srgb,var(--ng-sub,#d6e4f1) 90%,transparent))!important;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);box-shadow:0 18px 50px #19365644;border:1px solid #ffffff85}
+.np-r331-overlay .np-r331-sheet>header{position:sticky;top:-18px;z-index:3;padding:8px 0;background:var(--ng-bg,#e5eff9)}
+.np-r331-overlay .np-r331-sheet>header button{border-radius:50%;width:40px;min-width:40px;min-height:40px;padding:0;font-size:23px}
+.np-r339-task-sheet.np-page{min-height:0!important;padding:0!important;background:transparent!important;display:grid;gap:7px}
+.np-r339-task-sheet.np-page::before{display:none!important}
+.np-r339-task-sheet .np-activity-item{width:100%;box-sizing:border-box}
+.np-r339-night-times{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.np-r339-night-times>div{padding:12px 6px;border-radius:14px;background:var(--ng-card);border:1px solid var(--ng-line);display:grid;text-align:center;gap:4px}
+.np-r339-overlay .np-prayer-card{margin:0!important;width:100%!important;box-sizing:border-box}
+.np-r339-overlay .np-prayer-times{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:4px!important}
+.np-r339-overlay .np-prayer{min-width:0!important;min-height:70px!important;padding:5px 2px!important;box-sizing:border-box;max-width:none!important}
+.np-page[data-appearance] :is(.np-day-achievement,.np-r332-week,.np-caffeine-card-r299,.np-habit-category,.np-tasks-card){margin-block:10px!important}
+.np-page[data-appearance] .np-r324-bottom-nav{position:fixed!important;backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important;border:1px solid #ffffff80!important;background:color-mix(in srgb,var(--ng-bg) 86%,transparent)!important;box-shadow:0 5px 24px #19365638}
+
+.np-r339-friday-times{margin-top:10px}.np-r339-friday-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.np-r339-friday-grid>div{background:var(--ng-card);border:1px solid var(--ng-line);border-radius:12px;padding:8px 3px;display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}.np-r339-friday-grid>div>span{font-size:24px}.np-r339-friday-grid strong,.np-r339-friday-grid small{font-size:10px;overflow-wrap:anywhere}
+
+/* R339 sky is illustrative, visible only according to confirmed weather and solar state. */
+.np-r339-sky-scene{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;border-radius:24px;opacity:.65;color:#668cab}
+.np-r339-sky-scene svg{position:absolute;inset:0;width:100%;height:100%}
+.np-r339-header[data-daylight="night"] .np-r339-sky-scene{color:#91b3da;opacity:.82}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="cloudy"],.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="fog"]{background-image:linear-gradient(145deg,#33465c,#21334a)!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="precipitation"]{background-image:linear-gradient(145deg,#2f4055,#182b43)!important}
+.np-r339-history-event{border:1px solid var(--ng-line);border-radius:16px;padding:12px;margin-block:10px;background:var(--ng-card);overflow-wrap:anywhere}
+.np-r339-history-event h3{font-size:17px;margin:6px 0}
+.np-r339-history-event p{white-space:pre-wrap}
+.np-r339-overlay .np-r331-options{margin-block:8px}
+.np-page[data-appearance] .np-r324-bottom-nav{bottom:max(8px,env(safe-area-inset-bottom,0px))!important}
+.np-page[data-appearance]>.np-wrap{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))!important}
+
+/* R339: the beverage card is now a direct sibling after weekly progress. Keep the original compact drink geometry independent of its former parent. */
+.np-page[data-appearance] .np-wrap>.np-caffeine-card-r299{position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:auto!important;float:none!important;clear:both!important;height:auto!important;max-height:none!important;min-height:0!important;min-width:0!important;width:100%!important;transform:none!important;box-sizing:border-box;margin:0 0 12px!important;}

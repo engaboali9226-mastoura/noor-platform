@@ -419,14 +419,18 @@ try{
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");
   await expect(visible("[data-testid=r328-night-total-duration]"),"Trusted whole-night duration visibly distinct from the timer");
-  await expect("(()=>{const h=document.querySelector('[data-testid=r329-personal-header]');return h&&h.getAttribute('src')==='/brand/personal-header.webp'&&h.naturalWidth>0&&h.getBoundingClientRect().height>0&&!document.querySelector('.np-r328-personal-watermark')})()","Approved Personal glass header decodes, with no obsolete watermark");
+  await expect("document.querySelector('.np-r339-wordmark')?.textContent==='NOOR Personal'&&!!document.querySelector('.np-r339-smile')","Approved centered Personal wordmark");
 
-  const headerGeometry=await run("(()=>{const rect=x=>{const r=x.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}},b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('[data-testid=r329-personal-header]'),g=document.querySelector('.np-r323-greeting');return {viewport:{width:innerWidth,height:innerHeight},brand:rect(b),image:rect(h),greeting:rect(g)}})()");
+  const headerGeometry=await run("(()=>{const rect=x=>{const r=x.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}},b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('.np-r339-wordmark'),g=document.querySelector('.np-r323-greeting');return {viewport:{width:innerWidth,height:innerHeight},brand:rect(b),image:rect(h),greeting:rect(g)}})()");
   console.log("R323_HEADER_LAYOUT",screen.name,JSON.stringify(headerGeometry));
-  await expect("(()=>{const b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('[data-testid=r329-personal-header]'),g=document.querySelector('.np-r323-greeting');return b&&h&&g&&b.getBoundingClientRect().width>=Math.min(innerWidth-40,1000)&&h.getBoundingClientRect().bottom<=g.getBoundingClientRect().top+3})()","Full-width background header does not overlap dashboard information");
-  await expect(visible("[data-testid=prayer-card]"),"Existing prayer card retained");
+  await expect("(()=>{const b=document.querySelector('.np-r339-brand').getBoundingClientRect(),h=document.querySelector('.np-r339-wordmark').getBoundingClientRect(),a=document.querySelector('.np-top-actions').getBoundingClientRect();return b.height>=70&&Math.abs((b.left+b.right-h.left-h.right)/2)<3&&(a.right<=h.left+1||a.top>=h.bottom)})()","Centered wordmark and header controls do not overlap");
+  await expect("!!document.querySelector('[data-testid=prayer-card]').closest('[hidden]')","Prayer sheet initially closed");
+  await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
+  await expect(visible("[data-testid=prayer-card]"),"Prayer card visible after opening sheet");
+  await expect("document.querySelectorAll('.np-r339-friday-grid>div').length===5","Five Friday hours retained");
+  await run("document.querySelector('.np-r339-overlay .np-r331-sheet header button').click()");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
-  await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return a.bottom<=b.top+1&&b.bottom<=k.top+1&&Math.abs(p.width-p.height)<1&&getComputedStyle(s).borderTopLeftRadius==='50%'})()","Coffee indicator is circular and coffee, daily and weekly cards do not overlap");
+  await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return b.bottom<=k.top+1&&k.bottom<=a.top+1&&Math.abs(p.width-p.height)<1&&getComputedStyle(s).borderTopLeftRadius==='50%'})()","Daily, weekly and drinks cards ordered without overlap");
   await expect("getComputedStyle(document.querySelector('.np-r323-header .np-brand'),'::before').display==='none'","No duplicated header art");
   await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),ring=c?.querySelector('.np-r332-week-ring'),rows=c?.querySelectorAll('.np-r332-week-counts>div'),bars=c?.querySelectorAll('.np-week-day .np-week-value');if(!c||!ring||rows?.length!==3||bars?.length!==7)return false;const b=c.getBoundingClientRect(),r=ring.getBoundingClientRect();return r.width>=80&&r.height>=80&&b.left>=-1&&b.right<=innerWidth+1&&Array.from(bars).every(x=>Math.abs(x.getBoundingClientRect().top-bars[0].getBoundingClientRect().top)<2)})()","R332 approved weekly ring, three count rows and seven aligned daily bars fit screen");
   await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),days=c?.querySelector('.np-week-days'),cells=days?.querySelectorAll('[data-week-date]');return !!days&&cells?.length===7&&getComputedStyle(days).direction==='rtl'&&cells[0].getBoundingClientRect().left>cells[6].getBoundingClientRect().left&&!c.querySelector('.np-r332-week-note')})()","R333 Saturday starts at the right and the weekly footer is absent");
@@ -451,7 +455,7 @@ try{
    });
   })()`,"One outer card contains two aligned rows of three equal-height RTL tiles");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
-  await expect("!document.querySelector(\'.np-r323-header [aria-label=\\\"فتح مركز التحكم\\\"]\')","No top control shortcut");
+  await expect(visible(".np-r339-profile"),"Profile shortcut in header");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
   await run("document.querySelector('.np-caffeine-details-r296 > summary').click()");
@@ -469,7 +473,7 @@ try{
   await run("document.querySelector('[aria-label=\"إغلاق مؤقتات اليوم\"]').click()");
   await expect("document.querySelector('.np-r322-modal').dataset.open==='false'","Timer sheet closes");
   const more=await run("!!document.querySelector('[data-testid=r322-open-appointments]')");
-  if(more){await run("document.querySelector('[data-testid=r322-open-appointments]').click()");await expect("(()=>{const r=document.querySelector('.np-r322-appointments-sheet')?.getBoundingClientRect();return r&&r.height>50&&r.top<innerHeight-50&&r.bottom<=innerHeight+3})()","Appointment sheet must actually be visible in the viewport");await expect("(()=>{const a=document.querySelector(\".np-r332-schedule-overlay[data-open=true]\"),rows=a?.querySelectorAll(\".np-r324-event-row\");return a?.parentElement===document.body&&rows?.length>0&&Array.from(rows).every(r=>r.querySelector(\".np-r332-event-countdown [role=timer]\")?.textContent)})()","Floating schedule has a countdown for each event");await snap(screen.name+"-appointments");await run("document.querySelector('[aria-label=\"إغلاق المواعيد\"]').click()");}
+  if(more){await run("document.querySelector('[data-testid=r322-open-appointments]').click()");await expect("(()=>{const r=document.querySelector('.np-r322-appointments-sheet')?.getBoundingClientRect();return r&&r.height>50&&r.top<innerHeight-50&&r.bottom<=innerHeight+3})()","Appointment sheet must actually be visible in the viewport");await expect("(()=>{const a=document.querySelector(\".np-r332-schedule-overlay[data-open=true]\"),rows=a?.querySelectorAll(\".np-r324-event-row\");return a?.parentElement===document.body&&(rows?.length>0||a?.textContent.includes('لا توجد مواقيت'))&&Array.from(rows??[]).every(r=>r.querySelector(\".np-r332-event-countdown [role=timer]\")?.textContent)})()","Floating schedule has a countdown for each event");await snap(screen.name+"-appointments");await run("document.querySelector('[aria-label=\"إغلاق المواعيد\"]').click()");}
   await run("document.querySelector('[data-testid=r324-nav-grid]').click()");
   await find(".np-cc-shell");
   await expect(visible("[data-testid=r324-persistent-navigation]"),"Navigation stays in control center");
@@ -482,8 +486,8 @@ try{
   await run("document.querySelector('[data-testid=r334-prayer-policy-editor]').scrollIntoView({block:'start'})");
   await snap(screen.name+"-prayer-policy");
 
-  await run("document.querySelector('[data-testid=r324-nav-bell]').click()");
-  await expect("document.querySelector('[data-testid=r324-nav-bell]').getAttribute('aria-current')==='page'","Reminders navigation active");
+  await run("document.querySelector('[data-testid=r324-nav-settings]').click()");
+  await expect("document.querySelector('[data-testid=r324-nav-settings]').getAttribute('aria-current')==='page'","Settings navigation active");
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find("[data-testid=r323-approved-dashboard]");
   await expect("document.querySelector('[data-testid=r324-nav-home]').getAttribute('aria-current')==='page'","Home navigation active");
