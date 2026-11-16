@@ -108,11 +108,11 @@
   min-height: 48px !important;
   padding: 8px 12px !important;
   border: 1px solid var(--login-field-border) !important;
-  border-radius: 10px;
+  border-radius: 10px !important;
   background: var(--login-field) !important;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field input:focus-visible {
+.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r332-field input:focus {
   border-color: var(--ng-focus) !important;
   box-shadow: 0 0 0 2px var(--ng-focus) !important;
 }

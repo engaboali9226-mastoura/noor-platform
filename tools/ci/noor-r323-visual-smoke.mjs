@@ -79,7 +79,19 @@ try{
   await expect("document.querySelector('.noor-welcome-field input') && parseFloat(getComputedStyle(document.querySelector('.noor-welcome-field input')).fontSize)>=16","Login input does not trigger iOS auto zoom");
   await expect("document.querySelector('.noor-login-brand img').naturalWidth>0&&getComputedStyle(document.querySelector('.noor-welcome-ambient'),'::before').backgroundImage.includes('/brand/login-glass-header.webp')","Approved calligraphy and glass background");
   await run("document.querySelector('input[name=email]').focus()");
-  await expect("(()=>{const i=document.querySelector('input[name=email]'),s=getComputedStyle(i);return s.borderTopWidth==='1px'&&s.boxShadow!=='none'&&getComputedStyle(i.parentElement).boxShadow==='none'})()","Only the field shows its focus ring");
+  const focusState = () => run(`(() => {
+    const input = document.querySelector('input[name=email]');
+    const style = getComputedStyle(input);
+    return {active: document.activeElement === input, border: style.borderTopWidth,
+      radius: style.borderTopLeftRadius, ring: style.boxShadow, labelRing: getComputedStyle(input.parentElement).boxShadow};
+  })()`);
+  await wait(async () => {
+    const focus = await focusState();
+    return focus.active && focus.border === '1px' && focus.radius === '10px'
+      && focus.ring !== 'none' && focus.labelRing === 'none';
+  }, 5000).catch(async () => {
+    throw Error("Only the rounded field shows its focus ring: " + JSON.stringify(await focusState()));
+  });
   await run("document.querySelector('.noor-r328-password-toggle').click()");
   await expect("document.querySelector('input[name=password]').type==='text'","Password visibility works");
   await run("document.querySelector('.noor-r328-password-toggle').click()");
