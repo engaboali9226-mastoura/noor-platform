@@ -608,3 +608,12 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-wrap>.np-caffeine-card-r299 .np-caffeine-quick-r295 > button { min-height: 34px; }
 .np-r339-night-times b { font-variant-numeric: tabular-nums; font-size: 1.15em; }
 .np-r339-night-times small { color: var(--ng-muted); }
+
+.np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-calendar {
+  flex-wrap: nowrap !important;
+}
+.np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] :is(.np-header-day,.np-header-date-main,.np-date-month,.np-date-year) {
+  font-size: clamp(12px, 3.2vw, 18px) !important;
+  font-weight: 650 !important;
+  white-space: nowrap !important;
+}

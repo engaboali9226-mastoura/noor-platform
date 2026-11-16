@@ -544,6 +544,11 @@ try{
      });
      await expect("document.documentElement.scrollWidth<=innerWidth+2","Weather dashboard fits width "+viewport.width);
      await expect(`(() => {
+       const days = [...document.querySelectorAll(".np-r339-header .np-header-date-main")];
+       return days.length === 2 && days.every(el => parseFloat(getComputedStyle(el).fontSize) >= 12) &&
+         Math.abs(days[0].getBoundingClientRect().top-days[1].getBoundingClientRect().top) < 2;
+     })()`,"Both dates share one readable row at "+viewport.width);
+     await expect(`(() => {
        const rect = selector => document.querySelector(selector).getBoundingClientRect();
        const wordmark = rect(".np-r339-wordmark"), actions = rect(".np-top-actions"), settings = rect(".np-r340-settings");
        const profile = rect(".np-top-actions .np-r339-profile"), bell = rect(".np-r338-bell");
