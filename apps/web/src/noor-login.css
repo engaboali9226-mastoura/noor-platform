@@ -521,3 +521,46 @@
 .noor-admin-entry-gateway .noor-admin-entry-panel[data-compact-viewport] .noor-welcome-submit { margin-block-start: 5px; }
 .noor-admin-entry-panel[data-compact-viewport] .noor-admin-setup-dialog { padding-block: 17px; }
 .noor-admin-entry-panel[data-compact-viewport] .noor-admin-setup-qr { width: 104px; }
+
+.noor-r323-gateway[data-auth-mode="picker"] .noor-welcome-panel { width: min(100%, 630px) !important; }
+.noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth {
+  min-height: 0;
+  padding: 26px 28px 28px !important;
+}
+.noor-picker-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+.noor-picker-heading .noor-login-title { margin: 0; }
+.noor-picker-appearance { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--login-label); }
+.noor-picker-appearance select {
+  font: inherit; color: var(--ng-ink); min-height: 38px; padding-inline: 10px;
+  border: 1px solid #a9bbcb; border-radius: 10px; background: var(--login-field);
+}
+.noor-space-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.noor-space-option {
+  display: grid; grid-template-columns: 42px minmax(0, 1fr) 18px; align-items: center; gap: 12px;
+  min-height: 84px; padding: 11px 14px; color: var(--ng-ink);
+  border: 1px solid #a9bbcb; border-radius: 13px;
+  background: var(--login-field); text-decoration: none;
+}
+.noor-space-option img { display: block; width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
+.noor-space-option strong { font: 700 19px/1.4 Arial, sans-serif; text-align: right; }
+.noor-space-option svg { color: var(--login-link); }
+.noor-space-option:is(:hover, :focus-visible) { outline: 2px solid var(--ng-focus); outline-offset: 2px; }
+@media (max-width: 600px) {
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-welcome-panel { width: min(100%, 344px) !important; }
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth { padding: 20px 18px !important; }
+  .noor-space-choices { grid-template-columns: 1fr; gap: 9px; }
+  .noor-space-option { min-height: 68px; }
+}
+.noor-r323-gateway[data-auth-mode="picker"] .noor-login-tagline {
+  color: var(--ng-ink);
+  font-weight: 700;
+}
+
+@media (max-height: 550px) {
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-welcome-panel {
+    min-height: 0;
+    grid-template-rows: auto auto auto;
+  }
+  .noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth { padding-block: 12px !important; }
+  .noor-picker-heading { margin-bottom: 10px; }
+}

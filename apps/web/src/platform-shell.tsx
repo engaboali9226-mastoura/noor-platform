@@ -238,21 +238,12 @@ function SmartGateway({
     finally{setBusy(false);}
   };
 
-  const layoutClass = isAuth ? "" : " noor-login-gateway";
 
   return (
-    <main id="main-content" className={`noor-welcome-gateway-r231 noor-r323-gateway${layoutClass}`} data-auth-mode={isAuth ? undefined : mode} dir="rtl">
+    <main id="main-content" className="noor-welcome-gateway-r231 noor-r323-gateway noor-login-gateway" data-auth-mode={isAuth ? "picker" : mode} dir="rtl">
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
-        {!isAuth ? <NoorLoginBrand /> : <>
-        <div className="noor-welcome-logo-frame">
-          <img className="noor-welcome-logo" src={NOOR_BRAND.platform.header}
-            alt="NOOR Platform — شعار منصة نور" width={1800} height={600} fetchPriority="high" decoding="async" />
-        </div>
-        <div className="noor-r323-brand-label">منصة نور</div><p className="noor-welcome-eyebrow" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
-        <h1 id="noor-welcome-title" className="glass-title">مرحبا بك في منصة نور</h1>
-        <p className="noor-welcome-description">بوابتك الآمنة لإدارة حسابك وخدماتك الشخصية</p>
-        </>}
+        <NoorLoginBrand />
         {!isAuth ? <>
           <div className="noor-r323-auth-card noor-r332-auth">
             <h1
@@ -302,31 +293,47 @@ function SmartGateway({
           {mode==="recovery"?<button type="button" className="noor-auth-return-r312" disabled={submitting} onClick={()=>changeMode("reset")}>طلب رابط استعادة جديد</button>:null}
         </div>
         </> : (
-          <div className="noor-welcome-apps" aria-label="تطبيقات نور">
-            <div className="noor-r330-picker-heading"><p className="noor-welcome-apps-title">اختر مساحتك</p><label className="noor-r330-theme-select"><span>المظهر</span><select aria-label="اختيار ألوان المنصة" value={appearance} onChange={event=>{const value=normalizeAppearance(event.currentTarget.value);setAppearance(value);saveAppearance(value);}}>{NOOR_APPEARANCES.map(([id,title])=><option key={id} value={id}>{title}</option>)}</select></label></div>
-            <a href="/personal" className="noor-welcome-app-card" onClick={event=>{
-              if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-              event.preventDefault();navigate("/personal");}}>
-              <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="personal" alt="" /></span>
-              <span className="noor-welcome-app-copy"><strong lang="en" dir="ltr">noor personal</strong><small>يومك، عاداتك، وتقدمك</small></span>
-              <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
-            </a>
-            <a href="/work" className="noor-welcome-app-card" onClick={event=>{
-              if(event.defaultPrevented||event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-              event.preventDefault();navigate("/work");}}>
-              <span className="noor-welcome-app-mark" aria-hidden="true"><NoorBrandLogo scope="work" alt="" /></span>
-              <span className="noor-welcome-app-copy"><strong lang="en" dir="ltr">noor work</strong><small>الجدول والتحضير والطلاب والدرجات</small></span>
-              <span className="noor-welcome-app-arrow" aria-hidden="true">←</span>
-            </a>
+          <div className="noor-r323-auth-card noor-r332-auth">
+            <div className="noor-picker-heading">
+              <h1 className="noor-login-title" id="noor-welcome-title">اختر مساحتك</h1>
+              <label className="noor-picker-appearance">
+                <span>المظهر</span>
+                <select aria-label="اختيار ألوان المنصة" value={appearance} onChange={event => {
+                  const value = normalizeAppearance(event.currentTarget.value);
+                  setAppearance(value);
+                  saveAppearance(value);
+                }}>
+                  {NOOR_APPEARANCES.map(([id, title]) => <option key={id} value={id}>{title}</option>)}
+                </select>
+              </label>
+            </div>
+            <nav className="noor-space-choices" aria-label="تطبيقات نور">
+              {(["personal", "work"] as const).map(scope => {
+                const path = `/${scope}`;
+                return (
+                  <a key={scope} href={path} className="noor-space-option" onClick={event => {
+                    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                    event.preventDefault();
+                    navigate(path);
+                  }}>
+                    <NoorBrandLogo scope={scope} alt="" />
+                    <strong lang="en" dir="ltr"><NoorWordmark titleCase /> {scope === "personal" ? "Personal" : "Work"}</strong>
+                    <svg aria-hidden="true" width={16} height={16} viewBox="0 0 16 16" fill="none"
+                      stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M13 8H3m4-4L3 8l4 4" />
+                    </svg>
+                  </a>
+                );
+              })}
+            </nav>
           </div>
         )}
-        {isAuth && <p className="noor-welcome-privacy"><span aria-hidden="true">✧</span> بيانات كل مستخدم مستقلة ومحمية. حسابات التسجيل الجديدة تحتاج موافقة الإدارة.</p>}
-        <a className="noor-r322-admin-entry" href="/admin/security" aria-label="دخول مدير منصة نور">{!isAuth ? <>
-          <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <a className="noor-r322-admin-entry" href="/admin/security" aria-label="دخول مدير منصة نور">
+          {!isAuth && <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2">
             <rect x="3.5" y="7" width="9" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/>
-          </svg>
+          </svg>}
           دخول المدير
-        </> : "إدارة المنصة · دخول المدير الآمن ←"}</a>
+        </a>
       </section>
       {!isAuth && receipt && (
         <NoorAccountReceipt
@@ -335,7 +342,6 @@ function SmartGateway({
           onReturn={() => changeMode("login")}
         />
       )}
-      {isAuth && <p className="noor-welcome-footer" lang="en"><NoorWordmark /> · DESIGNED FOR CLARITY</p>}
     </main>
   );
 }
