@@ -277,6 +277,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 /* R339 — approved compact Personal home, genuine frosted surfaces and bounded sheets. */
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
  --noor-header-button: 38px;
+ --noor-header-inset: 30px;
  position:relative!important;grid-template-areas:"brand brand brand" "greeting status status" "calendar calendar calendar"!important;
  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
  margin:0 0 12px!important;width:100%!important;padding:8px 10px 12px!important;border-radius:24px!important;
@@ -294,7 +295,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-r339-smile{position:relative;display:inline-block}
 .np-r339-smile::after{position:absolute;inset:auto -1px -7px;height:9px;border-bottom:3px solid #dfac45;border-radius:0 0 50% 50%;content:""}
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{
- position:absolute!important;grid-area:auto!important;inset:calc(46px - var(--noor-header-button) / 2) auto auto 20px!important;z-index:3!important;display:flex!important;flex-direction:row!important;gap:6px!important;align-items:center!important;margin:0!important;transform:none!important;direction:ltr
+ position:absolute!important;grid-area:auto!important;inset:calc(46px - var(--noor-header-button) / 2) auto auto var(--noor-header-inset)!important;z-index:3!important;display:flex!important;flex-direction:row!important;gap:6px!important;align-items:center!important;margin:0!important;transform:none!important;direction:ltr
 }
 .np-page[data-appearance] .np-r339-header :is(.np-r339-profile,.np-r338-bell) {
   box-sizing: border-box;
@@ -319,8 +320,8 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{grid-area:status!important;justify-self:end!important;padding:4px 0!important}
 .np-page[data-appearance] .np-r339-header .np-header-calendar{background:none!important}
 @media(max-width:480px){
- .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{--noor-header-button:30px}
- .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{left:16px!important;gap:4px!important;flex-wrap:nowrap!important}
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{--noor-header-button:28px;--noor-header-inset:23px}
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{gap:4px!important;flex-wrap:nowrap!important}
 }
 
 .np-page[data-appearance] .np-r331-board{background:var(--noor-board-glass,var(--ng-card))!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;border:1px solid #ffffff60!important;border-radius:24px!important}
@@ -395,7 +396,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 }
 .np-r340-settings {
   position: absolute;
-  right: 20px;
+  right: var(--noor-header-inset);
   top: calc(46px - var(--noor-header-button) / 2);
   z-index: 3;
 }
@@ -466,7 +467,6 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   box-shadow: inset 0 1px 2px #fff8, 0 5px 17px #24457030 !important;
 }
 @media(max-width: 480px) {
-  .np-r340-settings { right: 16px; }
   .np-page[data-appearance] .np-r339-header .np-r339-wordmark { font-size: clamp(16px, 5vw, 24px); }
 }
 
