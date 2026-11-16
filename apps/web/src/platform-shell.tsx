@@ -3,6 +3,8 @@ import { NoorBrandHeader, NoorBrandLogo, NOOR_BRAND } from "./noor-brand-r329.js
 import { NoorWordmark } from "./noor-wordmark.js";
 import {
   Component,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -129,6 +131,68 @@ function HomeLink(
 }
 
 
+function focusRegistrationHeading(heading: HTMLHeadingElement | null) {
+  heading?.focus({ preventScroll: true });
+}
+
+function RegistrationReceipt({ onDismiss, onReturn }: {
+  onDismiss: () => void;
+  onReturn: () => void;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const returnButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+      returnButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, []);
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="noor-registration-receipt"
+      aria-labelledby="noor-registration-receipt-title"
+      aria-describedby="noor-registration-receipt-details"
+      onClose={onDismiss}
+    >
+      <button
+        type="button"
+        className="noor-registration-receipt-close"
+        aria-label="إغلاق"
+        onClick={() => dialogRef.current?.close()}
+      >
+        <svg aria-hidden="true" width={16} height={16} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <path d="m4 4 8 8m0-8-8 8" />
+        </svg>
+      </button>
+      <span className="noor-registration-receipt-check" aria-hidden="true">
+        <svg width={20} height={20} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m4 10 4 4 8-8" />
+        </svg>
+      </span>
+      <h2 id="noor-registration-receipt-title">تم استلام طلب التسجيل</h2>
+      <div id="noor-registration-receipt-details">
+        <p>إذا كان البريد متاحًا للتسجيل، سيصلك رابط التأكيد.</p>
+        <p>بعد تأكيد البريد، تراجع الإدارة طلبك.</p>
+      </div>
+      <button
+        ref={returnButtonRef}
+        type="button"
+        className="noor-registration-receipt-return"
+        onClick={() => {
+          dialogRef.current?.close();
+          onReturn();
+        }}
+      >
+        العودة لتسجيل الدخول
+      </button>
+    </dialog>
+  );
+}
+
 function SmartGateway({
   navigate, signIn, authenticationState, accountService,
 }: {
@@ -145,6 +209,7 @@ function SmartGateway({
     recoveryCallback ? "recovery" : "login",
   );
   const [notice,setNotice]=useState("");
+  const [registrationReceived, setRegistrationReceived] = useState(false);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
@@ -152,11 +217,19 @@ function SmartGateway({
   const [appearance,setAppearance] = useState(readAppearance);
   const isAuth = authenticationState === "authenticated" && mode !== "recovery";
   const submitting = authenticationState === "submitting" || busy;
-  const changeMode=(next:typeof mode)=>{if(submitting)return;setMode(next);setShowPassword(false);setNotice("");setError("");};
+  const changeMode = (next: typeof mode) => {
+    if (submitting) return;
+    setMode(next);
+    setShowPassword(false);
+    setNotice("");
+    setError("");
+    setRegistrationReceived(false);
+  };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if(submitting)return;
-    const form = new FormData(event.currentTarget);
+    if (submitting || registrationReceived) return;
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const email = String(form.get("email")??"").trim();
     const password = String(form.get("password")??"");
     const name = String(form.get("name")??"").trim();
@@ -189,21 +262,25 @@ function SmartGateway({
         setNotice("تم تغيير كلمة المرور. يمكنك تسجيل الدخول الآن.");
       }else if(mode==="reset"){
         setNotice("إذا كان البريد مرتبطًا بحساب، ستصلك رسالة استعادة. افحص البريد والرسائل غير المرغوبة.");
-      }else if(mode==="register"){
-        setNotice("تم استلام طلب التسجيل إن كان البريد صالحًا وغير مستخدم. أكّد بريدك الإلكتروني، ثم تعتمد الإدارة الحساب وتحدد التطبيقات المسموح بها قبل الدخول.");
+      } else if (mode === "register" && result === "sent") {
+        formElement.reset();
+        setShowPassword(false);
+        setRegistrationReceived(true);
       }
     }catch{setError("تعذّر إتمام الطلب حاليًا.");}
     finally{setBusy(false);}
   };
 
   const showLogin = !isAuth && mode === "login";
-  const fieldClassName = showLogin ? "noor-login-field" : "noor-welcome-field noor-r332-field";
+  const showRegistration = !isAuth && mode === "register";
+  const showGlassAuth = showLogin || showRegistration;
+  const fieldClassName = showGlassAuth ? "noor-login-field" : "noor-welcome-field noor-r332-field";
 
   return (
     <main id="main-content" className="noor-welcome-gateway-r231 noor-r323-gateway" data-auth-mode={isAuth ? undefined : mode} dir="rtl">
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
-        {showLogin ? <header className="noor-login-brand">
+        {showGlassAuth ? <header className="noor-login-brand">
           <img src="/brand/login-calligraphy.webp" alt="" width={295} height={246} />
           <p className="noor-login-wordmark" lang="en" dir="ltr"><NoorWordmark /> Platform</p>
           <p className="noor-login-tagline">خصّص مساحتك، عزّز إنتاجيتك</p>
@@ -217,37 +294,47 @@ function SmartGateway({
         <p className="noor-welcome-description">بوابتك الآمنة لإدارة حسابك وخدماتك الشخصية</p>
         </>}
         {!isAuth ? <>
-          {mode !== "login" && (
+          {!showGlassAuth && (
             <h2 className="noor-auth-title-r312" tabIndex={-1} ref={heading=>heading?.focus({preventScroll:true})}>
-              {mode === "register" ? "إنشاء حساب" : mode === "reset" ? "استعادة كلمة المرور" : "تعيين كلمة مرور جديدة"}
+              {mode === "reset" ? "استعادة كلمة المرور" : "تعيين كلمة مرور جديدة"}
             </h2>
           )}
-          <div className="noor-r323-auth-card noor-r332-auth">{showLogin && <h1 id="noor-welcome-title" className="noor-login-title">تسجيل الدخول</h1>}<form className="noor-welcome-form" onSubmit={event=>{void submit(event);}}>
-            {mode==="register"?<label className="noor-welcome-field noor-r332-field">
+          <div className="noor-r323-auth-card noor-r332-auth">
+          {showGlassAuth && (
+            <h1
+              id="noor-welcome-title"
+              className="noor-login-title"
+              tabIndex={showRegistration ? -1 : undefined}
+              ref={showRegistration ? focusRegistrationHeading : undefined}
+            >
+              {showRegistration ? "إنشاء حساب" : "تسجيل الدخول"}
+            </h1>
+          )}
+          <form className="noor-welcome-form" onSubmit={event=>{void submit(event);}}>
+            {mode==="register"?<label className={fieldClassName}>
               <span>الاسم</span>
               <input name="name" type="text" minLength={2} maxLength={120} autoComplete="name"
-                required disabled={submitting} placeholder="اسمك"/>
+                required disabled={submitting}/>
             </label>:null}
             {mode!=="recovery"?<label className={fieldClassName}>
               <span>{mode==="login"?"البريد الإلكتروني أو اسم المستخدم":"البريد الإلكتروني"}</span>
               <input name="email" type={mode==="login"?"text":"email"} dir="ltr" inputMode="email" autoCapitalize="none" spellCheck={false}
-                autoComplete="username" required disabled={submitting} placeholder={showLogin ? undefined : "name@example.com"} />
+                autoComplete="username" required disabled={submitting} placeholder={showGlassAuth ? undefined : "name@example.com"} />
             </label>:null}
             {mode==="login"||mode==="register"||mode==="recovery"?<div className="noor-r328-password-wrap"><label className={fieldClassName}>
               <span>{mode==="recovery"?"كلمة المرور الجديدة":"كلمة المرور"}</span>
               <input name="password" type={showPassword?"text":"password"} dir="ltr" minLength={mode==="login"?undefined:mode==="register"?12:8}
-                autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder={showLogin ? undefined : "••••••••"} />
+                autoComplete={mode==="login"?"current-password":"new-password"} required disabled={submitting} placeholder={showGlassAuth ? undefined : "••••••••"} />
             </label><button type="button" className="noor-r328-password-toggle" onClick={()=>setShowPassword(x=>!x)} aria-pressed={showPassword} aria-label={showPassword?"إخفاء كلمة المرور":"إظهار كلمة المرور"}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>{showPassword?<path d="m3 3 18 18"/>:null}</svg></button></div>:null}
-            {mode==="register"||mode==="recovery"?<label className="noor-welcome-field noor-r332-field">
+            {mode==="register"||mode==="recovery"?<label className={fieldClassName}>
               <span>تأكيد كلمة المرور</span>
               <input name="passwordConfirm" type="password" dir="ltr" autoComplete="new-password"
-                minLength={mode==="register"?12:8} required disabled={submitting} placeholder="••••••••" />
+                minLength={mode==="register"?12:8} required disabled={submitting} placeholder={showRegistration ? undefined : "••••••••"} />
             </label>:null}
             {mode==="login"&&accountService?<button type="button" className="noor-auth-forgot" disabled={submitting} onClick={()=>changeMode("reset")}>نسيت كلمة المرور؟</button>:null}
-            {mode==="register"?<p className="noor-auth-hint-r312">بعد تأكيد بريدك، يراجع المدير طلب التسجيل ويحدد التطبيقات التي يمكنك دخولها. لا يُنشأ أي وصول تلقائي.</p>:null}
             <button className="noor-welcome-submit" type="submit" disabled={submitting || (mode==="login"?!signIn:!accountService)}>
               {submitting?(mode==="login"?"جارٍ تسجيل الدخول…":"جارٍ التنفيذ…"):mode==="login"?"تسجيل الدخول":mode==="register"?"إرسال طلب التسجيل":mode==="reset"?"إرسال رابط الاستعادة":"حفظ كلمة المرور الجديدة"}
-              {!submitting&&!showLogin?<span aria-hidden="true">←</span>:null}
+              {!submitting&&!showGlassAuth?<span aria-hidden="true">←</span>:null}
             </button>
             {authenticationState==="invalid-credentials"&&mode==="login"?
               <p className="noor-welcome-error" role="alert">بيانات تسجيل الدخول غير صحيحة، أو الحساب غير معتمد بعد.</p>:null}
@@ -282,13 +369,19 @@ function SmartGateway({
           </div>
         )}
         {isAuth && <p className="noor-welcome-privacy"><span aria-hidden="true">✧</span> بيانات كل مستخدم مستقلة ومحمية. حسابات التسجيل الجديدة تحتاج موافقة الإدارة.</p>}
-        <a className="noor-r322-admin-entry" href="/admin/security" aria-label="دخول مدير منصة نور">{showLogin ? <>
+        <a className="noor-r322-admin-entry" href="/admin/security" aria-label="دخول مدير منصة نور">{showGlassAuth ? <>
           <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2">
             <rect x="3.5" y="7" width="9" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/>
           </svg>
           دخول المدير
         </> : "إدارة المنصة · دخول المدير الآمن ←"}</a>
       </section>
+      {showRegistration && registrationReceived && (
+        <RegistrationReceipt
+          onDismiss={() => setRegistrationReceived(false)}
+          onReturn={() => changeMode("login")}
+        />
+      )}
       {isAuth && <p className="noor-welcome-footer" lang="en"><NoorWordmark /> · DESIGNED FOR CLARITY</p>}
     </main>
   );

@@ -1,25 +1,25 @@
-/* The visual treatment is limited to the main sign-in view. */
-.noor-r323-gateway[data-auth-mode="login"] {
+/* Shared presentation for sign-in and registration. */
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) {
   --login-field: #ffffffc4;
   --login-field-border: #97a9bb;
   --login-label: #304a60;
   --login-link: #29577c;
 }
 
-:root[data-noor-appearance="dark"] .noor-r323-gateway[data-auth-mode="login"] {
+:root[data-noor-appearance="dark"] .noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) {
   --login-field: #182c42;
   --login-field-border: #748ca4;
   --login-label: #dae6f1;
   --login-link: #bbd8f0;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-welcome-ambient::before {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-welcome-ambient::before {
   background-image: url("/brand/login-glass-header.webp");
   -webkit-mask-image: linear-gradient(#000 45%, transparent);
   mask-image: linear-gradient(#000 45%, transparent);
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-welcome-panel {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-welcome-panel {
   display: grid;
   grid-template-rows: minmax(min-content, 1fr) auto minmax(min-content, 1fr);
   width: min(100%, 430px) !important;
@@ -59,7 +59,7 @@
   transform: scaleX(.81);
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-r332-auth {
   margin: 0 !important;
   min-height: 414px;
   padding: 32px 31px 22px !important;
@@ -79,7 +79,7 @@
   margin: 0 0 17px;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-welcome-form {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-r332-auth .noor-welcome-form {
   gap: 13px !important;
 }
 
@@ -118,7 +118,7 @@
   padding-left: 49px;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r328-password-toggle {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-r332-auth .noor-r328-password-toggle {
   left: 2px;
   bottom: 2px;
   top: auto;
@@ -134,7 +134,7 @@
   font-weight: 400;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-welcome-submit {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-r332-auth .noor-welcome-submit {
   background: linear-gradient(140deg, #315d82, #254763) !important;
   border-radius: 11px !important;
   box-shadow: none !important;
@@ -156,7 +156,7 @@
   font-size: 14px;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] .noor-welcome-panel > .noor-r322-admin-entry {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-welcome-panel > .noor-r322-admin-entry {
   align-self: start;
   justify-self: center;
   display: inline-flex;
@@ -174,18 +174,18 @@
   font-weight: 400;
 }
 
-.noor-r323-gateway[data-auth-mode="login"] :is(.noor-auth-forgot,.noor-r322-secondary-actions button,.noor-r322-admin-entry,.noor-r328-password-toggle):focus-visible {
+.noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) :is(.noor-auth-forgot,.noor-r322-secondary-actions button,.noor-r322-admin-entry,.noor-r328-password-toggle):focus-visible {
   outline: 2px solid var(--ng-focus);
   outline-offset: 2px;
 }
 
 @media (max-width: 600px) {
-  .noor-r323-gateway[data-auth-mode="login"] .noor-welcome-panel { width: min(100%, 344px) !important; }
+  .noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-welcome-panel { width: min(100%, 344px) !important; }
   .noor-login-brand img { width: 65px; }
   .noor-login-wordmark { font-size: 20px; letter-spacing: .62px; }
   .noor-login-tagline { font-size: 12px; transform: scaleX(.8); }
   .noor-login-title { font-size: 23px; }
-  .noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth { min-height: 401px; padding-inline: 22px !important; }
+  .noor-r323-gateway:is([data-auth-mode="login"], [data-auth-mode="register"]) .noor-r332-auth { min-height: 401px; padding-inline: 22px !important; }
 }
 
 @media (max-height: 550px) {
@@ -197,4 +197,146 @@
   .noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-welcome-form { gap: 6px !important; }
   .noor-r323-gateway[data-auth-mode="login"] .noor-r332-auth .noor-r322-secondary-actions { padding-block: 2px 0; }
   .noor-r323-gateway[data-auth-mode="login"] .noor-welcome-panel > .noor-r322-admin-entry { margin-top: 2px; }
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-login-tagline {
+  color: var(--ng-ink);
+  font-weight: 700;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-login-title {
+  margin-block-end: 5px;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-login-title:focus {
+  outline: none;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-r332-auth {
+  min-height: 484px;
+  padding-block: 24px 8px !important;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-r332-auth .noor-welcome-form {
+  gap: 0 !important;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-login-field { gap: 5px; }
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-r332-auth .noor-welcome-submit {
+  margin-block-start: 21px;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-welcome-error {
+  margin-block-start: 10px;
+}
+
+.noor-r323-gateway[data-auth-mode="register"] .noor-auth-return-r312 {
+  display: block;
+  min-height: 44px;
+  margin: 8px auto 0;
+  padding: 0 10px;
+  color: var(--login-link);
+  font-size: 14px;
+}
+
+.noor-registration-receipt {
+  position: fixed;
+  inset: 0;
+  width: min(334px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 23px 22px 24px;
+  overflow: auto;
+  border: 1px solid var(--ng-line);
+  border-radius: 22px;
+  background: #f8fafc;
+  color: var(--ng-ink);
+  text-align: center;
+  box-shadow: 0 16px 36px #15284061;
+}
+
+:root[data-noor-appearance="dark"] .noor-registration-receipt {
+  background: #25384d;
+}
+
+.noor-registration-receipt::backdrop {
+  background: #182f4563;
+}
+
+.noor-registration-receipt-close {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 5px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--login-label);
+  cursor: pointer;
+}
+
+.noor-registration-receipt-check {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-inline: auto;
+  border-radius: 50%;
+  background: #e4eff6;
+  color: #29577c;
+}
+
+.noor-registration-receipt h2 {
+  margin: 8px 0 9px;
+  font-size: 19px;
+  line-height: 1.4;
+}
+
+.noor-registration-receipt p {
+  margin: 0;
+  color: var(--login-label);
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.noor-registration-receipt-return {
+  width: 100%;
+  min-height: 44px;
+  margin-block-start: 17px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(140deg, #315d82, #254763);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.noor-registration-receipt :is(button):focus-visible {
+  outline: 2px solid var(--ng-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .noor-r323-gateway[data-auth-mode="register"] .noor-r332-auth { min-height: 480px; }
+}
+
+@media (max-height: 700px) {
+  .noor-r323-gateway[data-auth-mode="register"] .noor-welcome-panel {
+    min-height: 0;
+    grid-template-rows: auto auto auto;
+  }
+  .noor-r323-gateway[data-auth-mode="register"] .noor-login-brand { gap: 4px; padding-block-end: 12px; }
+  .noor-r323-gateway[data-auth-mode="register"] .noor-login-brand img { width: 50px; }
+  .noor-r323-gateway[data-auth-mode="register"] .noor-r332-auth { min-height: 0; padding-block: 12px 4px !important; }
+  .noor-r323-gateway[data-auth-mode="register"] .noor-login-field input { min-height: 44px; }
+  .noor-r323-gateway[data-auth-mode="register"] .noor-r332-auth .noor-welcome-submit { margin-block-start: 12px; }
+  .noor-r323-gateway[data-auth-mode="register"] .noor-welcome-panel > .noor-r322-admin-entry { margin-block-start: 3px; }
 }
