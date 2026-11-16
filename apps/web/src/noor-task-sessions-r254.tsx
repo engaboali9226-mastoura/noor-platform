@@ -373,13 +373,13 @@ function TaskGeneralNoteR254({definitionId,revisionId,storedNote,busy,onCommand}
   </div>;
 }
 
-export function TaskSessionListR254({plan,log,definitionId,executionId,busy,onCommand,title,revisionId,taskGeneralNote="",unit="",todayDate}:{plan:StoredTaskSessionPlanR254;log:readonly SessionEntryR254[];definitionId:string;executionId:string|null;busy:boolean;onCommand:(c:NoorPersonalCommandInput)=>Promise<boolean>;title:string;revisionId?:string;taskGeneralNote?:string;unit?:string;todayDate?:string}):ReactElement{
+export function TaskSessionListR254({plan,log,definitionId,executionId,busy,onCommand,title,revisionId,taskGeneralNote="",unit="",todayDate,expanded=false}:{plan:StoredTaskSessionPlanR254;log:readonly SessionEntryR254[];definitionId:string;executionId:string|null;busy:boolean;onCommand:(c:NoorPersonalCommandInput)=>Promise<boolean>;title:string;revisionId?:string;taskGeneralNote?:string;unit?:string;todayDate?:string;expanded?:boolean}):ReactElement{
   const count=plan.sessions.filter(s=>sessionFinishedR254(s,log)).length;
-  return <details className="nts-list" data-testid="task-sessions-r254">
+  return <details className="nts-list" data-testid="task-sessions-r254" open={expanded||undefined}>
     <summary>الجلسات: {count} / {plan.sessions.length} مكتملة <small>{plan.sessions.some(s=>s.target!==null)?'حدد تم للجلسة المكتملة أو سجل مقدارًا جزئيًا؛ كل تقدم يدخل في إنجاز تاريخ تسجيله، ويُعرض تاريخ الإتمام المحفوظ.':'اضغط تم بعد تنفيذ كل جلسة؛ تُحتسب مرة واحدة من وزن المهمة.'}</small></summary>
     <div className="nts-list-body">
       {plan.sessions.length?plan.sessions.map(s=><OneSessionR254 key={s.id} session={s} log={log} definitionId={definitionId} executionId={executionId} busy={busy} onCommand={onCommand} reading={/قراء|كتاب|reading|book/i.test(title)} pageUnit={isWholePageUnitR254(unit)} unit={unit} todayDate={todayDate}/>):<p>يمكنك إضافة جلسات لاحقًا من تعديل المهمة.</p>}
-      <details className="nts-summary"><summary>الملاحظات والإنجازات</summary>
+      <details className="nts-summary"><summary>{expanded?"ملاحظات المهمة":"الملاحظات والإنجازات"}</summary>
         {revisionId?<TaskGeneralNoteR254 definitionId={definitionId} revisionId={revisionId} storedNote={taskGeneralNote} busy={busy} onCommand={onCommand}/>:null}
         {plan.sessions.filter(s=>s.note).slice().sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt)).map(s=><div key={s.id}><strong>{s.title}</strong><time dateTime={s.updatedAt}>{s.updatedAt.slice(0,10)}</time><p>{s.note}</p></div>)}
       </details>

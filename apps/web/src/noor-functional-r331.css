@@ -617,3 +617,14 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   font-weight: 650 !important;
   white-space: nowrap !important;
 }
+
+.np-page[data-appearance] .np-habits-section .np-habit-category[open] > .np-list {
+  row-gap: 10px !important;
+}
+.np-page[data-appearance] .np-habits-section .np-habit-category > .np-list > .np-habit-row {
+  margin-block: 0 !important;
+}
+.np-r339-task-sheet .np-current-task-sheet-progress {
+  width: 100%;
+  padding-block: 8px;
+}
