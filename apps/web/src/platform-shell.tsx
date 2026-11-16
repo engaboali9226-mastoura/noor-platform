@@ -131,16 +131,20 @@ function HomeLink(
 }
 
 
-function focusRegistrationHeading(heading: HTMLHeadingElement | null) {
+function focusAccountHeading(heading: HTMLHeadingElement | null) {
   heading?.focus({ preventScroll: true });
 }
 
-function RegistrationReceipt({ onDismiss, onReturn }: {
+type AccountRequest = "register" | "reset";
+
+function AccountRequestReceipt({ request, onDismiss, onReturn }: {
+  request: AccountRequest;
   onDismiss: () => void;
   onReturn: () => void;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnButtonRef = useRef<HTMLButtonElement>(null);
+  const isRegistration = request === "register";
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -153,14 +157,14 @@ function RegistrationReceipt({ onDismiss, onReturn }: {
   return (
     <dialog
       ref={dialogRef}
-      className="noor-registration-receipt"
-      aria-labelledby="noor-registration-receipt-title"
-      aria-describedby="noor-registration-receipt-details"
+      className="noor-account-request-receipt"
+      aria-labelledby="noor-account-request-receipt-title"
+      aria-describedby="noor-account-request-receipt-details"
       onClose={onDismiss}
     >
       <button
         type="button"
-        className="noor-registration-receipt-close"
+        className="noor-account-request-receipt-close"
         aria-label="إغلاق"
         onClick={() => dialogRef.current?.close()}
       >
@@ -168,20 +172,27 @@ function RegistrationReceipt({ onDismiss, onReturn }: {
           <path d="m4 4 8 8m0-8-8 8" />
         </svg>
       </button>
-      <span className="noor-registration-receipt-check" aria-hidden="true">
+      <span className="noor-account-request-receipt-check" aria-hidden="true">
         <svg width={20} height={20} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="m4 10 4 4 8-8" />
         </svg>
       </span>
-      <h2 id="noor-registration-receipt-title">تم استلام طلب التسجيل</h2>
-      <div id="noor-registration-receipt-details">
-        <p>إذا كان البريد متاحًا للتسجيل، سيصلك رابط التأكيد.</p>
-        <p>بعد تأكيد البريد، تراجع الإدارة طلبك.</p>
+      <h2 id="noor-account-request-receipt-title">
+        {isRegistration ? "تم استلام طلب التسجيل" : "تم استلام طلب الاستعادة"}
+      </h2>
+      <div id="noor-account-request-receipt-details">
+        {isRegistration ? <>
+          <p>إذا كان البريد متاحًا للتسجيل، سيصلك رابط التأكيد.</p>
+          <p>بعد تأكيد البريد، تراجع الإدارة طلبك.</p>
+        </> : <>
+          <p>إذا كان البريد مرتبطًا بحساب، سيصلك رابط الاستعادة.</p>
+          <p>افحص بريدك ومجلد الرسائل غير المرغوب فيها.</p>
+        </>}
       </div>
       <button
         ref={returnButtonRef}
         type="button"
-        className="noor-registration-receipt-return"
+        className="noor-account-request-receipt-return"
         onClick={() => {
           dialogRef.current?.close();
           onReturn();
@@ -205,11 +216,11 @@ function SmartGateway({
     new URLSearchParams(window.location.search).get("auth") === "recovery"
     || new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery"
   );
-  const [mode,setMode]=useState<"login"|"register"|"reset"|"recovery">(
+  const [mode,setMode]=useState<"login"|AccountRequest|"recovery">(
     recoveryCallback ? "recovery" : "login",
   );
   const [notice,setNotice]=useState("");
-  const [registrationReceived, setRegistrationReceived] = useState(false);
+  const [receivedRequest, setReceivedRequest] = useState<AccountRequest | null>(null);
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const [showPassword,setShowPassword]=useState(false);
@@ -223,11 +234,11 @@ function SmartGateway({
     setShowPassword(false);
     setNotice("");
     setError("");
-    setRegistrationReceived(false);
+    setReceivedRequest(null);
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (submitting || registrationReceived) return;
+    if (submitting || receivedRequest) return;
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const email = String(form.get("email")??"").trim();
@@ -260,12 +271,10 @@ function SmartGateway({
         window.history.replaceState(null,"","/");
         setMode("login");
         setNotice("تم تغيير كلمة المرور. يمكنك تسجيل الدخول الآن.");
-      }else if(mode==="reset"){
-        setNotice("إذا كان البريد مرتبطًا بحساب، ستصلك رسالة استعادة. افحص البريد والرسائل غير المرغوبة.");
-      } else if (mode === "register" && result === "sent") {
+      } else if ((mode === "register" || mode === "reset") && result === "sent") {
         formElement.reset();
         setShowPassword(false);
-        setRegistrationReceived(true);
+        setReceivedRequest(mode);
       }
     }catch{setError("تعذّر إتمام الطلب حاليًا.");}
     finally{setBusy(false);}
@@ -273,7 +282,8 @@ function SmartGateway({
 
   const showLogin = !isAuth && mode === "login";
   const showRegistration = !isAuth && mode === "register";
-  const showGlassAuth = showLogin || showRegistration;
+  const showReset = !isAuth && mode === "reset";
+  const showGlassAuth = showLogin || showRegistration || showReset;
   const fieldClassName = showGlassAuth ? "noor-login-field" : "noor-welcome-field noor-r332-field";
 
   return (
@@ -296,7 +306,7 @@ function SmartGateway({
         {!isAuth ? <>
           {!showGlassAuth && (
             <h2 className="noor-auth-title-r312" tabIndex={-1} ref={heading=>heading?.focus({preventScroll:true})}>
-              {mode === "reset" ? "استعادة كلمة المرور" : "تعيين كلمة مرور جديدة"}
+              تعيين كلمة مرور جديدة
             </h2>
           )}
           <div className="noor-r323-auth-card noor-r332-auth">
@@ -304,10 +314,10 @@ function SmartGateway({
             <h1
               id="noor-welcome-title"
               className="noor-login-title"
-              tabIndex={showRegistration ? -1 : undefined}
-              ref={showRegistration ? focusRegistrationHeading : undefined}
+              tabIndex={showLogin ? undefined : -1}
+              ref={showLogin ? undefined : focusAccountHeading}
             >
-              {showRegistration ? "إنشاء حساب" : "تسجيل الدخول"}
+              {showRegistration ? "إنشاء حساب" : showReset ? "استعادة كلمة المرور" : "تسجيل الدخول"}
             </h1>
           )}
           <form className="noor-welcome-form" onSubmit={event=>{void submit(event);}}>
@@ -376,9 +386,10 @@ function SmartGateway({
           دخول المدير
         </> : "إدارة المنصة · دخول المدير الآمن ←"}</a>
       </section>
-      {showRegistration && registrationReceived && (
-        <RegistrationReceipt
-          onDismiss={() => setRegistrationReceived(false)}
+      {showGlassAuth && receivedRequest && (
+        <AccountRequestReceipt
+          request={receivedRequest}
+          onDismiss={() => setReceivedRequest(null)}
           onReturn={() => changeMode("login")}
         />
       )}
