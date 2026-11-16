@@ -328,3 +328,16 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-r324-bottom-nav{position:fixed!important;backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important;border:1px solid #ffffff80!important;background:color-mix(in srgb,var(--ng-bg) 86%,transparent)!important;box-shadow:0 5px 24px #19365638}
 
 .np-r339-friday-times{margin-top:10px}.np-r339-friday-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.np-r339-friday-grid>div{background:var(--ng-card);border:1px solid var(--ng-line);border-radius:12px;padding:8px 3px;display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}.np-r339-friday-grid>div>span{font-size:24px}.np-r339-friday-grid strong,.np-r339-friday-grid small{font-size:10px;overflow-wrap:anywhere}
+
+/* R339 sky is illustrative, visible only according to confirmed weather and solar state. */
+.np-r339-sky-scene{position:absolute;inset:0;z-index:-1;pointer-events:none;overflow:hidden;border-radius:24px;opacity:.65;color:#668cab}
+.np-r339-sky-scene svg{position:absolute;inset:0;width:100%;height:100%}
+.np-r339-header[data-daylight="night"] .np-r339-sky-scene{color:#91b3da;opacity:.82}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="cloudy"],.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="fog"]{background-image:linear-gradient(145deg,#33465c,#21334a)!important}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-daylight="night"][data-sky="precipitation"]{background-image:linear-gradient(145deg,#2f4055,#182b43)!important}
+.np-r339-history-event{border:1px solid var(--ng-line);border-radius:16px;padding:12px;margin-block:10px;background:var(--ng-card);overflow-wrap:anywhere}
+.np-r339-history-event h3{font-size:17px;margin:6px 0}
+.np-r339-history-event p{white-space:pre-wrap}
+.np-r339-overlay .np-r331-options{margin-block:8px}
+.np-page[data-appearance] .np-r324-bottom-nav{bottom:max(8px,env(safe-area-inset-bottom,0px))!important}
+.np-page[data-appearance]>.np-wrap{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))!important}
