@@ -92,13 +92,13 @@
 .np-r331-prayer-record[data-prayer-mode="group"]{background:#bde0d2;color:#215742}.np-r331-prayer-record[data-prayer-mode="excused"]{background:#c1d9ee;color:#284d6e}.np-r331-prayer-record[data-prayer-mode="unexcused"]{background:#f0dfc0;color:#704d1d}.np-r331-prayer-record:disabled:not([data-prayer-mode="pending"]){opacity:1}
 .np-page .np-r331-home-grid .np-prayer .np-countdown{font-size:9px!important;gap:0!important}.np-page .np-r331-home-grid .np-countdown svg{display:none}
 .np-page .np-r331-home-grid .np-r324-prayer-next{display:none}
-.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299{padding:9px 10px!important;gap:5px!important}
-.np-page .np-r331-home-grid .np-caffeine-card-content-r299{display:block!important;margin:0!important}.np-page .np-r331-home-grid .np-caffeine-cup-r299{display:none!important}
-.np-page .np-r331-home-grid .np-caffeine-summary-r295{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px!important;align-items:center!important}
-.np-page .np-r331-home-grid .np-caffeine-tally-r295{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}.np-page .np-r331-home-grid .np-caffeine-tally-r295>div{padding:3px!important;min-height:0!important}
-.np-page .np-r331-home-grid .np-caffeine-signal-r295{width:auto!important;height:auto!important;aspect-ratio:auto!important;min-height:0!important;padding:5px!important;border-radius:10px!important}
-.np-page .np-r331-home-grid .np-caffeine-reason-r296{display:none!important}.np-page .np-r331-home-grid .np-caffeine-quick-r295{display:flex!important;gap:6px!important}
-.np-page .np-r331-home-grid .np-caffeine-quick-r295 button{min-height:34px!important;padding:4px!important;font-size:12px!important}
+.np-page[data-appearance] .np-wrap .np-caffeine-card-r299{padding:9px 10px!important;gap:5px!important}
+.np-page .np-wrap .np-caffeine-card-content-r299{display:block!important;margin:0!important}.np-page .np-wrap .np-caffeine-cup-r299{display:none!important}
+.np-page .np-wrap .np-caffeine-summary-r295{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px!important;align-items:center!important}
+.np-page .np-wrap .np-caffeine-tally-r295{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}.np-page .np-wrap .np-caffeine-tally-r295>div{padding:3px!important;min-height:0!important}
+.np-page .np-wrap .np-caffeine-signal-r295{width:auto!important;height:auto!important;aspect-ratio:auto!important;min-height:0!important;padding:5px!important;border-radius:10px!important}
+.np-page .np-wrap .np-caffeine-reason-r296{display:none!important}.np-page .np-wrap .np-caffeine-quick-r295{display:flex!important;gap:6px!important}
+.np-page .np-wrap .np-caffeine-quick-r295 button{min-height:34px!important;padding:4px!important;font-size:12px!important}
 .np-page .np-week-rate,.np-r331-week-rate{color:var(--ng-accent);font-size:18px;white-space:nowrap}
 .np-page .np-week-day .np-week-value{position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;min-height:45px;border-radius:10px;background:var(--ng-sub)!important}
 .np-r331-week-bar{position:absolute;inset:auto 0 0;z-index:-1;background:linear-gradient(0deg,var(--ng-accent),var(--ng-top));opacity:.5;border-radius:6px 6px 0 0}
@@ -183,9 +183,9 @@
 .np-page[data-appearance] .np-wrap>.np-r331-home-grid> :is(.np-r331-board,.np-prayer-card,.np-caffeine-card-r299){position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:1/-1!important;align-self:stretch!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;transform:none!important;min-width:0!important}
 .np-page[data-appearance] .np-wrap> :is(.np-day-achievement,.np-r332-week){position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:auto!important;float:none!important;clear:both!important;height:auto!important;max-height:none!important;min-height:0!important;transform:none!important;margin:0 0 12px!important;box-sizing:border-box}
 @media(min-width:800px){.np-page[data-appearance] .np-wrap>.np-r331-home-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.np-page[data-appearance] .np-wrap>.np-r331-home-grid> :is(.np-prayer-card,.np-caffeine-card-r299){grid-column:auto!important}}
-.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;justify-self:end!important;flex:0 0 auto!important;width:76px!important;height:76px!important;min-width:76px!important;min-height:76px!important;max-width:76px!important;max-height:76px!important;aspect-ratio:1!important;border-radius:50%!important;padding:5px!important;border-width:4px!important;text-align:center!important;gap:0!important}
-.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295 strong{font-size:11px!important;line-height:1.25!important}
-@media(max-width:360px){.np-page[data-appearance] .np-r331-home-grid .np-caffeine-card-r299 .np-caffeine-signal-r295{width:66px!important;height:66px!important;min-width:66px!important;min-height:66px!important;max-width:66px!important;max-height:66px!important}}
+.np-page[data-appearance] .np-wrap .np-caffeine-card-r299 .np-caffeine-signal-r295{box-sizing:border-box!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;justify-self:end!important;flex:0 0 auto!important;width:76px!important;height:76px!important;min-width:76px!important;min-height:76px!important;max-width:76px!important;max-height:76px!important;aspect-ratio:1!important;border-radius:50%!important;padding:5px!important;border-width:4px!important;text-align:center!important;gap:0!important}
+.np-page[data-appearance] .np-wrap .np-caffeine-card-r299 .np-caffeine-signal-r295 strong{font-size:11px!important;line-height:1.25!important}
+@media(max-width:360px){.np-page[data-appearance] .np-wrap .np-caffeine-card-r299 .np-caffeine-signal-r295{width:66px!important;height:66px!important;min-width:66px!important;min-height:66px!important;max-width:66px!important;max-height:66px!important}}
 /* A single feathered header artwork, no second copy behind it. */
 .np-page[data-appearance] .np-r323-header .np-brand:before,.np-page[data-appearance] .np-r323-header .np-brand:after{display:none!important;content:none!important}
 .np-page[data-appearance] .np-r323-header .np-brand .noor-r329-brand-header{position:relative!important;height:clamp(105px,32vw,208px);background:none!important}
@@ -341,3 +341,6 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-r339-overlay .np-r331-options{margin-block:8px}
 .np-page[data-appearance] .np-r324-bottom-nav{bottom:max(8px,env(safe-area-inset-bottom,0px))!important}
 .np-page[data-appearance]>.np-wrap{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))!important}
+
+/* R339: the beverage card is now a direct sibling after weekly progress. Keep the original compact drink geometry independent of its former parent. */
+.np-page[data-appearance] .np-wrap>.np-caffeine-card-r299{position:relative!important;inset:auto!important;grid-row:auto!important;grid-column:auto!important;float:none!important;clear:both!important;height:auto!important;max-height:none!important;min-height:0!important;min-width:0!important;width:100%!important;transform:none!important;box-sizing:border-box;margin:0 0 12px!important;}
