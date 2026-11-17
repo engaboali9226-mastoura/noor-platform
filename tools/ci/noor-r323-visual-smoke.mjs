@@ -472,7 +472,7 @@ try{
   })()`,"One outer card contains two aligned RTL rows with equal tile heights within each row");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect(visible(".np-r339-profile"),"Profile shortcut in header");
-  await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-check,r324-nav-plus,r324-nav-bell,r324-nav-grid'","Approved RTL navigation order");
+  await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-habits,r324-nav-plus,r324-nav-tasks,r324-nav-grid'","Approved RTL navigation order");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
   await run("document.querySelector('.np-today-task-button')?.scrollIntoView({block:'center'})");
@@ -551,8 +551,10 @@ try{
   await run("document.querySelector('[data-testid=r334-prayer-policy-editor]').scrollIntoView({block:'start'})");
   await snap(screen.name+"-prayer-policy");
 
-  await run("document.querySelector('[data-testid=r324-nav-bell]').click()");
-  await expect("document.querySelector('[data-testid=r324-nav-bell]').getAttribute('aria-current')==='page'","Reminders navigation active");
+  for (const section of ["habits", "tasks"]) {
+    await run(`document.querySelector('[data-testid=r324-nav-${section}]').click()`);
+    await expect(`document.querySelector('[data-testid=r324-nav-${section}]').getAttribute('aria-current')==='page' && !!document.getElementById('noor-r323-${section}')`, `Opens the ${section} section on the home page`);
+  }
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find(".np-r340-settings");
   await run("document.querySelector('.np-r340-settings').click()");
@@ -595,6 +597,34 @@ try{
       })();
   })()`,"Task progress, actions, and sessions are stacked without overlap");
   await snap(screen.name+"-task-sessions-preview");
+  await run("document.querySelector('.np-current-task-overlay .np-pencil').click()");
+  await find(".np-activity-dialog");
+  await run(`(() => {
+    Object.defineProperties(visualViewport, {
+      height: {configurable:true,value:210},
+      offsetTop: {configurable:true,value:35}
+    });
+    document.querySelector('.np-activity-dialog textarea').focus();
+    visualViewport.dispatchEvent(new Event('resize'));
+  })()`);
+  await expect(`(() => {
+    const save = document.querySelector('.np-activity-footer button[type=submit]');
+    const content = document.querySelector('.np-activity-scroll');
+    if (!save?.form || !content) return false;
+    const bounds = save.getBoundingClientRect();
+    return content.scrollHeight > content.clientHeight &&
+      bounds.top >= 35 && bounds.bottom <= 245 &&
+      document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2) === save;
+  })()`, "Task progress Save remains reachable above the parent dialog in a keyboard-sized viewport");
+  await run(`(() => {
+    document.querySelector('.np-activity-footer button[type=submit]').click();
+    delete visualViewport.height;
+    delete visualViewport.offsetTop;
+    visualViewport.dispatchEvent(new Event('resize'));
+  })()`);
+  await expect("document.querySelector('.np-activity-dialog [role=alert]')?.textContent.includes('اكتب ملاحظة')", "Visible Save submits the task progress form");
+  await run("document.querySelector('.np-activity-footer button[type=button]').click()");
+
   report.push({viewport:screen.name,width:screen.width,height:screen.height,appointmentFixtureVisible:more,layout:await run("Array.from(document.querySelectorAll('.np-r323-home-grid>.np-card')).filter(x=>x.getBoundingClientRect().height>0).map(x=>({className:x.className,width:Math.round(x.getBoundingClientRect().width),height:Math.round(x.getBoundingClientRect().height),top:Math.round(x.getBoundingClientRect().top)}))")});
  }
  for (const viewport of [
