@@ -2815,6 +2815,19 @@ function NoorCategoryIcon({category}:{category:string}):ReactElement {
   </span>;
 }
 
+function WeatherMetric({icon,label,value,rotation}: {
+  icon: "wind" | "direction" | "uv" | "drop";
+  label: string;
+  value: string;
+  rotation?: number;
+}) {
+  const description = `${label} ${value}`;
+  return <span className="np-weather-metric" role="img" aria-label={description} title={description}>
+    <span aria-hidden="true" style={rotation===undefined?undefined:{transform:`rotate(${rotation}deg)`}}><NoorR323Icon name={icon}/></span>
+    <bdi>{value}</bdi>
+  </span>;
+}
+
 function Dashboard({ view:providedView, workspace, busy, actionError, onCommand, onOpenControl, onOpenAccount, onOpenSettings, onOpenReminders, onAddCountdown, onReconnect, reconnecting, connectionWarning, nowMs,pendingIds=[],lockedIds=[],onHistoryCommand,timePreferences,onTimePreferencesChange }: { view: TodayViewModel; onReconnect:()=>void; reconnecting:boolean; connectionWarning:boolean; workspace: WorkspaceViewModel | null; busy: boolean; actionError: string | null; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; onHistoryCommand: (command:NoorPersonalCommandInput)=>Promise<boolean>; onOpenControl: () => void; onOpenAccount: () => void; onOpenSettings: () => void; onOpenReminders: () => void; onAddCountdown: () => void; nowMs: number;pendingIds?:readonly string[];lockedIds?:readonly string[];timePreferences:NoorR232Preferences;onTimePreferencesChange:(value:NoorR232Preferences)=>void }): ReactElement {
   // Today's execution projection is authoritative for recurrence and the personal-day boundary.
   const definitionsById = new Map((workspace?.definitions ?? []).map(definition => [definition.id, definition] as const));
@@ -3129,9 +3142,13 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const sunsetAt=Date.parse(view.prayerTimes.find(p=>p.key==="maghrib")?.at??"");
   const isDaylight=Number.isFinite(sunAt)&&Number.isFinite(sunsetAt)?nowMs>=sunAt&&nowMs<sunsetAt:weather?.isDay??undefined;
   const sky=weatherState==null?"unknown":weatherState===0?"clear":weatherState<=2?"partly":weatherState===3?"cloudy":weatherState<50?"fog":"precipitation";
+  const weatherIcon=sky==="clear"?(isDaylight===false?"stars":"sun")
+    :sky==="partly"?(isDaylight===false?"cloudMoon":"cloudSun")
+    :sky==="cloudy"?"cloud":sky==="fog"?"fog":sky==="precipitation"?"rain":null;
+  const weatherLabel={clear:"صحو",partly:"غائم جزئيًا",cloudy:"غائم",fog:"ضباب",precipitation:"هطول",unknown:""}[sky];
   return <>
     <div className="np-topbar np-r323-header np-r339-header" data-testid="platform-topbar" data-daylight={isDaylight===undefined?"unknown":isDaylight?"day":"night"} data-sky={sky}>
-      <div className="np-r323-greeting">{isDaylight===undefined?"أهلًا بك":isDaylight?"صباح الخير":"مساء الخير"} <span aria-hidden="true">{isDaylight===false?"☾":sky==="clear"?"☀":sky==="precipitation"?"☔":sky==="partly"?(isDaylight?"⛅":"☁"):sky==="cloudy"||sky==="fog"?"☁":""}</span></div>
+      <div className="np-r323-greeting">{isDaylight===undefined?"أهلًا بك":isDaylight?"صباح الخير":"مساء الخير"} {isDaylight===false?<span aria-hidden="true">☾</span>:null}</div>
 <div className="np-header-clock" data-testid="live-clock">{formatLiveClock(nowMs,view.timeZone)}</div>
       <div className="np-header-calendar" data-testid="header-information">
         <div className="np-header-day">{weekday}</div>
@@ -3154,13 +3171,16 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
           <span>{location.city}{location.country ? `، ${location.country}` : ""}</span>
         </div>
         {weather&&Object.values(weather).some(value=>value!==null)?<div className="np-header-weather" data-testid="header-weather" role="group" aria-label="حالة الطقس الحالية">
-          <span className="np-weather-icon" aria-hidden="true" />
-          {weather.temperatureC!==null?<><span className="np-header-temperature" data-testid="header-temperature">{arabicNumber(Math.round(weather.temperatureC))}°</span><span className="np-weather-caption">درجة الحرارة</span></>:null}
+          <span className="np-weather-primary">
+            {weatherIcon?<NoorR323Icon name={weatherIcon}/>:null}
+            {weather.temperatureC!==null?<bdi className="np-header-temperature" data-testid="header-temperature" aria-label="درجة الحرارة">{arabicNumber(Math.round(weather.temperatureC))}°</bdi>:null}
+            {weatherLabel?<span className="np-weather-condition">{weatherLabel}</span>:null}
+          </span>
           <span className="np-weather-details" data-testid="header-weather-details">
-            {weather.uvIndex!==null?<span>UV {arabicNumber(Math.round(weather.uvIndex*10)/10)}</span>:null}
-            {weather.windSpeedKmh!==null?<span>الرياح {arabicNumber(Math.round(weather.windSpeedKmh))} كم/س</span>:null}
-            {weather.windDirectionDeg!==null?<span>اتجاه الرياح {arabicNumber(Math.round(weather.windDirectionDeg))}°</span>:null}
-            {weather.rainMm!==null||weather.precipitationMm!==null?<span>{(weather.rainMm??weather.precipitationMm??0)>0?`مطر ${arabicNumber(Math.round((weather.rainMm??weather.precipitationMm??0)*10)/10)} مم`:"لا مطر الآن"}</span>:null}
+            {weather.windSpeedKmh!==null?<WeatherMetric icon="wind" label="سرعة الرياح" value={`${arabicNumber(Math.round(weather.windSpeedKmh))} كم/س`}/>:null}
+            {weather.windDirectionDeg!==null?<WeatherMetric icon="direction" label="اتجاه قدوم الرياح" value={`${arabicNumber(Math.round(weather.windDirectionDeg)%360)}°`} rotation={weather.windDirectionDeg}/>:null}
+            {weather.uvIndex!==null?<WeatherMetric icon="uv" label="مؤشر الأشعة فوق البنفسجية" value={arabicNumber(Math.round(weather.uvIndex*10)/10)}/>:null}
+            {weather.rainMm!==null||weather.precipitationMm!==null?<WeatherMetric icon="drop" label="كمية الهطول" value={`${arabicNumber(Math.round((weather.rainMm??weather.precipitationMm??0)*10)/10)} مم`}/>:null}
           </span>
         </div>:<small className="np-header-weather-status" role="status">{weatherUnavailable?"الطقس غير متاح حاليًا":"جارٍ تحديث الطقس…"}</small>}
       </div>
@@ -3256,7 +3276,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>
       <div className="np-day-achievement-copy"><div className="np-day-achievement-text"><h2>{historyDate?`إنجاز يوم ${weekDateLabel(historyDate)}`:"إنجاز اليوم"} <small>موزون</small></h2><p>{!totalToday?"لا توجد عادات أو مهام مستحقة اليوم.":completedToday===totalToday?"اكتملت كل عادات ومهام اليوم. أحسنت الاستمرار.":`${arabicNumber(completedToday)} من ${arabicNumber(totalToday)} عادات ومهام مكتملة اليوم`}</p>{displayedPrayer?<p data-testid="r334-daily-prayer-score">الصلوات المسجلة: {displayedPrayer.score.rows.filter(r=>r.recorded).length} / {displayedPrayer.score.rows.length} · نقاط {arabicNumber(displayedPrayer.score.earnedWeight)} / {arabicNumber(displayedPrayer.score.weight)}</p>:null}</div>{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 personalDate={view.localDate??undefined} /></>:null}</div>
       {totalToday?<button type="button" className="np-day-remaining" data-testid="r286-remaining-trigger" ref={remainingTriggerRef} aria-haspopup="dialog" aria-expanded={showRemaining} onClick={()=>setShowRemaining(true)}><strong>{arabicNumber(Math.max(0,totalToday-completedToday))}</strong><span>{completedToday===totalToday?(displayedPrayer&&completionRate<100?"اكتملت المهام والعادات":"يوم مكتمل"):historyDate?"متبقية في اليوم":"متبقية اليوم"}</span></button>:null}
-      {showRemaining?createPortal(<div className="np-r286-remaining-backdrop np-r331-actionable-remaining" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRemaining(false);}}><section role="dialog" aria-modal="true" aria-labelledby="r286-remaining-heading" className="np-r286-remaining-dialog" onKeyDown={event=>{if(!event.currentTarget.contains(event.target as Node))return;if(event.key==="Escape")setShowRemaining(false);}}><header><div><h2 id="r286-remaining-heading">{historyDate?"المتبقي في اليوم المحدد":"المتبقي اليوم"}</h2><small aria-live="polite">{Math.max(0,totalToday-completedToday)} متبقية · {completionRate}% إنجاز موزون</small></div><button type="button" className="np-cc-button" ref={remainingCloseRef} onClick={()=>setShowRemaining(false)}>إغلاق ×</button></header>
+      {showRemaining?createPortal(<div className="np-r286-remaining-backdrop np-r331-actionable-remaining" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRemaining(false);}}><section role="dialog" aria-modal="true" aria-labelledby="r286-remaining-heading" className="np-r286-remaining-dialog" onKeyDown={event=>{if(!event.currentTarget.contains(event.target as Node))return;if(event.key==="Escape")setShowRemaining(false);}}><header><div><h2 id="r286-remaining-heading">{historyDate?"المتبقي في اليوم المحدد":"المتبقي اليوم"}</h2><small aria-live="polite">{Math.max(0,totalToday-completedToday)} متبقية · {completionRate}% إنجاز موزون</small></div><button type="button" className="np-cc-button" aria-label="إغلاق نافذة المتبقي" ref={remainingCloseRef} onClick={()=>setShowRemaining(false)}>×</button></header>
       {actionError?<p role="alert" className="np-r331-remaining-error">{actionError}</p>:null}
       {achievementItems.some(x=>x.status!=="Completed"&&x.status!=="Suppressed")?<div className="np-page np-r331-remaining-content" dir="rtl">
         {historyDate?<p className="np-r331-remaining-hint">سجّل الاستدراك بوزن التأخير الفعلي، دون تغيير تسجيلات اليوم الأصلي.</p>:<p className="np-r331-remaining-hint">أتمّ العادات والمهام مباشرة، أو سجّل الكمية والجلسة. تبقى المهام المتكررة فعّالة للأيام التالية.</p>}
