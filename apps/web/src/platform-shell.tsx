@@ -1,6 +1,6 @@
 import { NoorAccountReceipt } from "./noor-account-receipt.js";
 import { NOOR_APPEARANCES, readAppearance, saveAppearance, normalizeAppearance } from "./appearance-preference-store.js";
-import { NoorBrandHeader, NoorBrandLogo, NOOR_BRAND } from "./noor-brand-r329.js";
+import { NoorBrandHeader, NOOR_BRAND } from "./noor-brand-r329.js";
 import { NoorLoginBrand } from "./noor-login-brand.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {
@@ -316,7 +316,7 @@ function SmartGateway({
                     event.preventDefault();
                     navigate(path);
                   }}>
-                    <NoorBrandLogo scope={scope} alt="" />
+                    <img src={NOOR_BRAND[scope].pickerLogo} alt="" width={42} height={42} decoding="async" />
                     <strong lang="en" dir="ltr"><NoorWordmark /> {scope === "personal" ? "Personal" : "Work"}</strong>
                     <svg aria-hidden="true" width={16} height={16} viewBox="0 0 16 16" fill="none"
                       stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
