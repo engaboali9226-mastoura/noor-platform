@@ -62,7 +62,7 @@ test("R337 app selector uses the approved English app names",()=>{
  const authorizedHome=markup({kind:"no-application-selected"},"authenticated");
  const dom=new JSDOM(authorizedHome);
  const names=[...dom.window.document.querySelectorAll('nav strong[lang="en"][dir="ltr"]')];
- assert.deepEqual(names.map(label=>label.textContent),["Noor Personal","Noor Work"]);
+ assert.deepEqual(names.map(label=>label.textContent),["NOOR Personal","NOOR Work"]);
  assert.doesNotMatch(authorizedHome,/نور الشخصي|نور ورك/u);
  dom.window.close();
 });
