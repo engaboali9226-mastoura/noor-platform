@@ -1,6 +1,7 @@
+import { NoorWordmark } from "./noor-wordmark.js";
 import {useDashboardDialog} from "./noor-dashboard-dialog.js";
 import { validPrayerScoreSnapshotR334, type PrayerScoreSnapshotR334, R331_PRAYERS, validPrayerRecordR331, recoveryCreditR331, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
-import { NoorBrandHeader } from "./noor-brand-r329.js";
+import { NoorBrandHeader, NOOR_BRAND } from "./noor-brand-r329.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 import {NoorPersonalInitialSetupR321} from "./noor-personal-initial-setup-r321.js";
 import {quranQuarterR289,quranQuarterForDateR289,validQuranPlanR289,type QuranHabitPlanR289} from "./noor-quran-quarters-r289.js";
@@ -2952,7 +2953,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     const ok=await onCommand({type:"record-prayer-r331",localDate:achievementDate,key:prayerEditor.key,mode:clear?null:prayerEditor.mode,timing:clear?null:prayerEditor.timing,expectedRecordedAt:prior?.recordedAt??null});
     if(ok)setPrayerEditor(null);else setPrayerSaveError("تعذر حفظ تسجيل الصلاة. حاول مرة أخرى.");
   };
-  const recoveryDates=Array.from({length:7},(_,i)=>shiftStatisticDate(achievementDate,-(i+1)));
+  const recoveryCount=historicalRows.length;
   const recoverySheetDates=Array.from({length:7},(_,i)=>shiftStatisticDate(achievementDate,-(recoveryWeek*7+i+1)));
   const selectedRecoveryDate=recoveryDate&&recoverySheetDates.includes(recoveryDate)?recoveryDate:recoverySheetDates[0]!;
   const hasOlderRecovery=historicalRows.some(r=>r.date<recoverySheetDates[6]!);
@@ -3188,7 +3189,9 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>
 
       <div className="np-brand np-r339-brand">
-        <span className="np-r339-wordmark" dir="ltr"><span>N<span className="np-r339-smile">OO</span>R</span> Personal</span>
+        <span className="np-r339-wordmark" dir="ltr">
+          <span><NoorWordmark /> Personal</span>
+        </span>
       </div>
       <button type="button" className="np-r339-profile np-r340-settings" aria-label="الضبط" onClick={onOpenSettings}><NoorR323Icon name="settings"/></button>
       <div className="np-top-actions"><button type="button" className="np-r339-profile" aria-label="الملف الشخصي" onClick={onOpenAccount}><NoorR323Icon name="user"/></button><NoorNotificationCenterR338 alerts={notificationAlerts} appointments={appointmentNotifications} history={workspace?.notificationHistory?.map(entry=>({id:entry.id,kind:entry.kind,title:entry.title,targetId:entry.targetId,scheduledFor:entry.scheduledFor,occurredAt:entry.occurredAt,readAt:entry.readAt}))??[]} todayDate={achievementDate} nowMs={nowMs} onObserve={onCommand} onMarkRead={(notificationId,expectedReadAt)=>onCommand({type:"mark-notification-read",notificationId,expectedReadAt})} onOpenReminder={navigateToReminder} onOpenAppointment={openUpcomingAppointments} onOpenSettings={onOpenReminders}/></div>
@@ -3198,7 +3201,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     <section className="np-r331-board np-card" data-testid="r331-announcement-board" data-board-date={achievementDate} aria-label="لوحة نور لليوم الحالي">
       <header><NoorR323Icon name="grid"/><h2>لوحة نور</h2>{historyDate?<small>اليوم الحالي · {weekDateLabel(achievementDate)}</small>:null}</header>
       <div className="np-r331-board-grid">
-      <button type="button" className="np-r331-tile np-r331-small" onClick={()=>{if(historyDate){setHistoryDate(null);setWeekShift(0);}setShowPrayerTimes(true);}}><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small>{nextPrayer?formatTime(nextPrayer.at,view.timeZone):"—"}</small><small dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></button>
+      <button type="button" className="np-r331-tile np-r331-small" onClick={()=>{if(historyDate){setHistoryDate(null);setWeekShift(0);}setShowPrayerTimes(true);}}><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></button>
       <div className="np-r331-tile np-r331-tile-next"><UpcomingCountdownR301 definitions={workspace?.definitions??[]} nowMs={nowMs} timeZone={view.timeZone} onAdd={onAddCountdown} personalDefault religiousEvents={religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night})}/></div>
       <div className="np-r331-tile np-r331-tile-time"><NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight}
       selectedFridayHour={workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null}
@@ -3208,9 +3211,16 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         if(busy)return;
         void onCommand({type:"set-friday-mosque-hour",hour:selected===hour?null:hour,expectedHour:selected});
       }}/></div>
-      <div className="np-r331-tile np-r331-small np-r339-recovery"><button type="button" className="np-r339-tile-action" onClick={()=>{setRecoveryWeek(0);setRecoveryDate(null);setSessionRecovery(null);setRecoverError("");setShowRecovery(true);}}><NoorR323Icon name="history"/><span>تدارك الفائت</span><strong>{historicalRows.filter(row=>recoveryDates.includes(row.date)).length} غير مكتمل</strong></button><div className="np-r339-mini-days" aria-label="الأيام السبعة السابقة">{recoveryDates.map(date=><button key={date} type="button" aria-label={weekDateLabel(date,true)+" "+date} onClick={()=>{setRecoveryWeek(0);setRecoveryDate(date);setSessionRecovery(null);setRecoverError("");setShowRecovery(true);}}><bdi>{date.slice(-2)}</bdi></button>)}</div></div>
+      <button type="button" className="np-r331-tile np-r331-small np-r339-recovery"
+        aria-haspopup="dialog" aria-expanded={showRecovery}
+        onClick={()=>{setRecoveryWeek(0);setRecoveryDate(null);setSessionRecovery(null);setRecoverError("");setShowRecovery(true);}}>
+        <span>تدارك ما فاتك</span>
+        <strong aria-label={`${recoveryCount} عنصر غير مكتمل`}>
+          {arabicNumber(recoveryCount)}
+        </strong>
+      </button>
       <button type="button" className="np-r331-tile np-r331-small np-compact-task" aria-label="المهمة الحالية" aria-haspopup="dialog" onClick={()=>openTaskSheet(nextTask)}><strong>{nextTask?.title??"لا مهام متبقية"}</strong>{currentTaskProgress!==null?<span dir="ltr">{currentTaskProgress}%</span>:null}</button>
-      <button type="button" className="np-r331-tile np-r331-small" onClick={()=>{setHistoryEventPeriod(historicalPreview?.offset===0?"today":"week");setHistoryEventCalendar("all");setShowHistoryEvents(true);}}><NoorR323Icon name="calendar"/><span>الأحداث التاريخية</span><strong>{historicalPreview?.event.title??"لا أحداث مسجلة"}</strong>{historicalPreview?<small>{weekDateLabel(historicalPreview.date)}</small>:null}</button>
+      <button type="button" className="np-r331-tile np-r331-small" onClick={()=>{setHistoryEventPeriod(historicalPreview?.offset===0?"today":"week");setHistoryEventCalendar("all");setShowHistoryEvents(true);}}><NoorR323Icon name="calendar"/><span>الأحداث التاريخية</span><strong>{historicalPreview?.event.title??"لا أحداث مسجلة"}</strong></button>
       </div>
     </section>
     {showHistoryEvents?createPortal(<div className="np-r331-overlay np-r339-overlay" style={dashboardDialog} onMouseDown={e=>{if(e.target===e.currentTarget)setShowHistoryEvents(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="الأحداث التاريخية" onKeyDown={e=>{if(e.key==="Escape")setShowHistoryEvents(false);}}><header><h2>الأحداث التاريخية</h2><button type="button" aria-label="إغلاق الأحداث التاريخية" onClick={()=>setShowHistoryEvents(false)}>×</button></header><div className="np-r331-options" aria-label="الفترة">{([["today","اليوم"],["week","الأيام السبعة القادمة"]] as const).map(([id,label])=><button type="button" key={id} aria-pressed={historyEventPeriod===id} onClick={()=>setHistoryEventPeriod(id)}>{label}</button>)}</div><div className="np-r331-options" aria-label="التقويم">{([["all","الكل"],["gregorian","ميلادي"],["hijri","هجري"]] as const).map(([id,label])=><button type="button" key={id} aria-pressed={historyEventCalendar===id} onClick={()=>setHistoryEventCalendar(id)}>{label}</button>)}</div>{filteredHistoricalEvents.length?filteredHistoricalEvents.map(({event,date})=><article className="np-r339-history-event" key={event.id+"-"+date}><small>{weekDateLabel(date,true)} · {weekDateLabel(date)}</small><h3>{event.title}</h3><small dir="rtl">{event.day}/{event.month}{event.year!==null?"/"+event.year:""} {event.calendar==="hijri"?"هـ":"م"}</small><p>{event.details}</p><p>المصدر: {event.source}</p></article>):<p role="status">لا توجد أحداث مسجلة لهذه الفترة.</p>}</section></div>,document.body):null}
@@ -3388,7 +3398,7 @@ function PersonalEntryLoading(): ReactElement {
       aria-busy="true"
     >
       <div className="np-entry-loading-content">
-        <img className="np-entry-loading-logo" src="/brand/personal-logo.webp" alt="شعار نور" decoding="sync" loading="eager" />
+        <img className="np-entry-loading-logo noor-personal-entry-mark" src={NOOR_BRAND.personal.entryLogo} alt="شعار نور" decoding="sync" loading="eager" />
         <h1 className="np-entry-loading-title">مرحبا بك في منصة نور</h1>
         <p className="np-entry-loading-copy">جارٍ تجهيز مساحتك الشخصية…</p>
         <span className="np-entry-loading-spinner" aria-hidden="true" />
