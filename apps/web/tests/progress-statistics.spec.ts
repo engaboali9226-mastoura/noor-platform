@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';import test from 'node:test';import {statisticPeriods,statisticDays,shiftStatisticMonth,summarizeProgress,parseStatisticRows,statisticInsights,statisticCalendar,wholeWeekAchievement,yesterdayAchievement,parsePrayerStatisticDaysR334,weightedStatisticRowsR334,type StatisticRow} from '../src/progress-statistics.js';
+import assert from 'node:assert/strict';import test from 'node:test';import {statisticPeriods,statisticDays,shiftStatisticMonth,summarizeProgress,parseStatisticRows,statisticInsights,statisticCalendar,wholeWeekAchievement,weeklyCardSummaryR332,yesterdayAchievement,parsePrayerStatisticDaysR334,weightedStatisticRowsR334,type StatisticRow} from '../src/progress-statistics.js';
 const row=(extra:Partial<StatisticRow>={}):StatisticRow=>({id:'e',definitionId:'d',title:'تجربة',kind:'Habit',date:'2026-01-01',weight:1,status:'Completed',amount:0,unit:'',...extra});
 test('r91 completed weights determine score while unscheduled and cancelled records do not',()=>{assert.equal(summarizeProgress([row({weight:10,status:'Missed'}),row({id:'s'})]).rate,9);assert.equal(summarizeProgress([row({weight:10}),row({id:'s',status:'Missed'})]).rate,91);assert.equal(summarizeProgress([row({status:'Suppressed'})]).rate,null);assert.equal(summarizeProgress([row({status:'Cancelled'})]).rate,null);});
 test('r91 period cards unlock only after their full duration, excluding the current partial day',()=>{const rows=[row()];assert.equal(statisticPeriods(rows,'2026-01-07').filter(p=>p.ready).length,0);assert.deepEqual(statisticPeriods(rows,'2026-01-08').filter(p=>p.ready).map(p=>p.key),['week']);assert.deepEqual(statisticPeriods(rows,'2026-02-01').filter(p=>p.ready).map(p=>p.key),['week','month']);assert.equal(statisticPeriods(rows,'2026-04-01').find(p=>p.key==='quarter')!.ready,true);assert.equal(statisticPeriods(rows,'2026-07-01').find(p=>p.key==='half')!.ready,true);const p=statisticPeriods([row(),row({date:'2026-01-08',weight:100,status:'Missed'})],'2026-01-08')[0]!;assert.equal(p.end,'2026-01-07');assert.equal(p.rate,100);});
@@ -29,4 +29,13 @@ test("R334 server prayer rows join daily, weekly and overall statistics without 
  assert.equal(wholeWeekAchievement(joined,date)[1]?.rate,25);
  assert.deepEqual(weightedStatisticRowsR334(raw,[],date),raw);
  assert.deepEqual(parsePrayerStatisticDaysR334([projections[0],projections[0]]),[]);
+});
+
+test('weekly prayer count merges completed habits, direct records and weighted records once per day',()=>{
+ const past='2026-11-16', today='2026-11-17', future='2026-11-18';
+ const days=[{date:past,current:false,future:false},{date:today,current:true,future:false},{date:future,current:false,future:true}];
+ const history=[{date:past,records:[{key:'fajr'},{key:'fajr'}]},{date:today,records:[{key:'dhuhr'}]}];
+ const projected=[{date:today,score:{rows:[{key:'fajr' as const,weight:20,credit:0,recorded:true}],excludedHabitDefinitionIds:[],weight:20,earnedWeight:0}}];
+ const habits=[{date:past,key:'fajr' as const},{date:past,key:'isha' as const},{date:today,key:'dhuhr' as const},{date:future,key:'fajr' as const}];
+ assert.deepEqual(weeklyCardSummaryR332([],days,history,['fajr','dhuhr','asr'],projected,habits).prayers,{recorded:4,due:8});
 });
