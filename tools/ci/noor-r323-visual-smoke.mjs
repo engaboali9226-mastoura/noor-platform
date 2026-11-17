@@ -561,7 +561,7 @@ try{
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find(".np-r340-settings");
   await run("document.querySelector('.np-r340-settings').click()");
-  await expect("document.querySelector('.np-cc-nav-item[aria-current=page]')?.textContent==='كل الإعدادات'","Settings overview opens from the top bar");
+  await expect("document.querySelector('.np-cc-nav-item[aria-current=page]')?.textContent==='الإعدادات'","Settings overview opens from the top bar");
   await find('.np-r356-overview[aria-label="إعدادات نور"]');
   await snap(screen.name+"-settings");
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
