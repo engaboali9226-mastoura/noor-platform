@@ -365,27 +365,24 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid) {
   --noor-board-glass: linear-gradient(145deg, var(--ng-bg), color-mix(in srgb, var(--ng-bg) 78%, var(--ng-top)));
   --noor-tile-glass: linear-gradient(145deg, color-mix(in srgb, var(--ng-bg) 88%, white), var(--ng-bg));
-  --noor-sky: linear-gradient(154deg, #b5ccdf, #e0e9ef 52%, #9ebad0);
-  background: var(--noor-sky) fixed center top / cover !important;
+  background: var(--noor-sky, linear-gradient(154deg, #b5ccdf, #e0e9ef 52%, #9ebad0)) fixed center top / cover !important;
 }
-.np-page:has(.np-r339-header[data-daylight="day"][data-sky="clear"]),
-.np-page:has(.np-r339-header[data-daylight="day"][data-sky="partly"]) {
+.np-page:has(.np-r339-header[data-daylight="day"]) {
   --noor-sky: linear-gradient(180deg, #a8cef234 8%, #b5c9e446 36%, #c7d7e9d9 95%), url("/brand/personal-day-r340.webp");
 }
-.np-page:has(.np-r339-header[data-daylight="night"]) {
-  --noor-sky: linear-gradient(165deg, #132846, #233e60 55%, #485f7b);
-}
-.np-page:has(.np-r339-header[data-daylight="night"][data-sky="clear"]),
-.np-page:has(.np-r339-header[data-daylight="night"][data-sky="partly"]) {
-  --noor-sky: linear-gradient(180deg, #173253 10%, #1d3656 44%, #182b4a 95%);
+.np-page[data-appearance]:has(.np-r339-header[data-daylight="night"]):has(.np-r323-home-grid) {
+  --noor-sky: linear-gradient(165deg, #11294cad, #24456b45 55%, #182b4abf), url("/brand/personal-night-r340.webp");
+  /* Anchor the enlarged landscape low enough to keep the moon above the viewport. */
+  background-size: cover, max(100vw, 185dvh) auto !important;
+  background-position: center, center bottom !important;
 }
 .np-page:has(.np-r339-header[data-sky="cloudy"]),
 .np-page:has(.np-r339-header[data-sky="fog"]),
 .np-page:has(.np-r339-header[data-sky="precipitation"]) {
   --noor-sky: linear-gradient(180deg, #a8b7cde6, #cad6e4f0), url("/brand/personal-day-r340.webp");
 }
-.np-page:has(.np-r339-header[data-daylight="night"]:is([data-sky="cloudy"], [data-sky="fog"], [data-sky="precipitation"])) {
-  --noor-sky: linear-gradient(180deg, #273c55, #384b65);
+.np-page[data-appearance]:has(.np-r339-header[data-daylight="night"]:is([data-sky="cloudy"], [data-sky="fog"], [data-sky="precipitation"])):has(.np-r323-home-grid) {
+  --noor-sky: linear-gradient(180deg, #273c55c4, #384b657e), url("/brand/personal-night-r340.webp");
 }
 .np-page[data-appearance="dark"]:has(.np-r339-header) {
   --noor-board-glass: linear-gradient(145deg, var(--ng-top), var(--ng-bg));
@@ -613,7 +610,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   flex-wrap: nowrap !important;
 }
 .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] :is(.np-header-day,.np-header-date-main,.np-date-month,.np-date-year) {
-  font-size: clamp(12px, 3.2vw, 18px) !important;
+  font-size: clamp(12px, 2.8vw, 14px) !important;
   font-weight: 650 !important;
   white-space: nowrap !important;
 }
@@ -638,7 +635,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   align-self: center;
   justify-self: center;
   direction: rtl;
-  font-size: clamp(28px, 4.8vw, 48px);
+  font-size: clamp(32px, 5vw, 48px) !important;
   letter-spacing: 0;
   line-height: 1.15;
 }
@@ -676,4 +673,64 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-current-task-overlay > .np-r331-sheet {
   width: min(100%, 540px) !important;
   max-height: min(var(--noor-dialog-height, 100dvh) - 32px, 740px) !important;
+}
+
+.np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-date-divider {
+  width: 2px !important;
+  flex: 0 0 2px;
+  background: currentColor !important;
+  color: var(--ng-ink);
+  opacity: 0.72;
+}
+.np-page[data-appearance] .np-r339-header[data-daylight="night"] .np-header-date-divider {
+  color: #f0f6ff;
+}
+.np-page[data-appearance] .np-r339-header .np-header-weather-status {
+  font-size: 12px;
+  color: inherit;
+}
+.np-r339-task-sheet .np-current-task-sheet-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.np-page.np-r339-task-sheet .np-task-detail-card {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px !important;
+  min-height: 0;
+  max-width: 100%;
+  padding: 12px;
+}
+.np-page.np-r339-task-sheet .np-task-detail-card > .np-item-main {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  padding: 0;
+}
+.np-page.np-r339-task-sheet .np-task-detail-card > .np-activity-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.np-page.np-r339-task-sheet .np-task-detail-card .np-activity-actions > .np-btn.np-pencil {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 44px;
+  padding: 6px 12px;
+}
+.np-page.np-r339-task-sheet .np-task-detail-card > .nts-list {
+  box-sizing: border-box;
+  margin: 0;
+}
+.np-page.np-r339-task-sheet .np-task-detail-card > .nts-list > summary {
+  display: grid;
+  gap: 3px;
 }

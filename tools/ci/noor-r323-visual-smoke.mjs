@@ -32,7 +32,7 @@ try{
  'const fixtureParams=new URLSearchParams(location.search);',
  'const fixtureDay=fixtureParams.get("daylight")==="day";',
  'Date.now=()=>Date.parse(fixtureDay?"2026-11-06T08:02:00Z":"2026-11-06T18:02:00Z");',
- 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,weather_code:fixtureParams.get("weather")==="unknown"?undefined:fixtureParams.get("weather")==="cloudy"?3:0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
+ 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,uv_index:3,wind_speed_10m:8,wind_direction_10m:140,precipitation:0,weather_code:fixtureParams.get("weather")==="unknown"?undefined:fixtureParams.get("weather")==="cloudy"?3:0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
  ].join("\n");
  const render=[
  'const root=createRoot(document.getElementById("root")!);',
@@ -545,6 +545,19 @@ try{
   await snap(screen.name+"-compact-task-preview");
   await run("document.querySelector('.np-today-task-button').click()");
   await expect("!!document.querySelector('.np-current-task-overlay .nts-list[open]')","Reading sessions open inside the floating sheet");
+  await expect(`(() => {
+    const card=document.querySelector(".np-task-detail-card");
+    if(!card)return false;
+    const controls=card.querySelector(".np-activity-actions");
+    const title=card.querySelector(".np-item-main");
+    const sessions=card.querySelector(".nts-list");
+    const pencil=card.querySelector(".np-pencil");
+    if(!controls||!title||!sessions||!pencil)return false;
+    return !card.querySelector(".np-r332-task-icon") &&
+      title.getBoundingClientRect().bottom <= controls.getBoundingClientRect().top &&
+      controls.getBoundingClientRect().bottom <= sessions.getBoundingClientRect().top &&
+      pencil.clientWidth >= pencil.scrollWidth - 2;
+  })()`,"Task progress, actions, and sessions are stacked without overlap");
   await snap(screen.name+"-task-sessions-preview");
   report.push({viewport:screen.name,width:screen.width,height:screen.height,appointmentFixtureVisible:more,layout:await run("Array.from(document.querySelectorAll('.np-r323-home-grid>.np-card')).filter(x=>x.getBoundingClientRect().height>0).map(x=>({className:x.className,width:Math.round(x.getBoundingClientRect().width),height:Math.round(x.getBoundingClientRect().height),top:Math.round(x.getBoundingClientRect().top)}))")});
  }
@@ -576,6 +589,20 @@ try{
        return actions.right <= wordmark.left + 1 && wordmark.right <= settings.left + 1 &&
          [profile, bell, settings].every(box => centered(box) && Math.abs(box.width-profile.width)<1);
      })()`,"Header shortcuts fit width "+viewport.width);
+     await expect(`(() => {
+       const root=document.querySelector(".np-page[data-appearance]");
+       const clock=document.querySelector("[data-testid=live-clock]");
+       const date=document.querySelector(".np-header-date-main");
+       const divider=document.querySelector(".np-header-date-divider");
+       const image=getComputedStyle(root).backgroundImage;
+       return !!document.querySelector("[data-testid=header-temperature]") &&
+         !!document.querySelector("[data-testid=header-weather-details]") &&
+         image.includes("personal-${daylight}-r340.webp") &&
+         parseFloat(getComputedStyle(clock).fontSize)>=32 &&
+         parseFloat(getComputedStyle(date).fontSize)<=14 &&
+         divider.getBoundingClientRect().width>=2 &&
+         clock.getBoundingClientRect().bottom<=date.getBoundingClientRect().top;
+     })()`,"Clock, dates, weather details, and "+daylight+" landscape render at "+viewport.width);
      await snap(viewport.width+"-"+daylight+"-"+weather);
    }
  }

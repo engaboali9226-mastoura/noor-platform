@@ -25,7 +25,7 @@ export async function loadCurrentWeather(location:Readonly<{latitude:number;long
     url.searchParams.set("current","temperature_2m,uv_index,wind_speed_10m,wind_direction_10m,precipitation,rain,weather_code,is_day");
     url.searchParams.set("temperature_unit","celsius");
     url.searchParams.set("wind_speed_unit","kmh");
-    const response=await fetch(url.toString(),{cache:"no-store",credentials:"omit"});
+    const response=await fetch(url.toString(),{cache:"no-store",credentials:"omit",signal:AbortSignal.timeout(8000)});
     if(!response.ok)return null;
     const payload:unknown=await response.json();
     if(!isRecord(payload)||!isRecord(payload.current))return null;
