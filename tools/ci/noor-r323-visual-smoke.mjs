@@ -543,7 +543,10 @@ try{
   await find(".np-cc-shell");
   await expect(visible("[data-testid=r324-persistent-navigation]"),"Navigation stays in control center");
   await snap(screen.name+"-tools");
-  await run("Array.from(document.querySelectorAll('.np-cc-nav-item')).find(b=>b.textContent.includes('الأوزان')).click()");
+  await run("document.querySelector('[data-testid=r324-nav-home]').click()");
+  await find(".np-r340-settings");
+  await run("document.querySelector('.np-r340-settings').click()");
+  await run("Array.from(document.querySelectorAll('.np-r356-overview-card')).find(b=>b.textContent.includes('الإنجاز والأوزان')).click()");
   await find('[data-testid=r334-prayer-policy-editor]');
   await run("document.querySelector('[data-testid=r334-prayer-policy-editor]>summary').click()");
   await expect("document.querySelector('[data-testid=r334-prayer-base-weight]').value===''&&document.querySelector('[data-testid=r334-share-excused-ontime]').value===''&&document.querySelector('[data-testid=r334-policy-save]').disabled","R334 no implicit policy approval");
@@ -558,7 +561,9 @@ try{
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find(".np-r340-settings");
   await run("document.querySelector('.np-r340-settings').click()");
-  await expect("document.querySelector('.np-cc-nav-item[aria-current=page]')?.textContent==='المظهر'","Settings opens from the top bar");
+  await expect("document.querySelector('.np-cc-nav-item[aria-current=page]')?.textContent==='الإعدادات'","Settings overview opens from the top bar");
+  await find('.np-r356-overview[aria-label="إعدادات نور"]');
+  await snap(screen.name+"-settings");
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find("[data-testid=r323-approved-dashboard]");
   await expect("document.querySelector('[data-testid=r324-nav-home]').getAttribute('aria-current')==='page'","Home navigation active");
