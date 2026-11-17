@@ -878,3 +878,22 @@ button[aria-label^="إغلاق"] {
   background: var(--ng-sub);
   color: var(--ng-accent);
 }
+
+.np-r339-header .np-weather-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.np-r339-header .np-weather-metric > span {
+  display: inline-flex;
+  color: var(--ng-accent);
+}
+.np-r339-header[data-daylight="night"] .np-weather-metric > span {
+  color: #dcecff;
+}
+.np-r339-header .np-weather-metric svg {
+  width: 15px;
+  height: 15px;
+}

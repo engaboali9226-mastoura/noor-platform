@@ -26,6 +26,10 @@ const paths={
  cloudMoon:"M5 18h14a3.5 3.5 0 0 0 .2-7 5.5 5.5 0 0 0-10.6-1.1A4.1 4.1 0 1 0 5 18z M10 5A4.5 4.5 0 0 1 5 2a4.5 4.5 0 0 0-2 6",
  fog:"M3 14h18 M5 18h14 M8 22h8 M6 10a6 6 0 0 1 12 0",
  rain:"M5 15h14a3.5 3.5 0 0 0 .2-7 5.5 5.5 0 0 0-10.6-1.1A4.1 4.1 0 1 0 5 15z M7 18l-1 3 M12 18l-1 3 M17 18l-1 3",
+ uv:"M16 8a4 4 0 1 1-8 0 4 4 0 1 1 8 0 M12 1v1 M4 8H2 M22 8h-2 M5 3l2 2 M19 3l-2 2 M5 16v3a2 2 0 0 0 4 0v-3 M14 16l2.5 5 2.5-5",
+ wind:"M3 8h12a2.5 2.5 0 1 0-2.5-2.5 M2 12h17a2.5 2.5 0 1 1-2.5 2.5 M4 16h7a2.5 2.5 0 1 1-2.5 2.5",
+ direction:"M12 3l7 17-7-4-7 4 7-17z",
+ drop:"M12 3c-2.4 4-6.5 7.8-6.5 12a6.5 6.5 0 0 0 13 0C18.5 10.8 14.4 7 12 3z",
  arrow:"M15 4l-8 8 8 8"
 } as const;
 export function NoorR323Icon({name}:{name:keyof typeof paths}):ReactElement{return <svg className="noor-r323-line-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>}

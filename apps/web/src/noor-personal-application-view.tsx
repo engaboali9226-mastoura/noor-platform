@@ -2815,6 +2815,19 @@ function NoorCategoryIcon({category}:{category:string}):ReactElement {
   </span>;
 }
 
+function WeatherMetric({icon,label,value,rotation}: {
+  icon: "wind" | "direction" | "uv" | "drop";
+  label: string;
+  value: string;
+  rotation?: number;
+}) {
+  const description = `${label} ${value}`;
+  return <span className="np-weather-metric" role="img" aria-label={description} title={description}>
+    <span aria-hidden="true" style={rotation===undefined?undefined:{transform:`rotate(${rotation}deg)`}}><NoorR323Icon name={icon}/></span>
+    <bdi>{value}</bdi>
+  </span>;
+}
+
 function Dashboard({ view:providedView, workspace, busy, actionError, onCommand, onOpenControl, onOpenAccount, onOpenSettings, onOpenReminders, onAddCountdown, onReconnect, reconnecting, connectionWarning, nowMs,pendingIds=[],lockedIds=[],onHistoryCommand,timePreferences,onTimePreferencesChange }: { view: TodayViewModel; onReconnect:()=>void; reconnecting:boolean; connectionWarning:boolean; workspace: WorkspaceViewModel | null; busy: boolean; actionError: string | null; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; onHistoryCommand: (command:NoorPersonalCommandInput)=>Promise<boolean>; onOpenControl: () => void; onOpenAccount: () => void; onOpenSettings: () => void; onOpenReminders: () => void; onAddCountdown: () => void; nowMs: number;pendingIds?:readonly string[];lockedIds?:readonly string[];timePreferences:NoorR232Preferences;onTimePreferencesChange:(value:NoorR232Preferences)=>void }): ReactElement {
   // Today's execution projection is authoritative for recurrence and the personal-day boundary.
   const definitionsById = new Map((workspace?.definitions ?? []).map(definition => [definition.id, definition] as const));
@@ -3164,10 +3177,10 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             {weatherLabel?<span className="np-weather-condition">{weatherLabel}</span>:null}
           </span>
           <span className="np-weather-details" data-testid="header-weather-details">
-            {weather.uvIndex!==null?<span>UV {arabicNumber(Math.round(weather.uvIndex*10)/10)}</span>:null}
-            {weather.windSpeedKmh!==null?<span>الرياح {arabicNumber(Math.round(weather.windSpeedKmh))} كم/س</span>:null}
-            {weather.windDirectionDeg!==null?<span>اتجاه الرياح {arabicNumber(Math.round(weather.windDirectionDeg))}°</span>:null}
-            {weather.rainMm!==null||weather.precipitationMm!==null?<span>{(weather.rainMm??weather.precipitationMm??0)>0?`مطر ${arabicNumber(Math.round((weather.rainMm??weather.precipitationMm??0)*10)/10)} مم`:"لا مطر الآن"}</span>:null}
+            {weather.windSpeedKmh!==null?<WeatherMetric icon="wind" label="سرعة الرياح" value={`${arabicNumber(Math.round(weather.windSpeedKmh))} كم/س`}/>:null}
+            {weather.windDirectionDeg!==null?<WeatherMetric icon="direction" label="اتجاه قدوم الرياح" value={`${arabicNumber(Math.round(weather.windDirectionDeg)%360)}°`} rotation={weather.windDirectionDeg}/>:null}
+            {weather.uvIndex!==null?<WeatherMetric icon="uv" label="مؤشر الأشعة فوق البنفسجية" value={arabicNumber(Math.round(weather.uvIndex*10)/10)}/>:null}
+            {weather.rainMm!==null||weather.precipitationMm!==null?<WeatherMetric icon="drop" label="كمية الهطول" value={`${arabicNumber(Math.round((weather.rainMm??weather.precipitationMm??0)*10)/10)} مم`}/>:null}
           </span>
         </div>:<small className="np-header-weather-status" role="status">{weatherUnavailable?"الطقس غير متاح حاليًا":"جارٍ تحديث الطقس…"}</small>}
       </div>
