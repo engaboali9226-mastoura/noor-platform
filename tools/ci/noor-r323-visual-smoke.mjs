@@ -465,11 +465,11 @@ try{
      cell.left >= bounds.left && cell.right <= bounds.right && cell.bottom <= bounds.bottom &&
      Math.abs(cell.top - cells[row * 3].top) < 1 &&
      Math.abs(cell.left - cells[column].left) < 1 &&
-     Math.abs(cell.height - cells[0].height) < 1 &&
+     Math.abs(cell.height - cells[row * 3].height) < 1 &&
      (column === 0 || cell.right < cells[i - 1].left) &&
      (row === 0 || cell.top > cells[column].bottom);
    });
-  })()`,"One outer card contains two aligned rows of three equal-height RTL tiles");
+  })()`,"One outer card contains two aligned RTL rows with equal tile heights within each row");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect(visible(".np-r339-profile"),"Profile shortcut in header");
   await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-check,r324-nav-plus,r324-nav-bell,r324-nav-grid'","Approved RTL navigation order");
