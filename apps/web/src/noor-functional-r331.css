@@ -365,16 +365,22 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid) {
   --noor-board-glass: linear-gradient(145deg, var(--ng-bg), color-mix(in srgb, var(--ng-bg) 78%, var(--ng-top)));
   --noor-tile-glass: linear-gradient(145deg, color-mix(in srgb, var(--ng-bg) 88%, white), var(--ng-bg));
-  background: var(--noor-sky, linear-gradient(154deg, #b5ccdf, #e0e9ef 52%, #9ebad0)) fixed center top / cover !important;
+  background: var(--noor-sky-fill, linear-gradient(154deg, #b5ccdf, #e0e9ef 52%, #9ebad0)) !important;
+}
+.np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid)::before {
+  opacity: 1 !important;
+  mask-image: none;
+  background: var(--noor-sky, none);
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: cover, contain;
 }
 .np-page:has(.np-r339-header[data-daylight="day"]) {
   --noor-sky: linear-gradient(180deg, #a8cef234 8%, #b5c9e446 36%, #c7d7e9d9 95%), url("/brand/personal-day-r340.webp");
 }
 .np-page[data-appearance]:has(.np-r339-header[data-daylight="night"]):has(.np-r323-home-grid) {
   --noor-sky: linear-gradient(165deg, #11294cad, #24456b45 55%, #182b4abf), url("/brand/personal-night-r340.webp");
-  /* Anchor the enlarged landscape low enough to keep the moon above the viewport. */
-  background-size: cover, max(100vw, 185dvh) auto !important;
-  background-position: center, center bottom !important;
+  --noor-sky-fill: linear-gradient(165deg, #132846, #233e60 55%, #485f7b);
 }
 .np-page:has(.np-r339-header[data-sky="cloudy"]),
 .np-page:has(.np-r339-header[data-sky="fog"]),

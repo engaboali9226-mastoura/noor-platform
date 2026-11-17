@@ -599,10 +599,14 @@ try{
        const clock=document.querySelector("[data-testid=live-clock]");
        const date=document.querySelector(".np-header-date-main");
        const divider=document.querySelector(".np-header-date-divider");
-       const image=getComputedStyle(root).backgroundImage;
+       const backdrop=getComputedStyle(root,"::before");
+       const image=backdrop.backgroundImage;
        return !!document.querySelector("[data-testid=header-temperature]") &&
          !!document.querySelector("[data-testid=header-weather-details]") &&
          image.includes("personal-${daylight}-r340.webp") &&
+         backdrop.position==="fixed" &&
+         backdrop.backgroundSize.split(",").at(-1).trim()==="contain" &&
+         backdrop.backgroundRepeat.split(",").every(repeat=>repeat.trim()==="no-repeat") &&
          parseFloat(getComputedStyle(clock).fontSize)>=32 &&
          parseFloat(getComputedStyle(date).fontSize)<=14 &&
          divider.getBoundingClientRect().width>=2 &&
