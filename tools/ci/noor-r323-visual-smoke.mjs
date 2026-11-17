@@ -622,10 +622,13 @@ try{
        const divider=document.querySelector(".np-header-date-divider");
        const backdrop=getComputedStyle(root,"::before");
        const image=backdrop.backgroundImage;
+       const fill=getComputedStyle(root,"::after");
        return !!document.querySelector("[data-testid=header-temperature]") &&
          !!document.querySelector("[data-testid=header-weather-details]") &&
          image.includes("personal-${daylight}-r340.webp") &&
          backdrop.position==="fixed" &&
+         fill.position==="fixed" && fill.backgroundImage.includes("personal-${daylight}-r340.webp") &&
+         fill.backgroundSize.split(",").at(-1).trim()==="cover" &&
          backdrop.backgroundSize.split(",").at(-1).trim()==="contain" &&
          backdrop.backgroundRepeat.split(",").every(repeat=>repeat.trim()==="no-repeat") &&
          parseFloat(getComputedStyle(clock).fontSize)>=32 &&
