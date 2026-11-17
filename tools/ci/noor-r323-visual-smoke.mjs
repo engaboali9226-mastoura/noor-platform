@@ -552,11 +552,16 @@ try{
     const title=card.querySelector(".np-item-main");
     const sessions=card.querySelector(".nts-list");
     const pencil=card.querySelector(".np-pencil");
-    if(!controls||!title||!sessions||!pencil)return false;
+    const label=pencil?.querySelector("span");
+    if(!controls||!title||!sessions||!pencil||!label)return false;
     return !card.querySelector(".np-r332-task-icon") &&
       title.getBoundingClientRect().bottom <= controls.getBoundingClientRect().top &&
       controls.getBoundingClientRect().bottom <= sessions.getBoundingClientRect().top &&
-      pencil.clientWidth >= pencil.scrollWidth - 2;
+      (() => {
+        const bounds=pencil.getBoundingClientRect(), text=label.getBoundingClientRect();
+        return text.left>=bounds.left && text.right<=bounds.right &&
+          text.top>=bounds.top && text.bottom<=bounds.bottom;
+      })();
   })()`,"Task progress, actions, and sessions are stacked without overlap");
   await snap(screen.name+"-task-sessions-preview");
   report.push({viewport:screen.name,width:screen.width,height:screen.height,appointmentFixtureVisible:more,layout:await run("Array.from(document.querySelectorAll('.np-r323-home-grid>.np-card')).filter(x=>x.getBoundingClientRect().height>0).map(x=>({className:x.className,width:Math.round(x.getBoundingClientRect().width),height:Math.round(x.getBoundingClientRect().height),top:Math.round(x.getBoundingClientRect().top)}))")});
