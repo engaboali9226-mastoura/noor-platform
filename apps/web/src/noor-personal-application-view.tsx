@@ -27,7 +27,7 @@ import { loadCurrentWeather,type CurrentWeatherR338 } from "./public-weather-cli
 import { NoorR232TimeWindows } from "./noor-time-windows-r232.js";
 import {fridayVirtueR284} from "./noor-friday-virtues-r284.js";
 import { r232LocalWeekday, r283CarriedNightWindow, r283FridayHoursAtDhuhr, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
-import { NoorHabitWeightManagerR251, NoorPrayerScoreApprovalR334 } from "./noor-habit-weight-manager-r251.js";
+import { NoorHabitWeightManagerR251, NoorPrayerScoreApprovalR334, prayerHabitCandidateR334 } from "./noor-habit-weight-manager-r251.js";
 import { NoorR232ControlLocation } from "./noor-time-location-control-r232.js";
 import { readNoorR232Preferences,saveNoorR232Preferences,type NoorR232Preferences,type NoorR232City } from "./noor-time-display-preferences-r232.js";
 import { NOOR_APPEARANCES, readAppearance, saveAppearance, type NoorAppearance } from "./appearance-preference-store.js";
@@ -3026,7 +3026,16 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const weekRows=[...weightedHistory.filter(r=>r.date!==achievementDate),...weightedToday].filter(r=>visibleWeek.some(d=>!d.future&&d.date===r.date));
   const weekTotals=summarizeProgress(weekRows);
   const weekPrayerScore=summarizeProgress(weekRows.filter(row=>row.kind==="Prayer"));
-  const weeklyCard=weeklyCardSummaryR332(weekRows,visibleWeek,workspace?.prayerHistoryR331??[],R331_PRAYERS.filter(key=>providedView.prayerTimes.some(p=>p.key===key&&Number.isFinite(Date.parse(p.at))&&Date.parse(p.at)<=nowMs)),prayerDays);
+  const prayerHabitMappings=workspace?.prayerScorePolicyR334?.legacyHabitKeys;
+  const completedPrayerHabits=[
+    ...(workspace?.statistics.rows??[]).filter(row=>row.date<achievementDate),
+    ...todayRows,
+  ].flatMap(row=>{
+    if(row.kind!=="Habit"||row.status!=="Completed"||!statisticEligible(row))return [];
+    const key=prayerHabitMappings?.[row.definitionId]??prayerHabitCandidateR334(row.title);
+    return key?[{date:row.date,key}]:[];
+  });
+  const weeklyCard=weeklyCardSummaryR332(weekRows,visibleWeek,workspace?.prayerHistoryR331??[],R331_PRAYERS.filter(key=>providedView.prayerTimes.some(p=>p.key===key&&Number.isFinite(Date.parse(p.at))&&Date.parse(p.at)<=nowMs)),prayerDays,completedPrayerHabits);
   const weekFormats=useMemo(()=>({date:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{day:"numeric",month:"numeric",timeZone:"UTC"}),weekday:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",timeZone:"UTC"})}),[]);
   const weekDateLabel=(date:string,weekday=false)=>(weekday?weekFormats.weekday:weekFormats.date).format(new Date(date+"T00:00:00Z"));
 
