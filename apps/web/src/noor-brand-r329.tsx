@@ -1,7 +1,7 @@
 export type NoorBrandScope="platform"|"personal"|"work";
 export const NOOR_BRAND={
  platform:{label:"NOOR Platform",header:"/brand/platform-header.webp",logo:"/brand/platform-logo.webp"},
- personal:{label:"NOOR Personal",header:"/brand/personal-header.webp",logo:"/brand/personal-logo.webp"},
+ personal:{label:"NOOR Personal",header:"/brand/personal-header.webp",logo:"/brand/personal-logo.webp",entryLogo:"/brand/icon-r352-192.png"},
  work:{label:"NOOR Work",header:"/brand/work-header.webp",logo:"/brand/work-logo.webp"},
 } as const;
 export function NoorBrandHeader({scope,className=""}:{scope:NoorBrandScope;className?:string}){

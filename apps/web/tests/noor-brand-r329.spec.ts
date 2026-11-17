@@ -42,7 +42,7 @@ test("R329 Work initial loading uses Work header",()=>{
 });
 test("R329 Platform install icons are valid and standalone identity is unchanged",()=>{
  const m=JSON.parse(readFileSync(new URL("noor.webmanifest",pub),"utf8"));assert.equal(m.id,"/");assert.equal(m.scope,"/");assert.equal(m.start_url,"/");assert.equal(m.display,"standalone");
- for(const size of [192,512])for(const purpose of ["any","maskable"]){const x=m.icons.find((i:{sizes:string;purpose:string})=>i.sizes===size+"x"+size&&i.purpose.split(" ").includes(purpose));assert.ok(x);const b=readFileSync(new URL(x.src.slice(1),pub));assert.equal(b.readUInt32BE(16),size);assert.equal(b.readUInt32BE(20),size);}
- const b=readFileSync(new URL("brand/icon-r349-180.png",pub));assert.equal(b.readUInt32BE(16),180);assert.equal(b.readUInt32BE(20),180);
- assert.match(readFileSync(new URL("../index.html",import.meta.url),"utf8"),/href="\/brand\/icon-r349-180\.png"/u);
+ for(const size of [192,512]){const x=m.icons.find((i:{sizes:string;purpose:string})=>i.sizes===size+"x"+size&&i.purpose==="any");assert.ok(x);const b=readFileSync(new URL(x.src.slice(1),pub));assert.equal(b.readUInt32BE(16),size);assert.equal(b.readUInt32BE(20),size);assert.equal(b[25],6,"PNG uses RGBA for transparent corners");}
+ const b=readFileSync(new URL("brand/icon-r352-180.png",pub));assert.equal(b.readUInt32BE(16),180);assert.equal(b.readUInt32BE(20),180);
+ assert.match(readFileSync(new URL("../index.html",import.meta.url),"utf8"),/href="\/brand\/icon-r352-180\.png"/u);
 });

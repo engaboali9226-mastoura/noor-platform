@@ -424,7 +424,7 @@ try{
   await find("[data-testid=r323-approved-dashboard]");
   await expect(visible(".np-r323-rhythm"),"Active timer visible");
   await expect(visible("[data-testid=r328-night-total-duration]"),"Trusted whole-night duration visibly distinct from the timer");
-  await expect("document.querySelector('.np-r339-wordmark')?.textContent==='NOOR Personal'&&!!document.querySelector('.np-r339-smile')","Approved centered Personal wordmark");
+  await expect("document.querySelector('.np-r339-wordmark')?.textContent==='NOOR Personal'&&!document.querySelector('.np-r339-wordmark img')","Approved centered Personal wordmark");
 
   const headerGeometry=await run("(()=>{const rect=x=>{const r=x.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,top:r.top,bottom:r.bottom,left:r.left,right:r.right}},b=document.querySelector('.np-r323-header .np-brand'),h=document.querySelector('.np-r339-wordmark'),g=document.querySelector('.np-r323-greeting');return {viewport:{width:innerWidth,height:innerHeight},brand:rect(b),image:rect(h),greeting:rect(g)}})()");
   console.log("R323_HEADER_LAYOUT",screen.name,JSON.stringify(headerGeometry));
@@ -514,7 +514,7 @@ try{
   for (const [tile,sheet,name] of [
     [".np-r331-board-grid > :nth-child(5)", ".np-r339-task-sheet", "tasks"],
     [".np-r331-board-grid > :nth-child(6)", '[aria-label="الأحداث التاريخية"][role=dialog]', "history"],
-    [".np-r339-mini-days button", '[aria-label="تدارك الفائت"][role=dialog]', "recovery"],
+    [".np-r339-recovery", '[aria-label="تدارك الفائت"][role=dialog]', "recovery"],
   ]) {
     await run("(()=>{const trigger=document.querySelector("+JSON.stringify(tile)+");trigger.focus({preventScroll:true});trigger.click()})()");
     await expect(visible(sheet),name+" sheet opens when selected");

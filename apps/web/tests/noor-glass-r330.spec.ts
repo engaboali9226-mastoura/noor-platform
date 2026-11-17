@@ -15,5 +15,5 @@ test("R330 enlarged PNGs exactly match verified original-logo crops",()=>{
   const b=readFileSync(new URL("brand/icon-r330-"+size+".png",pub));assert.equal(b.readUInt32BE(16),Number(size));assert.equal(b.readUInt32BE(20),Number(size));assert.equal(createHash("sha1").update("blob "+b.length+"\0").update(b).digest("hex"),sha);
  }
  const manifest=JSON.parse(readFileSync(new URL("noor.webmanifest",pub),"utf8"));
- for(const n of [192,512]){assert.ok(manifest.icons.some((x:{src:string;purpose:string})=>x.src==="/brand/icon-r349-"+n+".png"&&x.purpose.split(" ").includes("any")));assert.ok(manifest.icons.some((x:{src:string;purpose:string})=>x.src==="/brand/icon-r349-"+n+".png"&&x.purpose.split(" ").includes("maskable")));}
+ for(const n of [192,512]){assert.ok(manifest.icons.some((x:{src:string;purpose:string})=>x.src==="/brand/icon-r352-"+n+".png"&&x.purpose==="any"));}
 });
