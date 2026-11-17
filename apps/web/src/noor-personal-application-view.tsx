@@ -1815,6 +1815,205 @@ const PAGE_STYLES = `
 }
 /* NOOR_R163_MOBILE_DIALOGS_AND_TABS_END */
 
+/* NOOR_R356_TOOLS_AND_SETTINGS_IDENTITY_BEGIN */
+.np-page[data-appearance] .np-cc-shell{
+ width:min(100%,1360px);margin-inline:auto;gap:12px;color:var(--ng-ink)
+}
+.np-page[data-appearance] .np-cc-shell>.noor-r329-brand-header{display:none}
+.np-page[data-appearance] .np-r356-control-header{
+ min-height:118px;padding:18px 22px;border-radius:25px!important;
+ background:var(--ng-card)!important;border:1px solid var(--ng-line)!important;box-shadow:var(--ng-shadow)!important;
+ -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)
+}
+.np-r356-control-header .np-cc-heading{flex:1 1 420px}
+.np-r356-control-header .np-cc-header-logo{width:70px;height:70px;flex-basis:70px;border:1px solid var(--ng-line);box-shadow:var(--ng-shadow);background:var(--ng-sub)}
+.np-r356-control-header .np-cc-heading-copy{display:grid;align-content:center;min-height:70px;gap:1px}
+.np-r356-control-header .np-cc-heading-copy .np-cc-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--ng-accent);direction:ltr;text-align:right}
+.np-r356-control-header .np-control-title{font-size:clamp(22px,2.2vw,31px)!important;color:var(--ng-ink);line-height:1.25!important}
+.np-r356-section-description{margin:3px 0 0;color:var(--ng-muted);font-size:12px;line-height:1.7}
+.np-r356-control-header .np-cc-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.np-r356-control-header .np-cc-button{min-height:44px;border-radius:14px;background:var(--ng-sub);border-color:var(--ng-line);color:var(--ng-ink);box-shadow:inset 0 1px 0 #fff8}
+.np-r356-control-header .np-cc-button svg{width:18px;height:18px;color:var(--ng-accent)}
+.np-r356-control-header .np-r356-return{background:linear-gradient(150deg,var(--ng-accent),var(--ng-accent2));color:#fff;border-color:#ffffff80}
+.np-r356-control-header .np-r356-return svg{color:#fff}
+.np-page[data-appearance] .np-cc{
+ overflow:hidden;border-radius:25px!important;background:var(--ng-card)!important;border:1px solid var(--ng-line)!important;box-shadow:var(--ng-shadow)!important
+}
+.np-page[data-appearance] .np-cc-layout{grid-template-columns:238px minmax(0,1fr);min-height:min(720px,calc(100dvh - 190px));direction:rtl;align-items:stretch}
+.np-page[data-appearance] .np-r356-control-nav{
+ padding:16px 12px;gap:8px;align-content:start;background:color-mix(in srgb,var(--ng-sub) 82%,transparent);border-inline-end:1px solid var(--ng-line);overflow-y:auto;max-height:calc(100dvh - 190px);scrollbar-width:thin
+}
+.np-r356-nav-group{display:grid;gap:4px;padding-top:8px;border-top:1px solid color-mix(in srgb,var(--ng-line) 75%,transparent)}
+.np-r356-nav-group>p{margin:0;padding:2px 11px 5px;color:var(--ng-muted);font-size:10px;font-weight:800;letter-spacing:.025em}
+.np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item{
+ width:100%;min-height:43px;padding:9px 11px;border:1px solid transparent;border-radius:13px;color:var(--ng-muted);gap:10px;transition:background .16s ease,border-color .16s ease,transform .16s ease
+}
+.np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item:hover{background:color-mix(in srgb,var(--ng-card) 75%,transparent);border-color:var(--ng-line)}
+.np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item:active{transform:scale(.985)}
+.np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item.is-selected{
+ background:var(--ng-card);border-color:var(--ng-line);color:var(--ng-ink);font-weight:800;box-shadow:0 5px 16px #244a7217,inset 0 1px 0 #fff9
+}
+.np-r356-control-nav .np-cc-nav-item svg{width:20px;height:20px;color:var(--ng-accent)}
+.np-r356-control-nav .np-cc-nav-item small{display:grid;place-items:center;min-width:24px;height:24px;margin-inline-start:auto;border-radius:999px;background:var(--ng-sub);color:var(--ng-ink);font-size:11px}
+.np-r356-nav-home{margin-bottom:2px}
+.np-page[data-appearance] .np-cc-main{
+ min-width:0;min-height:0;padding:clamp(18px,2.6vw,34px);background:transparent!important;border:0!important;color:var(--ng-ink)
+}
+.np-page[data-appearance] .np-cc-main :is(h1,h2,h3,strong){color:var(--ng-ink)}
+.np-page[data-appearance] .np-cc-main :is(.np-cc-kicker,.np-cc-help,.np-cc-results,.np-cc-title p,small){color:var(--ng-muted)}
+.np-r356-overview .np-cc-title{margin-bottom:18px}
+.np-r356-overview .np-cc-title h2{font-size:clamp(23px,2.5vw,31px)}
+.np-r356-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.np-r356-overview-card{
+ min-width:0;min-height:116px;display:grid;grid-template-columns:48px minmax(0,1fr) 18px;align-items:center;gap:12px;padding:16px;
+ text-align:right;font:inherit;color:var(--ng-ink);border:1px solid var(--ng-line);border-radius:19px;background:var(--ng-card);box-shadow:0 7px 22px #244a7215,inset 0 1px 0 #fff9;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease
+}
+.np-r356-overview-card:hover{transform:translateY(-2px);box-shadow:0 12px 26px #244a7222,inset 0 1px 0 #fff}
+.np-r356-overview-card:focus-visible{outline:3px solid var(--ng-focus);outline-offset:2px}
+.np-r356-overview-card>.noor-r323-line-icon{width:17px;height:17px;color:var(--ng-accent);transform:rotate(180deg)}
+.np-r356-overview-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:var(--ng-sub);border:1px solid var(--ng-line);color:var(--ng-accent)}
+.np-r356-overview-icon svg{width:25px;height:25px}
+.np-r356-overview-copy{min-width:0;display:grid;gap:5px}
+.np-r356-overview-copy strong{font-size:15px;line-height:1.5}
+.np-r356-overview-copy small{font-size:11.5px;line-height:1.7;overflow-wrap:anywhere}
+.np-page[data-appearance] .np-cc-title{margin-bottom:18px}
+.np-page[data-appearance] .np-cc-title h2{color:var(--ng-ink);font-size:clamp(21px,2vw,27px)}
+.np-page[data-appearance] .np-cc-button{border-radius:13px;background:var(--ng-card);border-color:var(--ng-line);color:var(--ng-ink)}
+.np-page[data-appearance] .np-cc-button.primary{background:linear-gradient(150deg,var(--ng-accent),var(--ng-accent2));color:#fff;border-color:#ffffff80;box-shadow:0 5px 14px #244a7226,inset 0 1px 0 #ffffff80}
+.np-page[data-appearance] :is(.np-input,.np-select),.np-cc-modal-backdrop :is(.np-input,.np-select,input:not([type=checkbox]):not([type=radio]),select,textarea){
+ border:1px solid var(--ng-line);border-radius:13px;background:color-mix(in srgb,var(--ng-card) 92%,transparent);color:var(--ng-ink);box-shadow:inset 0 1px 0 #fff7
+}
+.np-page[data-appearance] .np-cc-category-card-r135,.np-page[data-appearance] .np-cc-expandable:has(.np-cc-inline-detail),.np-page[data-appearance] .np-cc-create{
+ border-color:var(--ng-line);background:color-mix(in srgb,var(--ng-card) 88%,transparent);box-shadow:0 6px 18px #244a7211;border-radius:18px
+}
+.np-page[data-appearance] .np-cc-row{color:var(--ng-ink);border-radius:14px}
+.np-page[data-appearance] .np-cc-row-icon{background:var(--ng-sub);color:var(--ng-accent);border:1px solid var(--ng-line)}
+.np-page[data-appearance] .np-cc-row.is-selected{background:var(--ng-sub);border-color:var(--ng-line)}
+.np-page[data-appearance] .np-cc-themes{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.np-page[data-appearance] .np-cc-theme{padding:11px;border-radius:18px;background:var(--ng-card);border-color:var(--ng-line);box-shadow:0 6px 18px #244a7212}
+.np-page[data-appearance] .np-cc-theme[aria-pressed=true]{outline:3px solid var(--ng-focus);outline-offset:2px}
+.np-page[data-appearance] .np-cc-theme-preview{height:76px;border:1px solid var(--ng-line);border-radius:13px}
+.np-cc-modal-backdrop{
+ background:color-mix(in srgb,var(--ng-ink) 38%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)
+}
+.np-cc-modal-backdrop .np-cc-modal{
+ width:min(720px,100%);border:1px solid var(--ng-line);border-radius:24px;background:var(--ng-bg);color:var(--ng-ink);box-shadow:0 28px 90px #071a2d55,inset 0 1px 0 #fff9
+}
+.np-cc-modal-backdrop .np-cc-modal-head,.np-cc-modal-backdrop .np-cc-modal-footer{background:var(--ng-card);border-color:var(--ng-line)}
+.np-cc-modal-backdrop .np-cc-modal-head{padding:17px 20px}
+.np-cc-modal-backdrop .np-cc-modal-head h2{color:var(--ng-ink);font-size:22px}
+.np-cc-modal-backdrop .np-cc-modal-body{padding:18px 20px;background:color-mix(in srgb,var(--ng-bg) 92%,transparent)}
+.np-cc-modal-backdrop .np-cc-modal-footer{padding:11px 20px}
+.np-cc-modal-backdrop .np-cc-button{border-radius:13px;background:var(--ng-card);border-color:var(--ng-line);color:var(--ng-ink)}
+.np-cc-modal-backdrop .np-cc-button.primary{background:linear-gradient(150deg,var(--ng-accent),var(--ng-accent2));color:#fff;border-color:#ffffff80}
+@media(max-width:1050px){
+ .np-page[data-appearance] .np-cc-layout{grid-template-columns:205px minmax(0,1fr)}
+ .np-r356-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .np-page[data-appearance] .np-cc-themes{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+ .np-page[data-appearance] .np-cc-shell{gap:8px}
+ .np-page[data-appearance] .np-r356-control-header{min-height:0;padding:12px;border-radius:20px!important;align-items:center;gap:10px}
+ .np-r356-control-header .np-cc-heading{flex:1 1 100%;gap:9px}
+ .np-r356-control-header .np-cc-header-logo{width:48px;height:48px;flex-basis:48px}
+ .np-r356-control-header .np-cc-heading-copy{min-height:48px}
+ .np-r356-control-header .np-control-title{font-size:21px!important}
+ .np-r356-section-description{display:none}
+ .np-r356-control-header .np-cc-header-actions{width:100%;display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px}
+ .np-r356-control-header .np-cc-button{min-height:42px;padding:7px 5px;font-size:11px;gap:5px}
+ .np-r356-control-header .np-cc-button svg{width:17px;height:17px}
+ .np-page[data-appearance] .np-cc{border-radius:20px!important}
+ .np-page[data-appearance] .np-cc-layout{display:flex;flex-direction:column;min-height:0}
+ .np-page[data-appearance] .np-r356-control-nav{display:flex;width:100%;max-height:none;overflow-x:auto;overflow-y:hidden;padding:7px;gap:5px;border-inline-end:0;border-bottom:1px solid var(--ng-line);scroll-snap-type:x proximity}
+ .np-r356-nav-group{display:contents}
+ .np-r356-nav-group>p{display:none}
+ .np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item{flex:0 0 auto;width:auto;min-width:max-content;min-height:42px;padding:8px 10px;scroll-snap-align:center}
+ .np-r356-control-nav .np-cc-nav-item small{min-width:20px;height:20px}
+ .np-page[data-appearance] .np-cc-main{width:100%;padding:14px 11px 18px}
+ .np-r356-overview .np-cc-title{margin-bottom:12px}
+ .np-r356-overview .np-cc-title .np-cc-kicker{display:block}
+ .np-r356-overview-grid{grid-template-columns:1fr;gap:8px}
+ .np-r356-overview-card{min-height:86px;grid-template-columns:42px minmax(0,1fr) 16px;padding:12px;border-radius:16px}
+ .np-r356-overview-icon{width:42px;height:42px;border-radius:13px}
+ .np-r356-overview-icon svg{width:22px;height:22px}
+ .np-page[data-appearance] .np-cc-themes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .np-page[data-appearance] .np-cc-theme{padding:8px}
+ .np-page[data-appearance] .np-cc-theme-preview{height:58px;padding:10px 8px}
+ .np-cc-modal-backdrop .np-cc-modal{border-radius:18px}
+ .np-cc-modal-backdrop .np-cc-modal-head{padding:11px 12px}
+ .np-cc-modal-backdrop .np-cc-modal-body{padding:12px 10px}
+ .np-cc-modal-backdrop .np-cc-modal-footer{padding:8px 10px max(9px,env(safe-area-inset-bottom,0px))}
+}
+@media(max-width:380px){
+ .np-r356-control-header .np-cc-heading-copy .np-cc-kicker{display:none}
+ .np-page[data-appearance] .np-cc-themes{grid-template-columns:1fr}
+ .np-r356-overview-card{grid-template-columns:40px minmax(0,1fr) 14px}
+}
+
+/* NOOR_R357_APPLE_LIKE_TOOLS_SETTINGS_BEGIN */
+.np-page[data-appearance] .np-r356-control-header{
+ min-height:92px;padding:14px 18px;border-radius:22px!important;
+ background:color-mix(in srgb,var(--ng-card) 94%,#fff)!important;
+ box-shadow:0 18px 50px #17395a18,inset 0 1px 0 #fff!important
+}
+.np-r356-control-header .np-cc-header-logo{width:58px;height:58px;flex-basis:58px;border-radius:17px}
+.np-r356-control-header .np-cc-heading-copy{min-height:58px}
+.np-r356-control-header .np-control-title{font-size:clamp(23px,2vw,29px)!important;letter-spacing:-.02em}
+.np-r356-control-header .np-cc-header-actions{padding:5px;border:1px solid var(--ng-line);border-radius:17px;background:color-mix(in srgb,var(--ng-sub) 72%,transparent)}
+.np-r356-control-header .np-cc-button{min-height:38px;padding:7px 11px;border:0!important;border-radius:12px;box-shadow:none!important;background:transparent}
+.np-r356-control-header .np-r356-return{background:var(--ng-card);color:var(--ng-ink);box-shadow:0 2px 9px #17395a18!important}
+.np-r356-control-header .np-r356-return svg{color:var(--ng-accent)}
+.np-page[data-appearance] .np-cc-layout{grid-template-columns:228px minmax(0,1fr);min-height:min(690px,calc(100dvh - 160px))}
+.np-page[data-appearance] .np-r356-control-nav{padding:14px 10px;background:color-mix(in srgb,var(--ng-sub) 72%,#fff 8%);max-height:calc(100dvh - 160px)}
+.np-r356-nav-group{gap:3px;padding-top:10px;margin-top:2px}
+.np-r356-nav-group>p{padding:2px 12px 6px;font-size:10px;text-transform:none;letter-spacing:0}
+.np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item{min-height:40px;padding:8px 10px;border-radius:11px}
+.np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item.is-selected{background:color-mix(in srgb,var(--ng-accent) 13%,var(--ng-card));border-color:color-mix(in srgb,var(--ng-accent) 25%,var(--ng-line));box-shadow:none}
+.np-page[data-appearance] .np-cc-main{padding:clamp(22px,3vw,40px)}
+.np-r357-tools-overview .np-r356-overview-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.np-r357-tools-overview .np-r356-overview-card{
+ min-height:154px;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:10px;padding:17px;
+ border-radius:22px;background:color-mix(in srgb,var(--ng-card) 96%,#fff);box-shadow:0 10px 26px #17395a14,inset 0 1px 0 #fff
+}
+.np-r357-tools-overview .np-r356-overview-icon{width:54px;height:54px;border:0;border-radius:16px;background:linear-gradient(155deg,color-mix(in srgb,var(--ng-accent) 17%,#fff),color-mix(in srgb,var(--ng-accent2) 13%,var(--ng-sub)))}
+.np-r357-tools-overview .np-r356-overview-copy{gap:3px}
+.np-r357-tools-overview .np-r356-overview-copy strong{font-size:16px}
+.np-r357-tools-overview .np-r356-overview-copy small{font-size:11px;line-height:1.55}
+.np-r357-tools-overview .np-r356-overview-card>.noor-r323-line-icon{position:absolute;inset-inline-end:14px;inset-block-start:18px}
+.np-r357-tools-overview .np-r356-overview-card{position:relative}
+.np-r357-settings-overview{max-width:830px;margin-inline:auto}
+.np-r357-settings-overview .np-r356-overview-grid{grid-template-columns:1fr;gap:8px;padding:7px;border:1px solid var(--ng-line);border-radius:21px;background:color-mix(in srgb,var(--ng-sub) 58%,transparent);box-shadow:0 12px 34px #17395a12}
+.np-r357-settings-overview .np-r356-overview-card{min-height:82px;grid-template-columns:44px minmax(0,1fr) 18px;padding:12px 14px;border:0;border-radius:15px;background:var(--ng-card);box-shadow:0 2px 10px #17395a0d}
+.np-r357-settings-overview .np-r356-overview-card+.np-r356-overview-card{border-top:1px solid color-mix(in srgb,var(--ng-line) 70%,transparent)}
+.np-r357-settings-overview .np-r356-overview-icon{width:44px;height:44px;border:0;border-radius:13px;background:color-mix(in srgb,var(--ng-accent) 12%,var(--ng-sub))}
+.np-r357-settings-overview .np-r356-overview-copy strong{font-size:15px}
+.np-r357-settings-overview .np-r356-overview-copy small{font-size:11.5px}
+@media(max-width:1120px){.np-r357-tools-overview .np-r356-overview-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){
+ .np-page[data-appearance] .np-r356-control-header{padding:10px 11px;border-radius:18px!important;gap:8px}
+ .np-r356-control-header .np-cc-heading{flex-basis:auto}
+ .np-r356-control-header .np-cc-header-logo{width:46px;height:46px;flex-basis:46px;border-radius:14px}
+ .np-r356-control-header .np-cc-heading-copy{min-height:46px}
+ .np-r356-control-header .np-control-title{font-size:20px!important}
+ .np-r356-control-header .np-cc-header-actions{width:auto;display:flex;margin-inline-start:auto;padding:3px;border-radius:13px}
+ .np-r356-control-header .np-cc-button{width:36px;min-height:34px;padding:6px;justify-content:center}
+ .np-r356-control-header .np-cc-button span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ .np-page[data-appearance] .np-r356-control-nav{padding:6px;background:color-mix(in srgb,var(--ng-sub) 78%,#fff 5%)}
+ .np-page[data-appearance] .np-r356-control-nav .np-cc-nav-item{min-height:38px;padding:7px 9px;border-radius:10px}
+ .np-page[data-appearance] .np-cc-main{padding:16px 11px 20px}
+ .np-r357-tools-overview .np-r356-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .np-r357-tools-overview .np-r356-overview-card{min-height:132px;padding:13px;border-radius:18px;gap:7px}
+ .np-r357-tools-overview .np-r356-overview-icon{width:46px;height:46px;border-radius:14px}
+ .np-r357-tools-overview .np-r356-overview-copy strong{font-size:14px}
+ .np-r357-tools-overview .np-r356-overview-copy small{font-size:10px}
+ .np-r357-settings-overview .np-r356-overview-grid{padding:5px;border-radius:18px}
+ .np-r357-settings-overview .np-r356-overview-card{min-height:76px;grid-template-columns:40px minmax(0,1fr) 16px;padding:10px;border-radius:13px}
+ .np-r357-settings-overview .np-r356-overview-icon{width:40px;height:40px}
+}
+@media(max-width:370px){.np-r357-tools-overview .np-r356-overview-grid{grid-template-columns:1fr}.np-r357-tools-overview .np-r356-overview-card{min-height:94px}}
+/* NOOR_R357_APPLE_LIKE_TOOLS_SETTINGS_END */
+/* NOOR_R356_TOOLS_AND_SETTINGS_IDENTITY_END */
+
 
 `;
 
@@ -2552,8 +2751,10 @@ function HistoricalEventsManager({events=[],busy,onCommand}:{events?:WorkspaceVi
   return <section className="np-cc-events" aria-label="الأحداث التاريخية الشخصية"><div className="np-cc-title"><div><h2>الأحداث التاريخية الشخصية</h2><p>أدخل أحداثك أو المناسبات التي تريد ظهورها لاحقًا. لا تُضاف معلومات تاريخية موثقة تلقائيًا دون مصدر معتمد.</p></div><button className="np-cc-button primary" type="button" disabled={busy} onClick={()=>setEditing(null)}>حدث جديد</button></div><form onSubmit={event=>{void submit(event);}}><label>التقويم<select value={calendar} onChange={e=>setCalendar(e.currentTarget.value as "gregorian"|"hijri")} disabled={busy}><option value="gregorian">ميلادي</option><option value="hijri">هجري</option></select></label><label>السنة (اختياري)<input inputMode="numeric" value={year} onChange={e=>setYear(e.currentTarget.value)} disabled={busy}/></label><label>الشهر<input inputMode="numeric" min={1} max={12} value={month} onChange={e=>setMonth(e.currentTarget.value)} disabled={busy} required/></label><label>اليوم<input inputMode="numeric" min={1} max={31} value={day} onChange={e=>setDay(e.currentTarget.value)} disabled={busy} required/></label><label>العنوان<input maxLength={160} value={title} onChange={e=>setTitle(e.currentTarget.value)} disabled={busy} required/></label><label>التفاصيل (اختياري)<textarea dir="rtl" maxLength={2000} value={details} onChange={e=>setDetails(e.currentTarget.value)} disabled={busy}/></label><label>المصدر أو الرابط (اختياري)<input maxLength={500} value={source} onChange={e=>setSource(e.currentTarget.value)} disabled={busy}/></label><label><input type="checkbox" checked={enabled} onChange={e=>setEnabled(e.currentTarget.checked)} disabled={busy}/> مفعّل</label><div><button className="np-cc-button primary" type="submit" disabled={busy}>{editing?"حفظ التعديل":"إضافة الحدث"}</button>{editing?<button className="np-cc-button" type="button" onClick={()=>setEditing(null)}>إلغاء</button>:null}</div>{error?<p role="alert" className="np-action-error">{error}</p>:null}</form><div>{events?.length?<>{events.map(event=><article key={event.id}><strong>{event.title}</strong><small>{event.calendar==="gregorian"?"ميلادي":"هجري"} · {event.year??"كل عام"}/{event.month}/{event.day}{event.source?` · ${event.source}`:""}</small><div><button type="button" disabled={busy} onClick={()=>setEditing(event)}>تعديل</button><button type="button" disabled={busy} onClick={()=>{void remove(event);}}>حذف</button></div></article>)}</>:<p>لا توجد أحداث شخصية محفوظة.</p>}</div></section>;
 }
 
-function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=false, initialSection="Habit", initialQuickCreateKind=null, onSectionChanged, workspace, executions, onCommand, onClose, onLogout, logoutPending, onReconnect, reconnecting, defaultStartDate, appearance, onAppearance, timeZone, timePreferences, onTimePreferences, onLocationCommit }: { busy: boolean; onLogout:()=>void; logoutPending:boolean; onReconnect:()=>void; reconnecting:boolean; orderingPending?:boolean; initialCountdownCreate?:boolean; initialSection?:"Habit"|"account"|"reminders"|"historical-events"|"appearance"|"weights"; initialQuickCreateKind?:"Habit"|"Task"|null; onSectionChanged?:(section:string)=>void; workspace: WorkspaceViewModel | null; executions: readonly ExecutionItem[]; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; onClose: () => void; defaultStartDate: string; appearance: NoorAppearance; onAppearance: (value: NoorAppearance) => void; timeZone:string;timePreferences:NoorR232Preferences;onTimePreferences:(value:NoorR232Preferences)=>void;onLocationCommit:(city:NoorR232City)=>Promise<boolean> }): ReactElement {
-  const [section,setSection] = useState<"Habit" | "Task" | "appearance" | "finance" | "categories" | "ordering" | "weights" | "statistics" | "location" | "account" | "reminders" | "historical-events">(initialCountdownCreate?"Task":initialQuickCreateKind??initialSection);
+type ControlSection="tools"|"settings"|"Habit"|"Task"|"appearance"|"finance"|"categories"|"ordering"|"weights"|"statistics"|"location"|"account"|"reminders"|"historical-events";
+
+function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=false, initialSection="tools", initialQuickCreateKind=null, onSectionChanged, workspace, executions, onCommand, onClose, onLogout, logoutPending, onReconnect, reconnecting, defaultStartDate, appearance, onAppearance, timeZone, timePreferences, onTimePreferences, onLocationCommit }: { busy: boolean; onLogout:()=>void; logoutPending:boolean; onReconnect:()=>void; reconnecting:boolean; orderingPending?:boolean; initialCountdownCreate?:boolean; initialSection?:ControlSection; initialQuickCreateKind?:"Habit"|"Task"|null; onSectionChanged?:(section:string)=>void; workspace: WorkspaceViewModel | null; executions: readonly ExecutionItem[]; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; onClose: () => void; defaultStartDate: string; appearance: NoorAppearance; onAppearance: (value: NoorAppearance) => void; timeZone:string;timePreferences:NoorR232Preferences;onTimePreferences:(value:NoorR232Preferences)=>void;onLocationCommit:(city:NoorR232City)=>Promise<boolean> }): ReactElement {
+  const [section,setSection] = useState<ControlSection>(initialCountdownCreate?"Task":initialQuickCreateKind??initialSection);
   useEffect(()=>{onSectionChanged?.(section);},[section]);
   const [query,setQuery] = useState("");
   const [filter,setFilter] = useState("active");
@@ -2629,7 +2830,41 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
   const selected=matches.find(item=>item.id===selectedId) ?? null;
   const changeSection = (value: typeof section) => { setSection(value);setQuery("");setFilter("active");setCategoryFilter("all");setSelectedId(null);setCreating(false);setConfirmArchive(null); };
   const apply = async (command: NoorPersonalCommandInput): Promise<boolean> => { const ok=await onCommand(command);if(command.type==="create-definition"||command.type==="update-definition")setFormError(ok?null:"تعذر الحفظ. راجع البيانات وحاول مرة أخرى.");if(ok){if(command.type==="delete-definition"){setSelectedId(null);setDeleteId(null);}setConfirmArchive(null);if(command.type==="create-definition"||command.type==="update-definition"){setCreating(false);setEditing(undefined);};}return ok; };
-  const icon=(value:string)=><svg aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">{value==="finance"?<><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 9h18M15 14h3"/></>:value==="Habit"?<><rect x="4" y="4" width="16" height="16" rx="5"/><path d="m8 12 3 3 5-6"/></>:value==="Task"?<><path d="M10 6h10M10 12h10M10 18h10M4 6h1M4 12h1M4 18h1"/></>:<><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16Z" fill="currentColor"/></>}</svg>;
+  const sectionDetails:Record<ControlSection,{label:string;description:string}>={
+    tools:{label:"أدوات نور",description:"كل ما تحتاجه لتنظيم يومك ومتابعة تقدّمك في مكان واحد."},
+    settings:{label:"إعدادات نور",description:"خصّص المظهر والتوقيت وبيانات الحساب بما يناسبك."},
+    Habit:{label:"العادات",description:"إدارة العادات النشطة وجداولها وتصنيفاتها."},
+    Task:{label:"المهام",description:"إدارة المهام والأهداف والجلسات المسجلة."},
+    categories:{label:"التصنيفات",description:"رتّب العادات والمهام داخل مجموعات واضحة."},
+    ordering:{label:"تنظيم العرض",description:"حدّد ترتيب الأقسام والعناصر داخل لوحة نور."},
+    weights:{label:"الإنجاز والأوزان",description:"اضبط أهمية العادات وقواعد الإنجاز واحتساب الصلوات."},
+    statistics:{label:"الإحصائيات",description:"راجع الإنجاز الموزون والتقدّم عبر الأيام."},
+    reminders:{label:"التذكيرات",description:"أنشئ مواعيد تذكير مرتبطة بالعادات والمهام المهمة."},
+    "historical-events":{label:"الأحداث التاريخية",description:"احفظ المناسبات والأحداث التي تريد متابعتها."},
+    finance:{label:"المالية",description:"تابع الحسابات والحركات والالتزامات المالية."},
+    appearance:{label:"المظهر",description:"اختر الثيم الذي ترتاح له مع بقاء الكروت واضحة."},
+    location:{label:"التوقيت والموقع",description:"اضبط المنطقة الزمنية والمدينة ومواقيت اليوم."},
+    account:{label:"الحساب والأمان",description:"راجع بيانات الملف الشخصي وخيارات الحماية."}
+  };
+  const sectionIcon=(value:ControlSection)=>({tools:"grid",settings:"settings",Habit:"leaf",Task:"check",categories:"layers",ordering:"grid",weights:"mosque",statistics:"bars",reminders:"bell","historical-events":"history",finance:"calendar",appearance:"stars",location:"direction",account:"user"} as const)[value];
+  const icon=(value:ControlSection)=><NoorR323Icon name={sectionIcon(value)}/>;
+  const accountEnabled=import.meta.env?.VITE_NOOR_ACCOUNT_SELF_SERVICE_ENABLED==="true";
+  const settingsSections:readonly ControlSection[]=["settings","appearance","location","ordering","weights","account"];
+  const settingsRealm=settingsSections.includes(section);
+  const navigationGroups=(settingsRealm?
+    [
+      ["تخصيص نور",[["appearance","المظهر"],["location","التوقيت والموقع"]]],
+      ["سلوك المنصة",[["ordering","تنظيم العرض"],["weights","الإنجاز والأوزان"],...(accountEnabled?[["account","الحساب والأمان"]]:[])]],
+    ]:
+    [
+      ["إدارة اليوم",[["Habit","العادات"],["Task","المهام"],["categories","التصنيفات"]]],
+      ["المتابعة",[["reminders","التذكيرات"],["statistics","الإحصائيات"],["historical-events","الأحداث التاريخية"],["finance","المالية"]]],
+    ]) as readonly (readonly [string,readonly (readonly [ControlSection,string])[]])[];
+  const overviewCards=(section==="settings"?
+    (["appearance","location","ordering","weights",...(accountEnabled?["account"]:[])] as ControlSection[]):
+    (["Habit","Task","reminders","statistics","categories","historical-events","finance"] as ControlSection[])
+  );
+  const overviewDetail=(target:ControlSection)=>target==="Habit"?`${definitions.filter(item=>item.kind==="Habit"&&item.state==="Active").length} عادة نشطة`:target==="Task"?`${definitions.filter(item=>item.kind==="Task"&&item.state==="Active").length} مهمة نشطة`:target==="categories"?`${workspace?.categories?.length??0} تصنيفًا محفوظًا`:sectionDetails[target].description;
   // R135: preserve the existing per-definition edit and safety actions inside cards.
   const renderControlRow=(item:DefinitionItem)=><div className="np-cc-expandable" key={item.id}><button aria-expanded={selected?.id===item.id} aria-controls={`np-detail-${item.id}`} className={`np-cc-row${selected?.id===item.id?" is-selected":""}`} onClick={()=>{setSelectedId(selectedId===item.id?null:item.id);setConfirmArchive(null);}} type="button"><span className="np-cc-row-icon">{icon(item.kind)}</span><span className="np-cc-row-copy"><strong>{item.title}</strong><span>{item.category} · {scheduleLabel(item)}{item.kind==="Task"&&item.measurement?" · المستهدف "+item.measurement.target+" "+item.measurement.unit:""}{item.kind==="Task"&&item.sessionPlan?" · جلسات "+item.sessionPlan.sessions.filter(s=>sessionFinishedR254(s,item.activityLog)).length+"/"+item.sessionPlan.sessions.length:""}</span></span><span className={`np-cc-status ${item.state.toLowerCase()}`}>{item.state==="Paused"?"متوقفة":item.state==="Archived"?"مؤرشفة":currentExecution(item.id)?.status==="Completed"?"مكتملة اليوم":"نشطة"}</span></button>{selected?.id===item.id?<div aria-label="تفاصيل العنصر" className="np-cc-inline-detail" id={`np-detail-${item.id}`}><p className="np-cc-kicker">{selected.kind==="Habit"?"تفاصيل العادة":"تفاصيل المهمة"}</p><h2>{selected.title}</h2><dl><dt>القسم</dt><dd>{selected.category}</dd><dt>الحالة</dt><dd>{selected.state==="Active"?"نشطة":selected.state==="Paused"?"متوقفة مؤقتًا":selected.state==="Stopped"?"متوقفة نهائيًا":"مؤرشفة"}</dd><dt>تاريخ البداية</dt><dd>{selected.startDate}</dd><dt>تاريخ النهاية</dt><dd>{selected.endDate??"غير محدد"}</dd><dt>الجدول</dt><dd>{scheduleLabel(selected)}</dd>{selected.timeOfDay?<><dt>موعد التنفيذ</dt><dd>{selected.timeOfDay}</dd></>:null}<dt>الأهمية</dt><dd>{({Essential:"أساسي",Important:"مهم",Supporting:"داعم",Optional:"اختياري"} as Record<string,string>)[selected.importance]??selected.importance}</dd>{selected.kind==="Task"?<><dt>الوزن في إنجاز اليوم</dt><dd>{selected.weight}</dd><dt>المستهدف</dt><dd>{selected.measurement?`${selected.measurement.target} ${selected.measurement.unit}`:"دون كمية محددة"}</dd>{selected.sessionPlan?<><dt>الجلسات المكتملة</dt><dd>{selected.sessionPlan.sessions.filter(s=>sessionFinishedR254(s,selected.activityLog)).length} من {selected.sessionPlan.sessions.length}</dd><dt>التقدم المسجل</dt><dd>{selected.activityLog.reduce((n,e)=>n+e.amount,0)} {selected.measurement?.unit??""}</dd></>:null}</>:null}</dl>{selected.kind==="Task"&&selected.sessionPlan?<TaskSessionListR254 plan={selected.sessionPlan} log={selected.activityLog} definitionId={selected.id} executionId={selected.state==="Active"&&["Planned","Pending","InProgress"].includes(currentExecution(selected.id)?.status??"")?currentExecution(selected.id)!.id:null} busy={busy} onCommand={onCommand} title={selected.title} unit={selected.measurement?.unit??""} revisionId={selected.revisionId} taskGeneralNote={selected.taskGeneralNote??""} todayDate={defaultStartDate}/>:null}<div className="np-cc-actions">
         <button className="np-cc-button primary" disabled={busy||!selected.revisionId} type="button" onClick={()=>{setEditing(selected);setQuickCountdown(false);setFormError(null);setFormSession(v=>v+1);setCreating(true);}}>تعديل البيانات والجدول</button>
@@ -2647,17 +2882,12 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
       </div></div>:null}</div>;
   return <div className="np-cc-shell" data-testid="control-center-r65">
     <NoorBrandHeader scope="personal" />
-    <header className="np-cc-header"><div className="np-cc-heading"><div className="np-logo-frame np-cc-header-logo"><img alt="شعار نور" className="np-platform-logo" src="/brand/personal-logo.webp" /></div><div className="np-cc-heading-copy"><h1 className="np-control-title">{section==="account"?"الملف الشخصي":section==="appearance"||section==="location"?"إعدادات نور":"مركز التحكم"}</h1></div></div><div className="np-cc-header-actions"><button aria-label="العودة إلى اليوم" className="np-cc-button" onClick={onClose} type="button">العودة لليوم ←</button><button aria-label="إعادة الاتصال بنور" className="np-cc-button" disabled={busy||reconnecting} onClick={onReconnect} type="button">{reconnecting?"جارٍ الاتصال…":"تحديث ↻"}</button><button aria-label="تسجيل الخروج والعودة إلى شاشة الدخول" className="np-cc-button" disabled={busy||logoutPending} onClick={onLogout} type="button">{logoutPending?"جارٍ الخروج…":"تسجيل الخروج"}</button></div></header>
+    <header className="np-cc-header np-r356-control-header"><div className="np-cc-heading"><div className="np-logo-frame np-cc-header-logo"><img alt="شعار نور" className="np-platform-logo" src="/brand/personal-logo.webp" /></div><div className="np-cc-heading-copy"><p className="np-cc-kicker">NOOR Personal</p><h1 className="np-control-title">{sectionDetails[section].label}</h1><p className="np-r356-section-description">{sectionDetails[section].description}</p></div></div><div className="np-cc-header-actions"><button aria-label="العودة إلى اليوم" className="np-cc-button np-r356-return" onClick={onClose} type="button"><NoorR323Icon name="home"/><span>العودة لليوم</span></button><button aria-label="إعادة الاتصال بنور" className="np-cc-button np-r356-icon-action" disabled={busy||reconnecting} onClick={onReconnect} type="button"><NoorR323Icon name="history"/><span>{reconnecting?"جارٍ الاتصال…":"تحديث"}</span></button><button aria-label="تسجيل الخروج والعودة إلى شاشة الدخول" className="np-cc-button np-r356-icon-action" disabled={busy||logoutPending} onClick={onLogout} type="button"><NoorR323Icon name="arrow"/><span>{logoutPending?"جارٍ الخروج…":"تسجيل الخروج"}</span></button></div></header>
     <section className="np-card np-control np-cc"><div className="np-cc-layout">
-      <nav aria-label="أقسام مركز التحكم" className="np-cc-nav">{([["Habit","العادات"],["Task","المهام"],["categories","التصنيفات"],["ordering","الترتيب"],["weights","الأوزان"],["statistics","الإحصائيات"],["reminders","التنبيهات"],["historical-events","الأحداث التاريخية"],["finance","المالية"],["appearance","المظهر"],["location","التوقيت والموقع"],["account","الحساب والأمان"]] as const).filter(([id])=>id!=="account"||import.meta.env?.VITE_NOOR_ACCOUNT_SELF_SERVICE_ENABLED==="true").map(([id,label])=><button aria-current={section===id?"page":undefined} className={`np-cc-nav-item${section===id?" is-selected":""}`} key={id} onClick={event=>{changeSection(id);event.currentTarget.scrollIntoView?.({block:"nearest",inline:"center"});}} type="button">{icon(id)}<span>{label}</span>{(id==="Habit"||id==="Task")?<small>{definitions.filter(d=>d.kind===id&&d.state==="Active").length}</small>:null}</button>)}</nav>
+      <nav aria-label={settingsRealm?"أقسام الإعدادات":"أقسام الأدوات"} className={`np-cc-nav np-r356-control-nav ${settingsRealm?"np-r357-settings-nav":"np-r357-tools-nav"}`}><button aria-current={section===(settingsRealm?"settings":"tools")?"page":undefined} className={`np-cc-nav-item np-r356-nav-home${section===(settingsRealm?"settings":"tools")?" is-selected":""}`} onClick={()=>changeSection(settingsRealm?"settings":"tools")} type="button">{icon(settingsRealm?"settings":"tools")}<span>{settingsRealm?"الإعدادات":"كل الأدوات"}</span></button>{navigationGroups.map(([group,items])=><section className="np-r356-nav-group" aria-label={group} key={group}><p>{group}</p>{items.map(([id,label])=><button aria-current={section===id?"page":undefined} className={`np-cc-nav-item${section===id?" is-selected":""}`} key={id} onClick={event=>{changeSection(id);event.currentTarget.scrollIntoView?.({block:"nearest",inline:"center"});}} type="button">{icon(id)}<span>{label}</span>{(id==="Habit"||id==="Task")?<small>{definitions.filter(d=>d.kind===id&&d.state==="Active").length}</small>:null}</button>)}</section>)}</nav>
       <main className="np-cc-main">
-        {section==="Habit"?<section className="np-control-shortcuts" aria-label="أدوات نور">
-          <h2>الأدوات</h2>
-          <div>
-            {([["weights","mosque","الأوزان"],["statistics","bars","الإحصائيات"],["reminders","bell","التنبيهات"]] as const).map(([target,icon,label])=><button key={target} type="button" onClick={()=>changeSection(target)}><NoorR323Icon name={icon}/><span>{label}</span></button>)}
-          </div>
-        </section>:null}
-        {section==="statistics"?<StatisticsCenter workspace={workspace}/>:section==="reminders"?<NoorReminderSettingsR314 definitions={workspace?.definitions??[]} busy={busy} onCommand={onCommand}/>:section==="historical-events"?<HistoricalEventsManager events={workspace?.historicalEvents} busy={busy} onCommand={onCommand}/>:section==="weights"?<NoorHabitWeightManagerR251 definitions={workspace?.definitions??[]} executions={executions} busy={busy||!workspace} onCommand={onCommand} prayerPolicy={workspace?.prayerScorePolicyR334??null}/>:section==="ordering"?<DisplayOrderManager workspace={workspace} busy={busy&&!orderingPending} onCommand={onCommand}/>:section==="categories"?<CategoryManager categories={workspace?.categories??COMMON_CATEGORIES} busy={busy} onCommand={onCommand}/>:section==="finance"?<FinanceCenter ledger={workspace?.finance ?? null} busy={busy} onCommand={onCommand} today={defaultStartDate}/>:section==="location"?<NoorR232ControlLocation serverZone={timeZone} preferences={timePreferences} onChange={onTimePreferences} onCommit={onLocationCommit}/>:section==="account"?<NoorAccountSettingsR312 profile={workspace?.profile??null} busy={busy} onCommand={onCommand}/>:section==="appearance"?<><div className="np-cc-title"><div><h2>مظهر نور</h2><p>اختيارك يُحفظ على هذا المتصفح.</p></div></div><div aria-label="اختيار المظهر" className="np-cc-themes">{NOOR_APPEARANCES.map(([id,title,copy])=><button aria-pressed={appearance===id} className={`np-cc-theme ${id}`} key={id} onClick={()=>onAppearance(id)} type="button"><span aria-hidden="true" className="np-cc-theme-preview"><i/><i/><i/></span><strong>{title}</strong><span>{copy}</span><small>{appearance===id?"المظهر الحالي":"اختيار المظهر"}</small></button>)}</div></>:<>
+        {section==="tools"||section==="settings"?<section className={`np-r356-overview ${section==="settings"?"np-r357-settings-overview":"np-r357-tools-overview"}`} aria-label={sectionDetails[section].label}><div className="np-cc-title"><div><p className="np-cc-kicker">{section==="settings"?"تخصيص نور":"مساحة العمل"}</p><h2>{sectionDetails[section].label}</h2><p>{sectionDetails[section].description}</p></div></div><div className="np-r356-overview-grid">{overviewCards.map(target=><button className="np-r356-overview-card" key={target} type="button" onClick={()=>changeSection(target)}><span className="np-r356-overview-icon">{icon(target)}</span><span className="np-r356-overview-copy"><strong>{sectionDetails[target].label}</strong><small>{overviewDetail(target)}</small></span><NoorR323Icon name="arrow"/></button>)}</div></section>:
+        section==="statistics"?<StatisticsCenter workspace={workspace}/>:section==="reminders"?<NoorReminderSettingsR314 definitions={workspace?.definitions??[]} busy={busy} onCommand={onCommand}/>:section==="historical-events"?<HistoricalEventsManager events={workspace?.historicalEvents} busy={busy} onCommand={onCommand}/>:section==="weights"?<NoorHabitWeightManagerR251 definitions={workspace?.definitions??[]} executions={executions} busy={busy||!workspace} onCommand={onCommand} prayerPolicy={workspace?.prayerScorePolicyR334??null}/>:section==="ordering"?<DisplayOrderManager workspace={workspace} busy={busy&&!orderingPending} onCommand={onCommand}/>:section==="categories"?<CategoryManager categories={workspace?.categories??COMMON_CATEGORIES} busy={busy} onCommand={onCommand}/>:section==="finance"?<FinanceCenter ledger={workspace?.finance ?? null} busy={busy} onCommand={onCommand} today={defaultStartDate}/>:section==="location"?<NoorR232ControlLocation serverZone={timeZone} preferences={timePreferences} onChange={onTimePreferences} onCommit={onLocationCommit}/>:section==="account"?<NoorAccountSettingsR312 profile={workspace?.profile??null} busy={busy} onCommand={onCommand}/>:section==="appearance"?<><div className="np-cc-title"><div><h2>مظهر نور</h2><p>اختيارك يُحفظ على هذا المتصفح.</p></div></div><div aria-label="اختيار المظهر" className="np-cc-themes">{NOOR_APPEARANCES.map(([id,title,copy])=><button aria-pressed={appearance===id} className={`np-cc-theme ${id}`} key={id} onClick={()=>onAppearance(id)} type="button"><span aria-hidden="true" className="np-cc-theme-preview"><i/><i/><i/></span><strong>{title}</strong><span>{copy}</span><small>{appearance===id?"المظهر الحالي":"اختيار المظهر"}</small></button>)}</div></>:<>
           <div className="np-cc-title"><div><h2>{kind==="Habit"?"العادات":"المهام"}</h2></div><button className="np-cc-button primary" onClick={()=>{setEditing(undefined);setQuickCountdown(false);setFormError(null);setFormSession(value=>value+1);setCreating(true);}} type="button" aria-expanded={creating}>{kind==="Habit"?"+ إضافة عادة":"+ إضافة مهمة"}</button></div>
           <div className={`np-cc-tools${kind==="Habit"?" np-cc-tools-habit-cards-r135":""}`}><input aria-label="البحث في العناصر" className="np-input" onChange={event=>setQuery(event.target.value)} onInput={event=>setQuery(event.currentTarget.value)} placeholder="ابحث بالاسم أو القسم…" type="search" value={query}/><select aria-label="تصفية الحالة" className="np-select" onChange={event=>{setFilter(event.target.value);setConfirmArchive(null);}} value={filter}><option value="active">النشطة</option><option value="paused">المتوقفة</option><option value="all">الكل</option>{kind==="Task"?<><option value="completed">المكتملة اليوم</option><option value="unfinished">المهام غير المكتملة اليوم</option><option value="sessions">المهام ذات الجلسات</option></>:null}<option value="archived">المؤرشفة</option></select>{kind==="Habit"?<select data-testid="control-category-filter-r135" aria-label="اختيار تصنيف العادات في مركز التحكم" className="np-select" value={categoryFilter} onChange={event=>{setCategoryFilter(event.currentTarget.value);setSelectedId(null);setConfirmArchive(null);}}><option value="all">كل كروت التصنيفات</option>{categoryOptions.map(category=><option value={category} key={category}>{habitCardDisplayTitle(category)}</option>)}</select>:null}</div>
           <div className="np-cc-results" aria-live="polite">{matches.length} {kind==="Habit"?"عادة":"مهمة"}</div>
@@ -3499,7 +3729,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   };
   const [controlOpen,setControlOpen] = useState(false);
   const [controlCountdownCreate,setControlCountdownCreate] = useState(false);
-  const [controlInitialSection,setControlInitialSection] = useState<"Habit"|"account"|"reminders"|"appearance"|"weights">("Habit");
+  const [controlInitialSection,setControlInitialSection] = useState<ControlSection>("tools");
   const [quickAddOpen,setQuickAddOpen]=useState(false);
   const [navSection,setNavSection]=useState<"home"|"grid"|"plus"|"bell"|"user"|"habits"|"tasks"|"settings">("home");
   const [controlNavRevision,setControlNavRevision]=useState(0);
@@ -3515,7 +3745,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         return;
       }
     }
-    else {setControlInitialSection(target==="settings"?"appearance":target==="user"?"account":target==="bell"?"reminders":"Habit");setControlCountdownCreate(false);setControlNavRevision(r=>r+1);setControlOpen(true);}
+    else {setControlInitialSection(target==="settings"?"settings":target==="user"?"account":target==="bell"?"reminders":"tools");setControlCountdownCreate(false);setControlNavRevision(r=>r+1);setControlOpen(true);}
     if(typeof window!=="undefined")window.scrollTo({top:0,behavior:"auto"});
   };
   const [appearance,setAppearance] = useState<NoorAppearance>(readAppearance);
@@ -3800,8 +4030,8 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   } else {
     const defaultStartDate = civilLocalDate(nowMs, view.timeZone);
     content = controlOpen
-      ? <>{actionError ? <p className="np-action-error" role="alert">{actionError}</p> : null}<ControlCenter key={controlNavRevision} initialQuickCreateKind={quickCreateKind} onSectionChanged={(section)=>setNavSection(section==="appearance"||section==="location"?"settings":section==="account"?"user":section==="reminders"?"bell":(controlCountdownCreate&&section==="Task")||quickCreateKind===section?"plus":"grid")} initialSection={controlInitialSection} initialCountdownCreate={controlCountdownCreate} orderingPending={orderChanges.length>0} appearance={appearance} onAppearance={chooseAppearance} timeZone={view.timeZone} timePreferences={timePreferences} onTimePreferences={chooseTimePreferences} onLocationCommit={commitAccountLocation} executions={[...view.tasks,...view.habits]} busy={busy} defaultStartDate={defaultStartDate} onClose={() => {setControlOpen(false);setControlCountdownCreate(false);setNavSection("home");}} onLogout={()=>{void signOut();}} logoutPending={logoutPending} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} onCommand={controlCommand} workspace={workspace} /></>
-      : <Dashboard actionError={actionError} busy={busy&&!fastChanges.length&&!orderChanges.length} pendingIds={fastChanges.map(c=>c.executionId)} lockedIds={fastChanges.filter(c=>c.command.type==='record-activity'&&(c.command.amount>0||c.command.endReason!==null)||c.command.type==='record-historical-progress'&&c.command.amount>0).map(c=>c.executionId)} nowMs={nowMs} timePreferences={timePreferences} onTimePreferencesChange={chooseTimePreferences} onCommand={fastCommand} onHistoryCommand={fastCommand} onOpenControl={() => {setControlInitialSection("Habit");setControlCountdownCreate(false);setControlOpen(true);}} onOpenAccount={()=>{setControlInitialSection("account");setControlCountdownCreate(false);setNavSection("user");setControlNavRevision(r=>r+1);setControlOpen(true);}} onOpenSettings={()=>navigateR324("settings")} onOpenReminders={()=>navigateR324("bell")} onOpenPrayerWeights={()=>{setControlInitialSection("weights");setControlCountdownCreate(false);setControlNavRevision(r=>r+1);setNavSection("grid");setControlOpen(true);}} onAddCountdown={() => {setControlCountdownCreate(true);setControlOpen(true);setQuickCreateKind(null);setControlNavRevision(r=>r+1);setNavSection("plus");}} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} connectionWarning={connectionWarning} view={view} workspace={workspace} />;
+      ? <>{actionError ? <p className="np-action-error" role="alert">{actionError}</p> : null}<ControlCenter key={controlNavRevision} initialQuickCreateKind={quickCreateKind} onSectionChanged={(section)=>setNavSection(section==="settings"||section==="appearance"||section==="location"?"settings":section==="account"?"user":section==="reminders"?"bell":(controlCountdownCreate&&section==="Task")||quickCreateKind===section?"plus":"grid")} initialSection={controlInitialSection} initialCountdownCreate={controlCountdownCreate} orderingPending={orderChanges.length>0} appearance={appearance} onAppearance={chooseAppearance} timeZone={view.timeZone} timePreferences={timePreferences} onTimePreferences={chooseTimePreferences} onLocationCommit={commitAccountLocation} executions={[...view.tasks,...view.habits]} busy={busy} defaultStartDate={defaultStartDate} onClose={() => {setControlOpen(false);setControlCountdownCreate(false);setNavSection("home");}} onLogout={()=>{void signOut();}} logoutPending={logoutPending} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} onCommand={controlCommand} workspace={workspace} /></>
+      : <Dashboard actionError={actionError} busy={busy&&!fastChanges.length&&!orderChanges.length} pendingIds={fastChanges.map(c=>c.executionId)} lockedIds={fastChanges.filter(c=>c.command.type==='record-activity'&&(c.command.amount>0||c.command.endReason!==null)||c.command.type==='record-historical-progress'&&c.command.amount>0).map(c=>c.executionId)} nowMs={nowMs} timePreferences={timePreferences} onTimePreferencesChange={chooseTimePreferences} onCommand={fastCommand} onHistoryCommand={fastCommand} onOpenControl={() => {setControlInitialSection("tools");setControlCountdownCreate(false);setControlOpen(true);}} onOpenAccount={()=>{setControlInitialSection("account");setControlCountdownCreate(false);setNavSection("user");setControlNavRevision(r=>r+1);setControlOpen(true);}} onOpenSettings={()=>navigateR324("settings")} onOpenReminders={()=>navigateR324("bell")} onOpenPrayerWeights={()=>{setControlInitialSection("weights");setControlCountdownCreate(false);setControlNavRevision(r=>r+1);setNavSection("grid");setControlOpen(true);}} onAddCountdown={() => {setControlCountdownCreate(true);setControlOpen(true);setQuickCreateKind(null);setControlNavRevision(n=>n+1);setNavSection("plus");}} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} connectionWarning={connectionWarning} view={view} workspace={workspace} />;
   }
 
   return <><style>{PAGE_STYLES+TASK_SESSION_STYLES_R254+`.np-page .np-cc-inline-detail .nts-list-body{max-height:none;overflow-y:visible}
