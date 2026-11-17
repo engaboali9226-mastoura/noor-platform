@@ -10,7 +10,9 @@ export type NoorNotificationHistoryR338=Readonly<{
  id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string;occurredAt:string;readAt:string|null;
 }>;
 type ObserveNotification={type:"observe-notification";id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string};
+type AchievementNotice = Readonly<{id:string;title:string;detail:string;open:()=>void}>;
 type Props=Readonly<{
+ achievementNotices?:readonly AchievementNotice[];
  alerts:readonly NoorReminderAlertR314[];
  appointments:readonly NoorNotificationAppointmentR338[];
  onOpenReminder:(definitionId:string)=>void;
@@ -26,7 +28,7 @@ const reminderKind=(kind:NoorReminderAlertR314["kind"])=>kind==="overdue"?"تج�
 
 /** In-app alert inbox. It reads the existing reminder and countdown sources;
  * it does not create a second reminder store or send device notifications. */
-export function NoorNotificationCenterR338({alerts,appointments,onOpenReminder,onOpenAppointment,onOpenSettings,history=[],todayDate=null,nowMs=Date.now(),onObserve,onMarkRead}:Props):ReactElement{
+export function NoorNotificationCenterR338({alerts,appointments,achievementNotices=[],onOpenReminder,onOpenAppointment,onOpenSettings,history=[],todayDate=null,nowMs=Date.now(),onObserve,onMarkRead}:Props):ReactElement{
  const [open,setOpen]=useState(false);
  const closeButton=useRef<HTMLButtonElement>(null);
  const queue=useRef(Promise.resolve());
@@ -34,13 +36,20 @@ export function NoorNotificationCenterR338({alerts,appointments,onOpenReminder,o
  const [readIds,setReadIds]=useState<ReadonlySet<string>>(()=>new Set());
  const storedIds=new Set(history.map(entry=>entry.id));
  const read=(id:string)=>readIds.has(id)||history.some(entry=>entry.id===id&&entry.readAt!==null);
- const reminderId=(id:string)=>`reminder:${id}:${todayDate??"today"}`;
+ const reminderBaseId=(id:string)=>`reminder:${id}:${todayDate??"today"}`;
+ const reminderId=(item:NoorReminderAlertR314)=>`${reminderBaseId(item.definitionId)}${item.repeat?`:repeat-${item.repeat}`:""}`;
  const appointmentId=(item:NoorNotificationAppointmentR338)=>`appointment:${item.id}:${item.scheduledFor??"upcoming"}`;
- const activeAlerts=alerts.filter(item=>!read(reminderId(item.definitionId)));
+ const activeAlerts=alerts.filter(item=>!read(reminderId(item)));
  const activeAppointments=appointments.filter(item=>!read(appointmentId(item)));
- const activeIds=new Set([...activeAlerts.map(item=>reminderId(item.definitionId)),...activeAppointments.map(appointmentId)]);
- const unreadHistory=history.filter(entry=>!read(entry.id)&&!activeIds.has(entry.id));
- const count=activeIds.size+unreadHistory.length;
+ const activeIds=new Set([...activeAlerts.map(item=>reminderId(item)),...activeAppointments.map(appointmentId)]);
+ const supersededReminderIds=new Set(alerts.flatMap(item=>{
+  if(!item.repeat)return [];
+  const first=reminderBaseId(item.definitionId);
+  return item.repeat===2?[first,reminderId({...item,repeat:1})]:[first];
+ }));
+ const unreadHistory=history.filter(entry=>!read(entry.id)&&!activeIds.has(entry.id)&&!supersededReminderIds.has(entry.id));
+ const visibleNotices=achievementNotices.filter(item=>!readIds.has(item.id));
+ const count=activeIds.size+unreadHistory.length+visibleNotices.length;
  const enqueue=(action:()=>Promise<void>)=>{
   queue.current=queue.current.then(action).catch(()=>{});
  };
@@ -60,7 +69,7 @@ export function NoorNotificationCenterR338({alerts,appointments,onOpenReminder,o
   });
  };
  const reminderCommand=(item:NoorReminderAlertR314):ObserveNotification=>({
-  type:"observe-notification",id:reminderId(item.definitionId),kind:"reminder",title:item.title,
+  type:"observe-notification",id:reminderId(item),kind:"reminder",title:item.title,
   targetId:item.definitionId,scheduledFor:new Date(nowMs).toISOString(),
  });
  const appointmentCommand=(item:NoorNotificationAppointmentR338):ObserveNotification=>({
@@ -95,8 +104,11 @@ export function NoorNotificationCenterR338({alerts,appointments,onOpenReminder,o
  const overlay=open?<div className="np-r338-alert-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setOpen(false);}}>
   <section className="np-r338-alert-sheet" role="dialog" aria-modal="true" aria-label="مركز التنبيهات" dir="rtl" onKeyDown={trap}>
    <header><div><h2>مركز التنبيهات</h2><p>التذكيرات والمواعيد المرتبطة بيومك</p></div><button type="button" ref={closeButton} aria-label="إغلاق مركز التنبيهات" onClick={()=>setOpen(false)}>×</button></header>
-   {activeAlerts.length?<section className="np-r338-alert-group" aria-label="التذكيرات المستحقة"><h3>تذكيرات مستحقة <span>{activeAlerts.length}</span></h3>{activeAlerts.map(alert=><button className="np-r338-alert-row" type="button" key={alert.definitionId} onClick={()=>{markRead(reminderId(alert.definitionId),reminderCommand(alert));closeThen(()=>onOpenReminder(alert.definitionId));}}>
-    <span className="np-r338-alert-mark" aria-hidden="true"><NoorR323Icon name="bell"/></span><span className="np-r338-alert-copy"><strong>{alert.title}</strong><small>{reminderKind(alert.kind)} · {alert.time}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
+   {visibleNotices.length?<section className="np-r338-alert-group" aria-label="متابعة الإنجاز"><h3>متابعة الإنجاز</h3>{visibleNotices.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{setReadIds(ids=>new Set([...ids,item.id]));closeThen(item.open);}}>
+    <span className="np-r338-alert-mark" aria-hidden="true"><NoorR323Icon name="bars"/></span><span className="np-r338-alert-copy"><strong>{item.title}</strong><small>{item.detail}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
+   </button>)}</section>:null}
+   {activeAlerts.length?<section className="np-r338-alert-group" aria-label="التذكيرات المستحقة"><h3>تذكيرات مستحقة <span>{activeAlerts.length}</span></h3>{activeAlerts.map(alert=><button className="np-r338-alert-row" type="button" key={alert.definitionId} onClick={()=>{markRead(reminderId(alert),reminderCommand(alert));closeThen(()=>onOpenReminder(alert.definitionId));}}>
+    <span className="np-r338-alert-mark" aria-hidden="true"><NoorR323Icon name="bell"/></span><span className="np-r338-alert-copy"><strong>{alert.title}</strong><small>{alert.repeat?"تذكير متكرر · ":""}{reminderKind(alert.kind)} · {alert.time}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
    </button>)}</section>:null}
    {activeAppointments.length?<section className="np-r338-alert-group" aria-label="المواعيد القادمة"><h3>المواعيد القادمة</h3>{appointments.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{markRead(appointmentId(item),appointmentCommand(item));closeThen(onOpenAppointment);}}>
     <span className="np-r338-alert-mark appointment" aria-hidden="true"><span>◷</span></span><span className="np-r338-alert-copy"><strong>{item.title}</strong><small>{item.when} · المتبقي {item.remaining}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>

@@ -3,7 +3,7 @@ import test from "node:test";
 import { JSDOM } from "jsdom";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { NoorPersonalApplicationView, liveNextPrayer, nightCountdownState, civilDateLabels, formatLiveClock, headerLocationForTimeZone, nightMilestones, remainingPrayerSeconds } from "../src/noor-personal-application-view.js";
+import { NoorPersonalApplicationView, liveNextPrayer, nightCountdownState, civilDateLabels, formatLiveClock, headerLocationForTimeZone, nightMilestones, personalGreeting, remainingPrayerSeconds } from "../src/noor-personal-application-view.js";
 
 function installDom(){
   const dom=new JSDOM(
@@ -84,6 +84,12 @@ test("prayer countdown derives continuously from prayer instant rather than stor
 test("night milestones are the midpoint and start of the final third between maghrib and the following fajr",()=>{const milestones=nightMilestones([{key:"fajr",label:"الفجر",at:"2026-10-25T01:00:00.000Z"},{key:"maghrib",label:"المغرب",at:"2026-10-25T15:00:00.000Z"}],"2026-10-26T01:00:00.000Z");assert.ok(milestones);assert.equal(milestones.midnight,"2026-10-25T20:00:00.000Z");assert.equal(milestones.lastThird,"2026-10-25T21:40:00.000Z");});
 test("header location follows the active Noor timezone for Riyadh and Cairo",()=>{assert.deepEqual(headerLocationForTimeZone("Asia/Riyadh"),{city:"الرياض",country:"السعودية",latitude:24.7136,longitude:46.6753});assert.deepEqual(headerLocationForTimeZone("Africa/Cairo"),{city:"القاهرة",country:"مصر",latitude:30.0444,longitude:31.2357});});
 test("live clock uses Latin 0-9 digits in the requested timezone",()=>{const value=formatLiveClock(Date.parse("2026-10-25T11:03:04.000Z"),"Asia/Riyadh");assert.match(value,/2/);assert.match(value,/03/);assert.doesNotMatch(value,/[٠-٩]/);});
+test("personal greeting follows the account time zone at all four boundaries",()=>{
+ const riyadh=(hour:string)=>personalGreeting(Date.parse(`2026-11-17T${hour}:00+03:00`),"Asia/Riyadh");
+ assert.deepEqual(["00:00","04:59","05:00","11:59","12:00","16:59","17:00","20:59","21:00"].map(riyadh),
+  ["طابت ليلتك","طابت ليلتك","صباح الخير","صباح الخير","يومك سعيد","يومك سعيد","مساء الخير","مساء الخير","طابت ليلتك"]);
+ assert.equal(personalGreeting(Date.parse("2026-11-17T21:30:00+03:00"),"Europe/London"),"مساء الخير");
+});
 test("dashboard groups items into category cards and opens a separate control center",async()=>{const t=installDom();const root=createRoot(t.container);try{await act(async()=>{root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace}));});const wordmark=t.container.querySelector(".np-r339-wordmark");assert.equal(wordmark?.textContent,"NOOR Personal");assert.equal(wordmark?.querySelector("img"),null);assert.ok(t.container.querySelector('button[aria-label="الملف الشخصي"]'));assert.doesNotMatch(t.container.textContent??"",/نور بيرسونال/);assert.ok(t.container.querySelector('[data-testid="header-information"]'));assert.match(t.container.textContent??"",/الرياض/);assert.match(t.container.textContent??"",/السعودية/);assert.ok(t.container.querySelector('[data-testid="live-clock"]'));assert.ok(t.container.querySelector('[data-testid="header-temperature"]'));assert.ok(t.container.querySelector('[data-testid="prayer-card"]'));assert.ok(t.container.querySelector('[data-testid="today-summary"]'));assert.equal(t.container.querySelector('[data-testid="today-completion-rate"]')?.textContent,"0%");assert.equal(t.container.querySelector('section[data-design-version="r62-visible-layout-fix"]')?.getAttribute("dir"),"rtl");assert.ok(t.container.querySelector('[data-testid="prayer-times-strip"]'));assert.equal(t.container.querySelector('[data-testid="prayer-card"]')?.getAttribute("data-prayer-layout"),"compact-five-obligatory-r331");assert.equal(t.container.querySelector('[data-header-layout="padding-only-132"]')?.getAttribute("data-header-layout"),"padding-only-132");assert.equal(t.container.querySelectorAll("[data-prayer-key]").length,5);assert.equal(t.container.querySelectorAll("[data-testid=r331-announcement-board] .np-r331-board-grid>.np-r331-tile").length,6);const recovery=t.container.querySelector<HTMLButtonElement>(".np-r339-recovery")!;assert.match(recovery.textContent??"",/تدارك ما فاتك/);await act(async()=>recovery.click());const recoveryDialog=document.querySelector('[role="dialog"][aria-label="تدارك الفائت"]')!;assert.equal(recoveryDialog.querySelectorAll(".np-r339-recovery-days button").length,7);await act(async()=>recoveryDialog.querySelector<HTMLButtonElement>('button[aria-label="إغلاق التدارك"]')!.click());assert.match(t.container.querySelector("[data-testid=r331-announcement-board]")?.textContent??"",/الأحداث التاريخية/);assert.ok(t.container.querySelector('[data-testid="prayer-card"]')?.closest("[hidden]"));const prayerButton=[...t.container.querySelectorAll<HTMLButtonElement>(".np-r331-board-grid button")].find(b=>b.textContent?.includes("الصلاة القادمة"))!;await act(async()=>prayerButton.click());assert.equal(t.container.querySelector('[data-testid="prayer-card"]')?.closest("[hidden]"),null);assert.equal(t.container.querySelectorAll(".np-r339-friday-grid>div").length,5);await act(async()=>t.container.querySelector<HTMLButtonElement>('button[aria-label="إغلاق مواقيت الصلوات"]')!.click());assert.ok(t.container.querySelector('[data-testid="prayer-card"]')?.closest("[hidden]"));assert.ok(t.container.querySelector("[data-testid=noor-day-night-friday-r232]"),"Night and solar details remain in the timer sheet");assert.ok(t.container.querySelector(".np-r324-schedule-sheet"),"Additional verified times remain in the schedule sheet");assert.deepEqual([...t.container.querySelectorAll("[data-prayer-key]")].map(node=>node.getAttribute("data-prayer-key")),["fajr","dhuhr","asr","maghrib","isha"]);assert.match(t.container.querySelector("[data-testid=r331-announcement-board]")?.textContent??"",/الصلاة القادمة/);assert.match(t.container.textContent??"",/الصحة والرياضة/);const countdown=t.container.querySelector('[data-testid="prayer-countdown"]');assert.ok(countdown);assert.ok(countdown.closest('[data-prayer-key="fajr"]'));assert.doesNotMatch(t.container.textContent??"",/[٠-٩]/);assert.doesNotMatch(t.container.textContent??"",/أضف مهمة لليوم/);const gear=t.container.querySelector('button[aria-label="فتح مركز التحكم"]') as HTMLButtonElement;assert.ok(gear);await act(async()=>{gear.click();});assert.match(t.container.textContent??"",/مركز التحكم/);assert.ok(t.container.querySelector('img[alt="شعار نور"][src="/brand/personal-logo.webp"]'));assert.ok(t.container.querySelector('[data-testid="r329-personal-header"]'));assert.doesNotMatch(t.container.textContent??"",/نور بيرسونال/);assert.ok(t.container.querySelector('#definition-title'));assert.ok(t.container.querySelector('#definition-category'));assert.ok(t.container.querySelector('#definition-start'));assert.ok(t.container.querySelector('#definition-repeat'));}finally{await act(async()=>{root.unmount();});t.restore();t.dom.window.close();}});
 
 test('habit duration switches between continuous and required end date, and edit preloads the saved schedule',async()=>{const t=installDom(),root=createRoot(t.container);const data={...workspace,workspace:{...workspace.workspace,definitions:workspace.workspace.definitions.map(d=>({...d,revisionId:'r1'}))}};try{await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:data})));await act(async()=>(t.container.querySelector('button[aria-label="فتح مركز التحكم"]') as HTMLButtonElement).click());await act(async()=>(t.container.querySelector('[aria-controls="np-detail-d2"]') as HTMLButtonElement).click());await act(async()=>[...t.container.querySelectorAll('button')].find(b=>b.textContent==='تعديل البيانات والجدول')!.click());assert.equal((t.container.querySelector('#definition-title') as HTMLInputElement).value,'المشي');assert.equal((t.container.querySelector('#definition-start') as HTMLInputElement).value,'2026-10-25');const duration=t.container.querySelector('#definition-duration') as HTMLSelectElement;assert.equal(duration.value,'continuous');assert.equal(t.container.querySelector('#definition-end'),null);await act(async()=>{duration.value='limited';duration.dispatchEvent(new t.dom.window.Event('change',{bubbles:true}));});assert.equal((t.container.querySelector('#definition-end') as HTMLInputElement).required,true);const repeat=t.container.querySelector('#definition-repeat') as HTMLSelectElement;await act(async()=>{repeat.value='Weekdays';repeat.dispatchEvent(new t.dom.window.Event('change',{bubbles:true}));});assert.equal(t.container.querySelectorAll('input[name="weekday"]').length,7);await act(async()=>(t.container.querySelector('input[name="weekday"][value="1"]') as HTMLInputElement).click());assert.match(t.container.textContent??'',/أيام التكرار: 1 من 7/);}finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}});
@@ -293,3 +299,56 @@ test("R331 remaining sheet invokes real habit and daily task completion, updates
 });
 
 test("R332 approved weekly card presents weighted ring, actual category counts, and seven navigable bars",async()=>{const t=installDom(),root=createRoot(t.container);try{await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));const card=t.container.querySelector('[data-testid="r332-weekly-card"]')!;assert.ok(card);assert.equal(card.querySelector('[data-testid="r332-week-weighted-ring"] strong')?.textContent,"0%");assert.equal(card.querySelector('[data-testid="r332-week-tasks"] strong')?.textContent,"0 / 1");assert.equal(card.querySelector('[data-testid="r332-week-habits"] strong')?.textContent,"0 / 1");assert.equal(card.querySelectorAll('[data-week-date]').length,7);assert.ok(card.querySelector('[data-testid="r332-week-prayers"]'));assert.ok(card.querySelector('.np-r332-ring-fill'));assert.equal(card.querySelectorAll('.np-r331-week-bar').length,7);assert.equal(card.closest('.np-day-context'),null);}finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}});
+
+test("habit creation keeps prayer weights separate from the habit draft",async()=>{
+  const t=installDom(),root=createRoot(t.container);
+  try{
+    await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+    await act(async()=>t.container.querySelector<HTMLButtonElement>('button[aria-label="فتح مركز التحكم"]')!.click());
+    const add=[...t.container.querySelectorAll("button")].find(button=>button.textContent?.includes("إضافة عادة"))!;
+    await act(async()=>add.click());
+    const panel=document.querySelector(".np-cc-modal")!;
+    const habitForm=panel.querySelector("#np-definition-edit-form")!;
+    const prayerSettings=panel.querySelector("[data-testid=r334-prayer-policy-editor]")!;
+    assert.ok(habitForm.querySelector('[name="weight"]'));
+    assert.equal(prayerSettings.closest("form"),null);
+    const weight=prayerSettings.querySelector<HTMLInputElement>("[data-testid=r334-prayer-base-weight]")!;
+    assert.equal(weight.value,"");
+    const savePrayer=prayerSettings.querySelector<HTMLButtonElement>("[data-testid=r334-policy-save]")!;
+    assert.ok(savePrayer.disabled);
+  }finally{
+    await act(async()=>root.unmount());
+    t.restore();
+    t.dom.window.close();
+  }
+});
+
+test("weekly prayer shortcut shares today's recording and tools open their existing sections",async()=>{
+  const t=installDom(),root=createRoot(t.container);
+  const click=async(selector:string)=>{
+    const button=document.querySelector<HTMLButtonElement>(selector);
+    assert.ok(button,selector);
+    await act(async()=>button.click());
+  };
+  try{
+    await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+    const prayerSheet='[role="dialog"][aria-label="مواقيت الصلوات"]';
+    await click('.np-r331-board-grid button:first-child');
+    const sharedSheet=document.querySelector(prayerSheet);
+    assert.equal(sharedSheet?.getAttribute("aria-modal"),"true");
+    await click('[aria-label="إغلاق مواقيت الصلوات"]');
+    await click('[aria-label="فتح مواقيت الصلوات وتسجيل اليوم"]');
+    assert.equal(document.querySelector(prayerSheet),sharedSheet);
+    assert.equal(sharedSheet?.getAttribute("aria-modal"),"true");
+    await click('[aria-label="إغلاق مواقيت الصلوات"]');
+    await click('[data-testid="r324-nav-grid"]');
+    const shortcuts=document.querySelector('[aria-label="أدوات نور"]');
+    assert.deepEqual([...shortcuts!.querySelectorAll("button")].map(button=>button.textContent),["الأوزان","الإحصائيات","التنبيهات"]);
+    await act(async()=>shortcuts!.querySelector("button")!.click());
+    assert.ok(document.querySelector('[data-testid="r334-prayer-policy-editor"]'));
+  }finally{
+    await act(async()=>root.unmount());
+    t.restore();
+    t.dom.window.close();
+  }
+});

@@ -45,3 +45,13 @@ test("streak risk vs overdue, partial task credit does not suppress",()=>{
  assert.equal(noorDueRemindersR314(rows,defs,"2026-11-13",ms("2026-11-13T06:00:00Z"),"Asia/Riyadh")[0]?.kind,"streak-risk");
  assert.equal(noorDueRemindersR314(rows,defs,"2026-11-13",ms("2026-11-13T08:00:00Z"),"Asia/Riyadh")[0]?.kind,"overdue");
 });
+
+test("essential reminders resurface at two bounded checkpoints while incomplete",()=>{
+ const date="2026-11-13", zone="Asia/Riyadh";
+ const rows=[row(date,"Pending")];
+ const alerts=(time:string,importance:string)=>noorDueRemindersR314(rows,[definition("habit",{importance})],date,ms(date+"T"+time+":00+03:00"),zone);
+ assert.deepEqual(["10:29","10:30","11:29","11:30","15:00"].map(time=>alerts(time,"Essential")[0]?.repeat),[undefined,1,1,2,2]);
+ assert.equal(alerts("11:30","Important")[0]?.repeat,undefined);
+ assert.deepEqual(alerts("22:00","Essential"),[]);
+ assert.deepEqual(noorDueRemindersR314([row(date,"Completed")],[definition("habit",{importance:"Essential"})],date,ms(date+"T15:00:00+03:00"),zone),[]);
+});

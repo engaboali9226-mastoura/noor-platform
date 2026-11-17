@@ -65,7 +65,7 @@ export function NoorReminderSettingsR314({definitions,onCommand,busy}:{definitio
  const visible=definitions.filter(d=>d.state!=="Archived"&&d.state!=="Stopped"
    &&(kind==="all"||d.kind===kind)&&(!search.trim()||d.title.includes(search.trim())||d.category.includes(search.trim())));
  return <section className="nr314-settings" data-testid="reminder-settings-r314" aria-label="تنبيهات العادات والمهام">
-  <header><div><h2>تنبيهات العادات والمهام</h2><p>حدد موعد كل نشاط وساعات الهدوء. تُحفظ الإعدادات بحسابك وتظهر التنبيهات داخل نور وفق المنطقة الزمنية المعتمدة، وليس على جهاز واحد فقط.</p></div><span aria-hidden="true">◷</span></header>
+  <header><div><h2>تنبيهات العادات والمهام</h2><p>حدد موعد كل نشاط ومهلة التأخير وساعات الهدوء. عند عدم الإتمام، يمكن أن يتكرر تذكير النشاط الأساسي أو الذي وزنه 14 فأكثر بعد ساعة وساعتين من نهاية المهلة.</p></div><span aria-hidden="true">◷</span></header>
   <div className="nr314-filters"><input type="search" aria-label="ابحث عن نشاط للتذكير" placeholder="ابحث عن عادة أو مهمة…" value={search} onChange={e=>setSearch(e.target.value)}/>
   <select value={kind} onChange={e=>setKind(e.target.value)} aria-label="تصفية أنواع التنبيهات"><option value="all">الكل</option><option value="Habit">العادات</option><option value="Task">المهام</option></select></div>
   {visible.length?<div className="nr314-list">{visible.map(d=><ReminderTile key={`${d.id}:${d.revisionId}`} definition={d} busy={busy} onCommand={onCommand}/>)}</div>

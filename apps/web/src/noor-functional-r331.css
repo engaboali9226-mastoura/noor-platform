@@ -276,11 +276,11 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 
 /* R339 — approved compact Personal home, genuine frosted surfaces and bounded sheets. */
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
- --noor-header-button: 38px;
+ --noor-header-button: 42px;
  --noor-header-inset: 30px;
  position:relative!important;grid-template-areas:"brand brand brand" "greeting status status" "calendar calendar calendar"!important;
  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
- margin:0 0 12px!important;width:100%!important;padding:8px 10px 12px!important;border-radius:24px!important;
+ margin:0 0 12px!important;width:100%!important;padding:8px 0 12px!important;border-radius:24px!important;
  background:transparent!important;overflow:visible!important;border:0!important;box-shadow:none!important;
 }
 .np-page[data-appearance] .np-r339-header[data-daylight="night"] :is(.np-r323-greeting,.np-header-day,.np-header-date-main,.np-header-date-caption,.np-header-clock,.np-header-location,.np-header-temperature,.np-weather-caption,.np-weather-details){color:#f0f6ff!important}
@@ -318,7 +318,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{grid-area:status!important;justify-self:end!important;padding:4px 0!important}
 .np-page[data-appearance] .np-r339-header .np-header-calendar{background:none!important}
 @media(max-width:480px){
- .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{--noor-header-button:28px;--noor-header-inset:23px}
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{--noor-header-button:32px;--noor-header-inset:23px}
  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{gap:4px!important;flex-wrap:nowrap!important}
 }
 
@@ -993,4 +993,82 @@ button[aria-label^="إغلاق"] {
   flex-wrap: wrap;
   justify-content: center;
   line-height: 1.25;
+}
+
+.np-activity-backdrop.np-activity-editor-overlay {
+  top: var(--noor-dialog-top, 0px);
+  bottom: auto;
+  height: var(--noor-dialog-height, 100dvh);
+  max-height: none;
+  z-index: 100002;
+  overflow: hidden;
+  align-items: center;
+}
+
+.np-activity-backdrop > .np-activity-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0;
+}
+
+.np-activity-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(12px, 4vw, 24px);
+}
+
+.np-activity-dialog > .np-activity-footer {
+  flex: none;
+  padding: 8px clamp(12px, 4vw, 24px);
+  border-top: 1px solid var(--ng-line);
+  background: var(--ng-bg, #fff);
+}
+
+.np-r323-greeting bdi { overflow-wrap: anywhere; }
+#noor-r323-habits, #noor-r323-tasks { scroll-margin-top: 12px; }
+
+.np-create-prayer-settings { min-width: 0; margin-block: 12px; }
+.np-create-prayer-settings summary { cursor: pointer; padding: 6px 0; font-weight: 700; }
+
+.np-control-shortcuts { margin-block-end: 18px; }
+.np-control-shortcuts h2 { font-size: 17px; margin-block: 0 8px; }
+.np-control-shortcuts > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 6px; }
+.np-control-shortcuts button {
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  padding: 8px 3px;
+  min-height: 60px;
+  border: 1px solid var(--ng-line);
+  border-radius: 12px;
+  background: var(--ng-card);
+  color: var(--ng-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.np-control-shortcuts svg { width: 20px; height: 20px; color: var(--ng-accent); }
+.np-r332-week-counts > div:has(.np-week-prayer-link) { padding: 0; }
+.np-week-prayer-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+.np-week-prayer-link:focus-visible, .np-control-shortcuts button:focus-visible {
+  outline: 2px solid var(--ng-focus);
+  outline-offset: 1px;
 }

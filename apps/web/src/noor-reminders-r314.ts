@@ -7,12 +7,13 @@ import {parseNoorReminderPlanR314, type NoorReminderPlanR314} from "../../noor-p
  * delivery. The caller gives authoritative Today date + IANA account timezone.
  */
 export type NoorReminderDefinitionR314=Readonly<{
-  id:string; title:string; state:string; reminderPlan?:NoorReminderPlanR314;
+  id:string; title:string; state:string; importance?:string; reminderPlan?:NoorReminderPlanR314;
 }>;
 export type NoorReminderAlertR314=Readonly<{
   definitionId:string; title:string; time:string;
   kind:"due"|"streak-risk"|"overdue";
   streak:number;
+  repeat?:1|2;
 }>;
 const minutes=(time:string)=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
 export function noorLocalClockR314(nowMs:number,zone:string):Readonly<{date:string;minute:number}>|null {
@@ -53,7 +54,13 @@ export function noorDueRemindersR314(
     if(!todayRows.length||todayRows.every(r=>r.status==="Completed"||r.credit===1))return [];
     const kind:NoorReminderAlertR314["kind"]=local.minute>=due+plan.graceMinutes
       ?"overdue":insight.current>=plan.minStreak&&plan.minStreak>0?"streak-risk":"due";
-    return [{definitionId:def.id,title:def.title,time:plan.time,kind,streak:insight.current}];
+    // Essential occurrences can resurface twice, without accumulating a backlog.
+    const minutesOverdue=local.minute-due-plan.graceMinutes;
+    const highPriority=def.importance==="Essential"||todayRows.some(row=>row.weight>=14);
+    const repeat:1|2|undefined=highPriority&&minutesOverdue>=60
+      ? minutesOverdue>=120?2:1 : undefined;
+    return [{definitionId:def.id,title:def.title,time:plan.time,kind,streak:insight.current,
+      ...(repeat?{repeat}:{})}];
   }).sort((a,b)=>({overdue:0,"streak-risk":1,due:2})[a.kind]-({overdue:0,"streak-risk":1,due:2})[b.kind]
      ||a.time.localeCompare(b.time)||a.title.localeCompare(b.title,"ar"));
 }
