@@ -14,7 +14,7 @@ test('R173 browser authority boundary: reflections never store credentials or us
 const one={id:'b0d8d7e4-69b0-4e1c-8451-afcebd223600',kind:'feelings' as const,title:'عنوان',body:'وصف',createdAt:'2026-11-03T10:00:00.000Z',localDate:'2026-11-03',precedingEvent:'حدث سابق',helpful:'',mood:3,category:'',shareApproved:false};
 test('R171 three spaces are mounted INSIDE day achievement, not in separate floating widget',()=>{
  assert.match(source,/import \{ NoorThreeSpacesR171 \}/);
- const start=source.indexOf('data-testid="today-summary"'),end=source.indexOf('className="np-day-context"',start);
+ const start=source.indexOf('data-testid="today-summary"'),end=source.indexOf('className="np-day-achievement-actions"',start);
  assert.ok(start>0&&end>start&&source.slice(start,end).includes('<NoorThreeSpacesR171 personalDate={view.localDate??undefined} />'));
  assert.equal(source.split('<NoorThreeSpacesR171 personalDate={view.localDate??undefined} />').length-1,1);
 });

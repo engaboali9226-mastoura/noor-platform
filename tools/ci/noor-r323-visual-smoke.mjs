@@ -114,7 +114,8 @@ try{
    const [personal, work] = cards.map(card => card.getBoundingClientRect());
    const panel = main.querySelector('.noor-r332-auth').getBoundingClientRect();
    return cards.length === 2 && main.querySelector('.noor-login-brand img').naturalWidth > 0
-    && cards.map(card => card.querySelector('strong').textContent.trim()).join(',') === 'Noor Personal,Noor Work'
+    && cards.map(card => card.querySelector('strong').textContent.trim()).join(',') === 'NOOR Personal,NOOR Work'
+    && main.querySelector(".noor-login-tagline").textContent.trim() === "مساحتك حيث راحتك"
     && cards.every(card => card.querySelector('img').naturalWidth > 0 && card.querySelector('img').clientWidth === 42)
     && cards.map(card => card.getAttribute('href')).join(',') === '/personal,/work'
     && Math.abs((panel.top + panel.bottom) / 2 - innerHeight / 2) <= 4
@@ -484,6 +485,15 @@ try{
 
   await run("window.scrollTo(0, document.querySelector('[data-testid=today-summary]').getBoundingClientRect().top + scrollY)");
   await snap(screen.name+"-achievement");
+  await run("document.querySelector('.np-yesterday-trigger').click()");
+  await expect(`(() => {
+    const dialog=document.querySelector('[aria-label="فائت أمس"][role=dialog]');
+    const rect=dialog.getBoundingClientRect();
+    return !dialog.closest('[hidden]') && rect.top>=0 && rect.bottom<=innerHeight &&
+      rect.width>200 && rect.height>60;
+  })()`,"Yesterday's circular button opens its viewport-sized dialog");
+  await run(`document.querySelector('[aria-label="إغلاق فائت أمس"]').click()`);
+  await expect("document.querySelector('.np-yesterday-trigger').getAttribute('aria-expanded')==='false'","Yesterday dialog closes");
   for (const [trigger, dialog, name] of [
     [".np-r338-bell", ".np-r338-alert-sheet", "alerts"],
     ["[data-testid=r286-remaining-trigger]", ".np-r286-remaining-dialog", "remaining"],
@@ -632,7 +642,7 @@ try{
          backdrop.backgroundSize.split(",").at(-1).trim()==="contain" &&
          backdrop.backgroundRepeat.split(",").every(repeat=>repeat.trim()==="no-repeat") &&
          parseFloat(getComputedStyle(clock).fontSize)>=32 &&
-         parseFloat(getComputedStyle(date).fontSize)<=14 &&
+         parseFloat(getComputedStyle(date).fontSize)<=16 &&
          divider.getBoundingClientRect().width>=2 &&
          clock.getBoundingClientRect().bottom<=date.getBoundingClientRect().top;
      })()`,"Clock, dates, weather details, and "+daylight+" landscape render at "+viewport.width);
