@@ -243,7 +243,7 @@ function SmartGateway({
     <main id="main-content" className="noor-welcome-gateway-r231 noor-r323-gateway noor-login-gateway" data-auth-mode={isAuth ? "picker" : mode} dir="rtl">
       <div className="noor-welcome-ambient" aria-hidden="true" />
       <section className="noor-welcome-panel" aria-labelledby="noor-welcome-title">
-        <NoorLoginBrand />
+        <NoorLoginBrand tagline={isAuth ? "مساحتك حيث راحتك" : undefined} />
         {!isAuth ? <>
           <div className="noor-r323-auth-card noor-r332-auth">
             <h1
@@ -317,7 +317,7 @@ function SmartGateway({
                     navigate(path);
                   }}>
                     <NoorBrandLogo scope={scope} alt="" />
-                    <strong lang="en" dir="ltr"><NoorWordmark titleCase /> {scope === "personal" ? "Personal" : "Work"}</strong>
+                    <strong lang="en" dir="ltr"><NoorWordmark /> {scope === "personal" ? "Personal" : "Work"}</strong>
                     <svg aria-hidden="true" width={16} height={16} viewBox="0 0 16 16" fill="none"
                       stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M13 8H3m4-4L3 8l4 4" />

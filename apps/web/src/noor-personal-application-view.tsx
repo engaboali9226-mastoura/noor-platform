@@ -2835,6 +2835,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const [weekShift,setWeekShift]=useState(0);
   const [historyDate,setHistoryDate]=useState<string|null>(null);
   const [showRemaining,setShowRemaining]=useState(false);
+  const [showYesterday,setShowYesterday]=useState(false);
   const [showRecovery,setShowRecovery]=useState(false);
   const [recoveryDate,setRecoveryDate]=useState<string|null>(null);
   const [recoveryWeek,setRecoveryWeek]=useState(0);
@@ -2845,6 +2846,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const [taskSheetId,setTaskSheetId]=useState<string|null>(null);
   const [showPrayerTimes,setShowPrayerTimes]=useState(false);
   const dashboardDialog = useDashboardDialog(showHistoryEvents ? '[aria-label="الأحداث التاريخية"][role="dialog"]'
+    : showYesterday ? '[aria-label="فائت أمس"][role="dialog"]'
     : showTaskList ? '[aria-label="المهام"][role="dialog"]'
     : showRecovery ? '[aria-label="تدارك الفائت"][role="dialog"]'
     : showPrayerTimes ? '[aria-label="مواقيت الصلوات"][role="dialog"]' : null);
@@ -3275,7 +3277,13 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         <svg viewBox="0 0 100 100" aria-hidden="true"><circle className="np-day-ring-track" cx="50" cy="50" r="42"/><circle className="np-day-ring-fill" cx="50" cy="50" r="42" strokeDasharray={263.894} strokeDashoffset={263.894*(1-completionRate/100)}/></svg><strong data-testid="today-completion-rate">{arabicNumber(completionRate)}%</strong>
       </div>
       <div className="np-day-achievement-copy"><div className="np-day-achievement-text"><h2>{historyDate?`إنجاز يوم ${weekDateLabel(historyDate)}`:"إنجاز اليوم"} <small>موزون</small></h2><p>{!totalToday?"لا توجد عادات أو مهام مستحقة اليوم.":completedToday===totalToday?"اكتملت كل عادات ومهام اليوم. أحسنت الاستمرار.":`${arabicNumber(completedToday)} من ${arabicNumber(totalToday)} عادات ومهام مكتملة اليوم`}</p>{displayedPrayer?<p data-testid="r334-daily-prayer-score">الصلوات المسجلة: {displayedPrayer.score.rows.filter(r=>r.recorded).length} / {displayedPrayer.score.rows.length} · نقاط {arabicNumber(displayedPrayer.score.earnedWeight)} / {arabicNumber(displayedPrayer.score.weight)}</p>:null}</div>{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 personalDate={view.localDate??undefined} /></>:null}</div>
+      <div className="np-day-achievement-actions">
       {totalToday?<button type="button" className="np-day-remaining" data-testid="r286-remaining-trigger" ref={remainingTriggerRef} aria-haspopup="dialog" aria-expanded={showRemaining} onClick={()=>setShowRemaining(true)}><strong>{arabicNumber(Math.max(0,totalToday-completedToday))}</strong><span>{completedToday===totalToday?(displayedPrayer&&completionRate<100?"اكتملت المهام والعادات":"يوم مكتمل"):historyDate?"متبقية في اليوم":"متبقية اليوم"}</span></button>:null}
+        <button type="button" className="np-yesterday-trigger" aria-haspopup="dialog" aria-expanded={showYesterday}
+          aria-label={`فائت أمس، ${arabicNumber(yesterday?.missed.length??0)} غير مكتملة`} onClick={()=>setShowYesterday(true)}>
+          <strong>{arabicNumber(yesterday?.missed.length??0)}</strong><span>فائت أمس</span>
+        </button>
+      </div>
       {showRemaining?createPortal(<div className="np-r286-remaining-backdrop np-r331-actionable-remaining" onMouseDown={event=>{if(event.target===event.currentTarget)setShowRemaining(false);}}><section role="dialog" aria-modal="true" aria-labelledby="r286-remaining-heading" className="np-r286-remaining-dialog" onKeyDown={event=>{if(!event.currentTarget.contains(event.target as Node))return;if(event.key==="Escape")setShowRemaining(false);}}><header><div><h2 id="r286-remaining-heading">{historyDate?"المتبقي في اليوم المحدد":"المتبقي اليوم"}</h2><small aria-live="polite">{Math.max(0,totalToday-completedToday)} متبقية · {completionRate}% إنجاز موزون</small></div><button type="button" className="np-cc-button" aria-label="إغلاق نافذة المتبقي" ref={remainingCloseRef} onClick={()=>setShowRemaining(false)}>×</button></header>
       {actionError?<p role="alert" className="np-r331-remaining-error">{actionError}</p>:null}
       {achievementItems.some(x=>x.status!=="Completed"&&x.status!=="Suppressed")?<div className="np-page np-r331-remaining-content" dir="rtl">
@@ -3290,10 +3298,15 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         })}
         {recoverError&&historyDate?<p role="alert">{recoverError}</p>:null}
       </div>:<p role="status">اكتملت جميع المهام والعادات المستحقة لهذا اليوم.</p>}</section></div>,document.body):null}
-      <div className="np-day-context">
-        <section className={`np-yesterday${yesterday?.missed.length?" has-missed":""}`} aria-label="فائت أمس" data-testid="yesterday-achievement"><div className="np-yesterday-heading"><span>فائت أمس</span>{yesterday?<time dateTime={yesterday.date}>{weekDateLabel(yesterday.date)}</time>:null}</div><div className="np-yesterday-score"><strong>{arabicNumber(yesterday?.missed.length??0)}</strong><span>{prayerDays.some(p=>p.date===yesterday?.date)?"صلوات وعادات ومهام غير مكتملة":"عادات ومهام غير مكتملة"}</span></div>{yesterday?.scheduled?<p>{yesterday.missed.length?"عناصر غير مكتملة" :"اكتملت كل استحقاقات أمس"} · إنجاز أمس {arabicNumber(yesterday.rate??0)}%</p>:<p>لا توجد استحقاقات مسجلة لأمس.</p>}{yesterday?.missed.length?<details className="np-yesterday-details"><summary>عرض الفائت</summary><ul>{yesterday.missed.map(row=><li key={row.id}><span>{row.title}<small>{row.kind==="Prayer"?"صلاة":row.kind==="Habit"?"عادة":"مهمة"} · {STATUS_LABELS[row.status]??row.status}{row.amount>0?` · ${arabicNumber(row.amount)} ${row.unit}`:""}</small></span><strong>{arabicNumber(row.weight)}<small> وزن</small></strong></li>)}</ul></details>:null}</section>
-      </div>
     </section>
+      <div className="np-r331-overlay np-r339-overlay" style={dashboardDialog} hidden={!showYesterday}
+        onMouseDown={event=>{if(event.target===event.currentTarget)setShowYesterday(false);}}>
+        <section className="np-r331-sheet" role="dialog" aria-modal={showYesterday} aria-label="فائت أمس"
+          onKeyDown={event=>{if(event.key==="Escape")setShowYesterday(false);}}>
+          <header><h2>فائت أمس</h2><button type="button" aria-label="إغلاق فائت أمس" onClick={()=>setShowYesterday(false)}>×</button></header>
+          <section className={`np-yesterday${yesterday?.missed.length?" has-missed":""}`} aria-label="فائت أمس" data-testid="yesterday-achievement">{yesterday?<div className="np-yesterday-heading"><time dateTime={yesterday.date}>{weekDateLabel(yesterday.date)}</time></div>:null}<div className="np-yesterday-score"><strong>{arabicNumber(yesterday?.missed.length??0)}</strong><span>{prayerDays.some(p=>p.date===yesterday?.date)?"صلوات وعادات ومهام غير مكتملة":"عادات ومهام غير مكتملة"}</span></div>{yesterday?.scheduled?<p>{yesterday.missed.length?"عناصر غير مكتملة" :"اكتملت كل استحقاقات أمس"} · إنجاز أمس {arabicNumber(yesterday.rate??0)}%</p>:<p>لا توجد استحقاقات مسجلة لأمس.</p>}{yesterday?.missed.length?<div className="np-yesterday-details"><ul>{yesterday.missed.map(row=><li key={row.id}><span>{row.title}<small>{row.kind==="Prayer"?"صلاة":row.kind==="Habit"?"عادة":"مهمة"} · {STATUS_LABELS[row.status]??row.status}{row.amount>0?` · ${arabicNumber(row.amount)} ${row.unit}`:""}</small></span><strong>{arabicNumber(row.weight)}<small> وزن</small></strong></li>)}</ul></div>:null}</section>
+        </section>
+      </div>
     <section className="np-card np-week-achievement np-r332-week" aria-label="إنجاز أيام الأسبوع كاملًا" data-week-navigation="r109" data-testid="r332-weekly-card">
           <div className="np-week-heading"><h3><NoorR323Icon name="bars"/>إنجاز الأسبوع</h3>
             <div className="np-week-navigation" aria-label="التنقل بين الأسابيع">

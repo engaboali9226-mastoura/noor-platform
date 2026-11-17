@@ -6,9 +6,8 @@ const panel=readFileSync(new URL('../src/noor-wellbeing-lab-r165.tsx',import.met
 test('R181A abstract personal-space glyph is centered, accessible, and not a user portrait',()=>{
  assert.equal((panel.match(/data-glyph="NOOR_R181A_PERSONAL_SPACE"/gu)??[]).length,1);
  assert.match(panel,/className="nr180-wellbeing-symbol"[^>]*strokeWidth="1\.7"/u);
- assert.match(panel,/<circle cx="12" cy="12" r="8\.3"\/>/u);
- assert.match(panel,/<circle cx="12" cy="12" r="1\.15" fill="currentColor" stroke="none"\/>/u);
- assert.match(panel,/<path d="M15\.9 12a3\.9/);
+ assert.match(panel,/<rect x="3" y="3" width="18" height="18" rx="5"\/>/u);
+ assert.match(panel,/<path d="M12 16\.6/);
  assert.doesNotMatch(panel,/NOOR_R181_PERSONAL_GLYPH|M6\.7 17\.7/);
  assert.match(panel,/aria-label="فتح مساحتي: مؤشرات اليوم وتحليل التغيرات"/u);
  assert.equal((three.match(/className="nr180-wellbeing-slot"/gu)??[]).length,1);
