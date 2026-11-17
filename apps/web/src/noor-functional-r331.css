@@ -761,3 +761,103 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   min-height: 44px;
   padding-block: 8px;
 }
+
+/* Personal home weather and shared dialog surfaces. */
+.np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-weather {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 5px;
+}
+.np-r339-header .np-weather-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  color: var(--ng-ink);
+}
+.np-r339-header .np-weather-primary > svg {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: var(--ng-accent);
+}
+.np-r339-header[data-daylight="night"] .np-weather-primary {
+  color: #f0f6ff;
+}
+.np-r339-header[data-daylight="night"] .np-weather-primary > svg {
+  color: #dcecff;
+}
+.np-page[data-appearance] .np-r339-header .np-weather-primary .np-header-temperature {
+  font-size: clamp(16px, 2vw, 22px) !important;
+  font-weight: 750;
+}
+.np-r339-header .np-weather-condition {
+  font-size: 11px;
+}
+.np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-weather-details {
+  grid-column: auto;
+  grid-row: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px 8px;
+  color: var(--ng-muted);
+}
+.np-r339-header .np-weather-details > span {
+  white-space: nowrap;
+}
+
+:is(.np-r331-overlay, .np-r322-modal, .np-r322-appointments-overlay,
+    .np-r338-alert-overlay, .np-r324-quick-backdrop, .np-r286-remaining-backdrop,
+    .np-activity-backdrop, .np-cc-modal-backdrop, .np-delete-backdrop, .nf-backdrop) {
+  background-color: #152c4899 !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+:is(.np-r331-overlay, .np-r322-modal, .np-r322-appointments-overlay,
+    .np-r338-alert-overlay, .np-r324-quick-backdrop, .np-r286-remaining-backdrop,
+    .np-activity-backdrop, .np-cc-modal-backdrop, .np-delete-backdrop, .nf-backdrop)
+:is(.np-r331-sheet, .np-r322-sheet, .np-r322-appointments-sheet, .np-r338-alert-sheet,
+    .np-r324-quick-sheet, .np-r286-remaining-dialog, .np-activity-dialog,
+    .np-cc-modal, .np-delete-dialog, .nf-dialog) {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  background: linear-gradient(155deg, var(--ng-bg) 55%, var(--ng-top)) !important;
+  color: var(--ng-ink) !important;
+  border: 1px solid var(--ng-line) !important;
+  border-radius: 24px !important;
+  box-shadow: var(--ng-shadow), 0 18px 44px #102d515c !important;
+}
+:is(.np-r331-sheet, .np-r322-sheet, .np-r322-appointments-sheet, .np-r338-alert-sheet,
+    .np-r324-quick-sheet, .np-r286-remaining-dialog, .np-activity-dialog,
+    .np-cc-modal, .np-delete-dialog, .nf-dialog) :is(h2,h3) {
+  color: var(--ng-ink);
+}
+:is(.np-r331-sheet, .np-r322-sheet, .np-r322-appointments-sheet, .np-r338-alert-sheet,
+    .np-r324-quick-sheet, .np-r286-remaining-dialog, .np-cc-modal, .np-delete-dialog)
+button[aria-label^="إغلاق"] {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--ng-line);
+  border-radius: 50% !important;
+  background: var(--ng-card) !important;
+  color: var(--ng-ink);
+}
+
+.np-r324-quick-sheet > button,
+.np-r338-alert-sheet :is(.np-r338-alert-row, footer button) {
+  background: var(--ng-card);
+  color: var(--ng-ink);
+  border-color: var(--ng-line);
+}
+.np-r338-alert-sheet :is(header p, footer span, .np-r338-alert-copy small, .np-r338-alert-empty) {
+  color: var(--ng-muted);
+}
+.np-r338-alert-sheet :is(.np-r338-alert-mark, .np-r338-alert-group h3 span) {
+  background: var(--ng-sub);
+  color: var(--ng-accent);
+}

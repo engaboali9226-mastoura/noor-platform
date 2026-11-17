@@ -20,6 +20,12 @@ const paths={
  circleCheck:"M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0 M7 12l3 3 7-7",
  moon:"M20.2 15.5A8.5 8.5 0 0 1 8.5 3.8a9 9 0 1 0 11.7 11.7z",
  sun:"M16 12a4 4 0 1 1-8 0 4 4 0 1 1 8 0 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2",
+ stars:"M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8l4.4-1.6z M5 13v6 M2 16h6 M19 13v8 M15 17h8",
+ cloud:"M5 18h14a3.5 3.5 0 0 0 .2-7 5.5 5.5 0 0 0-10.6-1.1A4.1 4.1 0 1 0 5 18z",
+ cloudSun:"M5 18h14a3.5 3.5 0 0 0 .2-7 5.5 5.5 0 0 0-10.6-1.1A4.1 4.1 0 1 0 5 18z M4 5a4 4 0 0 1 6 1 M6 1v2 M1 5l1 1",
+ cloudMoon:"M5 18h14a3.5 3.5 0 0 0 .2-7 5.5 5.5 0 0 0-10.6-1.1A4.1 4.1 0 1 0 5 18z M10 5A4.5 4.5 0 0 1 5 2a4.5 4.5 0 0 0-2 6",
+ fog:"M3 14h18 M5 18h14 M8 22h8 M6 10a6 6 0 0 1 12 0",
+ rain:"M5 15h14a3.5 3.5 0 0 0 .2-7 5.5 5.5 0 0 0-10.6-1.1A4.1 4.1 0 1 0 5 15z M7 18l-1 3 M12 18l-1 3 M17 18l-1 3",
  arrow:"M15 4l-8 8 8 8"
 } as const;
 export function NoorR323Icon({name}:{name:keyof typeof paths}):ReactElement{return <svg className="noor-r323-line-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>}

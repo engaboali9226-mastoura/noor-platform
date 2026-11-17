@@ -32,7 +32,7 @@ try{
  'const fixtureParams=new URLSearchParams(location.search);',
  'const fixtureDay=fixtureParams.get("daylight")==="day";',
  'Date.now=()=>Date.parse(fixtureDay?"2026-11-06T08:02:00Z":"2026-11-06T18:02:00Z");',
- 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,uv_index:3,wind_speed_10m:8,wind_direction_10m:140,precipitation:0,weather_code:fixtureParams.get("weather")==="unknown"?undefined:fixtureParams.get("weather")==="cloudy"?3:0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
+ 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,uv_index:3,wind_speed_10m:8,wind_direction_10m:140,precipitation:0,weather_code:fixtureParams.get("weather")==="unknown"?undefined:({partly:2,cloudy:3,fog:45,precipitation:61} as Record<string,number>)[fixtureParams.get("weather")??""]??0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
  ].join("\n");
  const render=[
  'const root=createRoot(document.getElementById("root")!);',
@@ -437,6 +437,11 @@ try{
     return prayers.length===5 && prayers.every((p,i) => p.width>=200 && p.height<=64 && (i===0 || p.top>prayers[i-1].bottom));
   })()`,"Each prayer is a readable full-width row");
   await expect(visible("[data-testid=night-countdown-midnight]")+"&&"+visible("[data-testid=night-countdown-last-third]"),"Both night countdowns visible in the prayer sheet");
+  await expect(`(() => {
+    const sheet=document.querySelector('[aria-label="مواقيت الصلوات"][role=dialog]');
+    const rect=sheet.getBoundingClientRect();
+    return getComputedStyle(sheet).borderRadius==="24px" && rect.top>=0 && rect.bottom<=innerHeight+1;
+  })()`,"Prayer sheet uses the Noor surface and fits the viewport");
   await snap(screen.name+"-prayer-details");
   await run("document.querySelector('.np-r339-overlay .np-r331-sheet header button').click()");
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
@@ -479,6 +484,22 @@ try{
 
   await run("window.scrollTo(0, document.querySelector('[data-testid=today-summary]').getBoundingClientRect().top + scrollY)");
   await snap(screen.name+"-achievement");
+  for (const [trigger, dialog, name] of [
+    [".np-r338-bell", ".np-r338-alert-sheet", "alerts"],
+    ["[data-testid=r286-remaining-trigger]", ".np-r286-remaining-dialog", "remaining"],
+  ]) {
+    await run(`document.querySelector(${JSON.stringify(trigger)}).click()`);
+    await expect(visible(dialog),name+" opens");
+    await expect(`(() => {
+      const sheet=document.querySelector(${JSON.stringify(dialog)});
+      const rect=sheet.getBoundingClientRect();
+      return getComputedStyle(sheet).borderRadius==="24px" &&
+        rect.top>=0 && rect.bottom<=innerHeight+1 && rect.right<=innerWidth+1;
+    })()`,name+" Noor surface stays within the viewport");
+    await snap(screen.name+"-"+name);
+    await run(`document.querySelector(${JSON.stringify(dialog)}).querySelector('button[aria-label^="إغلاق"]').click()`);
+    await expect("!("+visible(dialog)+")",name+" closes");
+  }
   await run("window.scrollTo(0, 0)");
   for (const [tile,sheet,name] of [
     [".np-r331-board-grid > :nth-child(5)", ".np-r339-task-sheet", "tasks"],
@@ -573,7 +594,7 @@ try{
    {width:1440,height:900,mobile:false},
  ]) {
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
-   for (const [daylight,weather] of [["day","clear"],["day","cloudy"],["night","clear"],["night","cloudy"],["day","unknown"]]) {
+   for (const [daylight,weather] of [["day","clear"],["day","cloudy"],["night","clear"],["night","cloudy"],["day","unknown"],["day","fog"],["night","partly"],["day","precipitation"]]) {
      await cdp("Page.navigate",{url:url+"?screen=personal&daylight="+daylight+"&weather="+weather});
      await expect("!!document.querySelector('.np-r339-header[data-daylight="+daylight+"][data-sky="+weather+"]')","Confirmed weather and solar state applied: "+daylight+"/"+weather).catch(async error => {
        console.error("Weather fixture state",await run("JSON.stringify(document.querySelector('.np-r339-header')?.dataset)"));
@@ -612,6 +633,13 @@ try{
          divider.getBoundingClientRect().width>=2 &&
          clock.getBoundingClientRect().bottom<=date.getBoundingClientRect().top;
      })()`,"Clock, dates, weather details, and "+daylight+" landscape render at "+viewport.width);
+     await expect(`(() => {
+       const primary=document.querySelector(".np-weather-primary");
+       const details=document.querySelector(".np-weather-details");
+       return Boolean(primary.querySelector("svg"))===${weather!=="unknown"} &&
+         Boolean(primary.querySelector(".np-weather-condition"))===${weather!=="unknown"} &&
+         primary.getBoundingClientRect().bottom<=details.getBoundingClientRect().top;
+     })()`,"Weather icon follows the sky state and details stay below the reading");
      await snap(viewport.width+"-"+daylight+"-"+weather);
    }
  }
