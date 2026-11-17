@@ -346,7 +346,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-r339-overlay .np-prayer-card{margin:0!important;width:100%!important;box-sizing:border-box}
 .np-page[data-appearance] .np-r339-overlay .np-prayer-times{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:4px!important}
 .np-r339-overlay .np-prayer{min-width:0!important;min-height:70px!important;padding:5px 2px!important;box-sizing:border-box;max-width:none!important}
-.np-page[data-appearance] :is(.np-day-achievement,.np-r332-week,.np-caffeine-card-r299,.np-habit-category,.np-tasks-card){margin-block:10px!important}
+.np-page[data-appearance] :is(.np-day-achievement,.np-r332-week,.np-caffeine-card-r299){margin-block:10px!important}
 .np-page[data-appearance] .np-r324-bottom-nav{position:fixed!important;backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important;border:1px solid #ffffff80!important;background:color-mix(in srgb,var(--ng-bg) 86%,transparent)!important;box-shadow:0 5px 24px #19365638}
 
 .np-r339-friday-times{margin-top:10px}.np-r339-friday-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.np-r339-friday-grid>div{background:var(--ng-card);border:1px solid var(--ng-line);border-radius:12px;padding:8px 3px;display:grid;justify-items:center;gap:4px;text-align:center;min-width:0}.np-r339-friday-grid>div>span{font-size:24px}.np-r339-friday-grid strong,.np-r339-friday-grid small{font-size:10px;overflow-wrap:anywhere}
@@ -616,7 +616,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 }
 
 .np-page[data-appearance] .np-habits-section .np-habit-category[open] > .np-list {
-  row-gap: 10px !important;
+  row-gap: 6px !important;
 }
 .np-page[data-appearance] .np-habits-section .np-habit-category > .np-list > .np-habit-row {
   margin-block: 0 !important;
@@ -733,4 +733,25 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page.np-r339-task-sheet .np-task-detail-card > .nts-list > summary {
   display: grid;
   gap: 3px;
+}
+
+.np-page[data-appearance] .np-habits-section > .np-category-grid {
+  gap: 6px !important;
+}
+.np-page[data-appearance] #noor-r323-tasks {
+  display: grid;
+  gap: 6px;
+}
+.np-page[data-appearance] #noor-r323-tasks > .np-tasks-card {
+  margin-block: 0 !important;
+}
+.np-page[data-appearance] #noor-r323-tasks > .np-tasks-card > .np-list {
+  row-gap: 6px !important;
+}
+.np-page[data-appearance] #noor-r323-tasks > .np-tasks-card > .np-list > .np-r332-task {
+  margin-block: 0 !important;
+}
+.np-page[data-appearance] #noor-r323-tasks .np-today-task-button {
+  min-height: 44px;
+  padding-block: 8px;
 }
