@@ -57,6 +57,25 @@ test("R331 prayer reporting is day scoped, not allowed before the prayer, and su
  a=await open();assert.deepEqual(buildPersonalWorkspace("u",a.scope.snapshot).prayerHistoryR331,[]);
 });
 
+test("recording a prayer from its habit commits prayer details and completion together",async()=>{
+ const now="2026-11-14T12:00:00.000Z",date="2026-11-14";
+ const day={id:"day",userId:"u",boundary:{key:"today",localDate:date,startAt:"2026-11-13T21:00:00.000Z",endAt:"2026-11-14T21:00:00.000Z",timeZone:"Asia/Riyadh"},state:"Open",version:1,createdAt:now,updatedAt:now};
+ const eligibility={definitionRevisionId:"r",importance:"Essential",weight:8,gatePolicy:"NonBlocking",targets:{}};
+ const definition={id:"d",userId:"u",kind:"Habit",revisionId:"r",title:"صلاة الفجر",state:"Active",schedule:{kind:"Daily"},effectiveFromDate:date,...eligibility};
+ const habit={id:"habit",userId:"u",personalDayId:day.id,definitionId:definition.id,definitionRevisionId:"r",kind:"Habit",title:definition.title,materializationKey:"habit-day",scheduleOccurrenceKey:date,status:"Pending",eligibility,version:1,createdAt:now,updatedAt:now};
+ const context={id:"ctx",key:"context-key",personalDayId:day.id,prayerTimes:{fajr:"2026-11-14T02:00:00.000Z",dhuhr:"2026-11-14T09:00:00.000Z"}};
+ const store=new InMemoryFoundationStore({personalDays:[day],definitions:[definition],dailyExecution:[habit]});
+ await store.runInTransaction(transaction=>transaction.saveDailyIslamicContext(context));
+ const service=new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:store});
+ const command={type:"record-prayer-r331",localDate:date,key:"fajr",mode:"group",timing:"ontime",expectedRecordedAt:null,habitExecutionId:habit.id};
+ await assert.rejects(()=>service.execute("u",{...command,key:"dhuhr"}));
+ assert.equal(store.snapshot().dailyExecution[0].status,"Pending");
+ await service.execute("u",command);
+ const saved=store.snapshot();
+ assert.equal(saved.dailyExecution[0].status,"Completed");
+ assert.equal(saved.personalDays[0].prayerRecordsR331[0].key,"fajr");
+});
+
 test("R331 late scheduled session preserves date and records only delayed increment with immutable decayed share",async()=>{
  const now="2026-11-14T12:00:00.000Z",due="2026-11-12";
  const session={id:"s",title:"قراءة",objective:"",target:10,rangeStart:1,rangeEnd:10,scheduledDate:due,order:1,note:"",revision:1,createdAt:now,updatedAt:now,completedAt:null};
