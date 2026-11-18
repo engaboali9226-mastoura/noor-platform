@@ -8,7 +8,7 @@ type Profile = Readonly<{displayName:string;avatarUrl:string|null;birthDate:stri
 /** Current-password reauthentication is necessary: the Noor app cookie is
  * not a Supabase browser session. Neither the password nor provider session
  * is stored locally. Identity subject stays unchanged after an email edit. */
-export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCommand}:Readonly<{profile?:Profile|null;busy?:boolean;onCommand?:(command:NoorPersonalCommandInput)=>Promise<boolean>}> = {}):ReactElement {
+export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCommand,onReconnect,reconnecting=false,onLogout,logoutPending=false}:Readonly<{profile?:Profile|null;busy?:boolean;onCommand?:(command:NoorPersonalCommandInput)=>Promise<boolean>;onReconnect?:()=>void;reconnecting?:boolean;onLogout?:()=>void;logoutPending?:boolean}> = {}):ReactElement {
   const [currentEmail,setCurrentEmail]=useState("");
   const [currentPassword,setCurrentPassword]=useState("");
   const [nextEmail,setNextEmail]=useState("");
@@ -43,24 +43,33 @@ export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCo
     if(ok)setMessage("تم حفظ ملفك الشخصي.");else setError("تعذّر حفظ ملفك الشخصي. أعد المحاولة بعد تحديث البيانات.");
     setProfileBusy(false);
   };
-  return <section className="np-r312-account" data-testid="noor-account-settings-r312" aria-label="إعدادات الحساب">
-    <h2>ملفك الشخصي</h2>
-    <p>هذه البيانات خاصة بحسابك في نور الشخصي، ولا تغيّر هوية الحساب أو بيانات نور أعمال.</p>
-    <form onSubmit={event=>{void saveProfile(event);}}>
-      <label>الاسم الظاهر<input type="text" maxLength={120} value={displayName} onChange={e=>setDisplayName(e.currentTarget.value)} disabled={profileBusy||parentBusy} required placeholder="اكتب الاسم الذي يظهر لك"/></label>
-      <label>رابط الصورة (اختياري)<input type="url" maxLength={2048} value={avatarUrl} onChange={e=>setAvatarUrl(e.currentTarget.value)} disabled={profileBusy||parentBusy} placeholder="https://… أو مسار من نفس المنصة"/></label>
-      <label>تاريخ الميلاد (اختياري)<input type="date" value={birthDate} onChange={e=>setBirthDate(e.currentTarget.value)} disabled={profileBusy||parentBusy}/></label>
-      <button type="submit" disabled={profileBusy||parentBusy}>{profileBusy?"جارٍ الحفظ…":"حفظ ملفي الشخصي"}</button>
-    </form>
-    <h2>أمان الحساب والبريد الإلكتروني</h2>
-    <p>يمكنك طلب تغيير بريد الدخول دون نقل بيانات نور أو إنشاء حساب جديد. يلزم تأكيد ملكية البريد، وقد تصلك رسالة إلى البريد الحالي والجديد. مدير المنصة حساب مستقل عن حسابك الشخصي.</p>
-    <form onSubmit={event=>{void submit(event);}}>
-      <label>البريد الحالي<input type="email" autoComplete="username" value={currentEmail} onChange={e=>setCurrentEmail(e.currentTarget.value)} disabled={busy} required placeholder="current@example.com"/></label>
-      <label>كلمة المرور الحالية<input type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.currentTarget.value)} disabled={busy} required/></label>
-      <label>البريد الجديد<input type="email" autoComplete="email" value={nextEmail} onChange={e=>setNextEmail(e.currentTarget.value)} disabled={busy} required placeholder="new@example.com"/></label>
-      <button type="submit" disabled={busy||parentBusy}>{busy?"جارٍ الإرسال…":"طلب تغيير البريد الإلكتروني"}</button>
-      {message?<p className="np-r312-account-notice" role="status">{message}</p>:null}
-      {error?<p className="np-r312-account-error" role="alert">{error}</p>:null}
-    </form>
+  return <section className="np-r312-account np-r358-account" data-testid="noor-account-settings-r312" aria-label="إعدادات الحساب">
+    <section className="np-r358-account-card" aria-labelledby="np-r358-profile-title">
+      <header><h2 id="np-r358-profile-title">الملف الشخصي</h2></header>
+      <form className="np-r358-account-grid" onSubmit={event=>{void saveProfile(event);}}>
+        <label>الاسم الظاهر<input type="text" maxLength={120} value={displayName} onChange={e=>setDisplayName(e.currentTarget.value)} disabled={profileBusy||parentBusy} required placeholder="الاسم"/></label>
+        <label>تاريخ الميلاد<input type="date" value={birthDate} onChange={e=>setBirthDate(e.currentTarget.value)} disabled={profileBusy||parentBusy}/></label>
+        <label className="np-r358-account-wide">رابط الصورة<input type="url" maxLength={2048} value={avatarUrl} onChange={e=>setAvatarUrl(e.currentTarget.value)} disabled={profileBusy||parentBusy} placeholder="https://…"/></label>
+        <div className="np-r358-account-actions np-r358-account-wide"><button type="submit" disabled={profileBusy||parentBusy}>{profileBusy?"جارٍ الحفظ…":"حفظ التغييرات"}</button></div>
+      </form>
+    </section>
+    <section className="np-r358-account-card" aria-labelledby="np-r358-security-title">
+      <header><h2 id="np-r358-security-title">البريد والأمان</h2></header>
+      <form className="np-r358-account-grid" onSubmit={event=>{void submit(event);}}>
+        <label>البريد الحالي<input type="email" autoComplete="username" value={currentEmail} onChange={e=>setCurrentEmail(e.currentTarget.value)} disabled={busy} required placeholder="current@example.com"/></label>
+        <label>كلمة المرور الحالية<input type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.currentTarget.value)} disabled={busy} required/></label>
+        <label className="np-r358-account-wide">البريد الجديد<input type="email" autoComplete="email" value={nextEmail} onChange={e=>setNextEmail(e.currentTarget.value)} disabled={busy} required placeholder="new@example.com"/></label>
+        <div className="np-r358-account-actions np-r358-account-wide"><button type="submit" disabled={busy||parentBusy}>{busy?"جارٍ الإرسال…":"تغيير البريد"}</button></div>
+      </form>
+    </section>
+    <section className="np-r358-account-card np-r358-session-card" aria-labelledby="np-r358-session-title">
+      <header><h2 id="np-r358-session-title">الجلسة</h2></header>
+      <div className="np-r358-session-actions">
+        <button type="button" className="np-r358-secondary" disabled={parentBusy||reconnecting||!onReconnect} onClick={onReconnect}>{reconnecting?"جارٍ التحديث…":"تحديث البيانات"}</button>
+        <button type="button" className="np-r358-danger" disabled={parentBusy||logoutPending||!onLogout} onClick={onLogout}>{logoutPending?"جارٍ الخروج…":"تسجيل الخروج"}</button>
+      </div>
+    </section>
+    {message?<p className="np-r312-account-notice" role="status">{message}</p>:null}
+    {error?<p className="np-r312-account-error" role="alert">{error}</p>:null}
   </section>;
 }
