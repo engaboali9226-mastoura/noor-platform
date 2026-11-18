@@ -53,13 +53,19 @@ test('R227 cloud personal-space reloads saved fields, awaits persistence, and ne
   await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="إغلاق متابعة النوم"]')!.click());
   const date=riyadhDate();
   let completedId:string|null=null;
+  let canComplete=false;
   await act(async()=>root.render(createElement(NoorWellbeingLabR165,{
    personalDate:date,trustedWellbeing:port,separateSleep:true,
    sleepRequest:{executionId:'sleep-habit',date,trigger:null},
-   onSleepSaved:async request=>{assert.equal(signals[0].sleepMinutes,450);completedId=request.executionId;return true;},
+   onSleepSaved:async request=>{assert.equal(signals[0].sleepMinutes,450);if(!canComplete)return false;completedId=request.executionId;return true;},
   })));
   await submit();
+  assert.equal(completedId,null);
+  assert.match(dom.window.document.querySelector('[role="alert"]')!.textContent!,/تعذّر تحديث إنجاز العادة/);
+  canComplete=true;
+  await submit();
   assert.equal(completedId,'sleep-habit');
+  assert.equal(dom.window.document.querySelector('[role="dialog"][aria-label="متابعة النوم"]'),null);
  }finally{
   await act(async()=>root.unmount());dom.window.close();for(const[key,d]of previous){if(d)Object.defineProperty(globalThis,key,d);else Reflect.deleteProperty(globalThis,key);}
  }
