@@ -3,7 +3,7 @@ import test from "node:test";
 import { JSDOM } from "jsdom";
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { NoorPersonalApplicationView, liveNextPrayer, nightCountdownState, civilDateLabels, formatLiveClock, headerLocationForTimeZone, nightMilestones, personalGreeting, remainingPrayerSeconds } from "../src/noor-personal-application-view.js";
+import { DefinitionForm, NoorPersonalApplicationView, liveNextPrayer, nightCountdownState, civilDateLabels, formatLiveClock, headerLocationForTimeZone, nightMilestones, personalGreeting, remainingPrayerSeconds } from "../src/noor-personal-application-view.js";
 
 function installDom(){
   const dom=new JSDOM(
@@ -46,6 +46,62 @@ function installDom(){
   };
 }
 
+test("new task form saves a dated session per selected day and a separate topic",async()=>{
+  const t=installDom(),root=createRoot(t.container);
+  const oldFormData=globalThis.FormData;
+  Object.defineProperty(globalThis,"FormData",{configurable:true,writable:true,value:t.dom.window.FormData});
+  const commands:unknown[]=[];
+  try{
+    await act(async()=>root.render(createElement(DefinitionForm,{
+      defaultKind:"Task",defaultStartDate:"2026-11-16",categories:["قراءة"],busy:false,
+      onCommand:async command=>{commands.push(command);return true;},
+    })));
+    const form=t.container.querySelector<HTMLFormElement>("form")!;
+    const field=<T extends HTMLInputElement|HTMLSelectElement>(selector:string)=>form.querySelector<T>(selector)!;
+    const change=async(selector:string,value:string,type="change")=>act(async()=>{
+      field(selector).value=value;field(selector).dispatchEvent(new t.dom.window.Event(type,{bubbles:true}));
+    });
+    field("#definition-title").value="قراءة كتاب";
+    field("#definition-subcategory").value="تطوير الذات";
+    await change('[aria-label="نهاية المدة: اليوم الميلادي"]',"20");
+    await change('[aria-label="نهاية المدة: الشهر الميلادي"]',"11");
+    await change('[aria-label="نهاية المدة: السنة الميلادية"]',"2026");
+    await change("#definition-repeat","Weekdays");
+    for(const day of [1,3,5])await act(async()=>field<HTMLInputElement>(`[name="weekday"][value="${day}"]`).click());
+    await change("#progress-target","10","input");
+    assert.match(form.querySelector(".np-task-plan-preview")?.textContent??"",/3 جلسة موزعة تلقائيًا/);
+    await act(async()=>form.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
+    const saved=commands[0] as {subcategory:string;sessionPlan:{sessions:{scheduledDate:string;target:number}[]}};
+    assert.equal(saved.subcategory,"تطوير الذات");
+    assert.deepEqual(saved.sessionPlan.sessions.map(x=>[x.scheduledDate,x.target]),[["2026-11-16",4],["2026-11-18",3],["2026-11-20",3]]);
+  }finally{
+    await act(async()=>root.unmount());
+    Object.defineProperty(globalThis,"FormData",{configurable:true,writable:true,value:oldFormData});
+    t.restore();t.dom.window.close();
+  }
+});
+
+test("sleep completion opens its editor and cancellation leaves the habit unchecked",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const sleep={...workspace.workspace.definitions[1]!,title:"النوم مبكرًا"};
+ const input={...workspace,workspace:{...workspace.workspace,definitions:[workspace.workspace.definitions[0]!,sleep]}};
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:input})));
+  const checkbox=t.container.querySelector<HTMLButtonElement>('[role="checkbox"][aria-label="تسجيل النوم"]')!;
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+  await act(async()=>checkbox.click());
+  const dialog=document.querySelector('[role="dialog"][aria-label="متابعة النوم"]');
+  assert.ok(dialog);
+  assert.equal(dialog.querySelector<HTMLInputElement>('input[type="date"]')?.readOnly,true);
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+  await act(async()=>dialog.querySelector<HTMLButtonElement>('[aria-label="إغلاق متابعة النوم"]')!.click());
+  assert.equal(document.querySelector('[role="dialog"][aria-label="متابعة النوم"]'),null);
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+ }finally{
+  await act(async()=>root.unmount());t.restore();t.dom.window.close();
+ }
+});
+
 const futurePrayerAt=new Date(Date.now()+3_600_000).toISOString();
 const today={kind:"success" as const,today:{personalDay:{id:"day",userId:"user",state:"Open",boundary:{localDate:"2026-10-24",timeZone:"Asia/Riyadh"}},islamicContext:{hijriDate:{day:13,month:5,year:1448},prayerTimes:{fajr:"2026-10-25T01:37:00.000Z",nextFajr:"2026-10-26T01:38:00.000Z",sunrise:"2026-10-25T02:54:00.000Z",dhuhr:"2026-10-25T08:38:00.000Z",asr:"2026-10-25T11:52:00.000Z",maghrib:"2026-10-25T14:20:00.000Z",isha:"2026-10-25T15:50:00.000Z"}},nextPrayer:{name:"Fajr",at:futurePrayerAt,secondsRemaining:3600},tasks:[{id:"e1",definitionId:"d1",kind:"Task",title:"تمرين",status:"Planned"}],habits:[{id:"e2",definitionId:"d2",kind:"Habit",title:"المشي",status:"Pending"}],automationPending:0}};
 const workspace={kind:"success" as const,workspace:{definitions:[{id:"d1",kind:"Task",title:"تمرين",state:"Active",category:"الصحة والرياضة",schedule:{kind:"Weekdays",weekdays:[0,2,4]},effectiveFromDate:"2026-10-25",importance:"Important"},{id:"d2",kind:"Habit",title:"المشي",state:"Active",category:"الصحة والرياضة",schedule:{kind:"Daily"},effectiveFromDate:"2026-10-25",importance:"Supporting"}],insights:{currentStreakDays:2,bestStreakDays:4,periods:{week:{windowDays:7,scheduled:2,completed:0,completionRate:0,successfulDays:0},month:{windowDays:30,scheduled:2,completed:0,completionRate:0,successfulDays:0},quarter:{windowDays:90,scheduled:2,completed:0,completionRate:0,successfulDays:0},year:{windowDays:365,scheduled:2,completed:0,completionRate:0,successfulDays:0}}}}};
@@ -73,6 +129,12 @@ test("R287 regression: Personal renders a task with scheduled reading sessions w
   assert.ok(t.dom.window.document.querySelector('[data-testid="r285-session-complete-reading-session-one"]'),"Session completion checkbox should be visible");
   assert.equal(t.dom.window.document.querySelector('[data-testid="r285-session-complete-reading-session-one"]')?.hasAttribute("disabled"),false,
    "Today-owned scheduled session must remain actionable");
+  const completion=t.dom.window.document.querySelector<HTMLButtonElement>('[role="checkbox"][aria-label="تسجيل تفاصيل قراءة كتاب"]')!;
+  assert.equal(completion.getAttribute("aria-checked"),"false");
+  await act(async()=>completion.click());
+  const editor=t.dom.window.document.querySelector('[role="dialog"][aria-label="تسجيل قراءة كتاب"]');
+  assert.ok(editor?.querySelector('[data-testid="r285-session-complete-reading-session-one"]'));
+  assert.equal(completion.getAttribute("aria-checked"),"false");
  } finally{
   await act(async()=>{root.unmount();});
   t.restore();t.dom.window.close();
@@ -342,6 +404,15 @@ test("weekly prayer shortcut shares today's recording and tools open their exist
     await click('.np-r331-board-grid button:first-child');
     const sharedSheet=document.querySelector(prayerSheet);
     assert.equal(sharedSheet?.getAttribute("aria-modal"),"true");
+    const prayerChecks=[...sharedSheet!.querySelectorAll<HTMLButtonElement>(".np-r331-prayer-record")];
+    assert.ok(prayerChecks.every(button=>button.getAttribute("role")==="checkbox"&&button.getAttribute("aria-checked")==="false"));
+    const prayerToRecord=prayerChecks.find(button=>!button.disabled);
+    if(prayerToRecord){
+      await act(async()=>prayerToRecord.click());
+      assert.ok(document.querySelector(".np-prayer-record-dialog"));
+      assert.equal(prayerToRecord.getAttribute("aria-checked"),"false");
+      await click('[aria-label="إغلاق تسجيل الصلاة"]');
+    }
     await click('[aria-label="إغلاق مواقيت الصلوات"]');
     await click('[aria-label="فتح مواقيت الصلوات وتسجيل اليوم"]');
     assert.equal(document.querySelector(prayerSheet),sharedSheet);
