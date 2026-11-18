@@ -136,24 +136,45 @@ test("prayer habit opens the prayer editor and saves against its own execution",
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
 
-test("past day keeps compact task cards and opens the prayer editor for the selected date",async()=>{
+test("midnight rollover keeps compact task cards and past prayer recording on its own date",async()=>{
  const t=installDom(),root=createRoot(t.container),date="2026-10-24";
  const definitions=[workspace.workspace.definitions[0]!,{...workspace.workspace.definitions[1]!,title:"صلاة العصر"}];
  const rows=[
   {date,id:"past-task",definitionId:"d1",kind:"Task",title:"تمرين",status:"Planned",weight:1,amount:0,unit:""},
   {date,id:"past-asr",definitionId:"d2",kind:"Habit",title:"صلاة العصر",status:"Missed",weight:1,amount:0,unit:""},
  ];
- const initialResult={...today,today:{...today.today,personalDay:{...today.today.personalDay,boundary:{...today.today.personalDay.boundary,localDate:"2026-10-25"}}}};
+ const beforeMidnight={...today,today:{...today.today,personalDay:{...today.today.personalDay,boundary:{...today.today.personalDay.boundary,endAt:"2026-10-24T21:00:00Z"}}}};
+ const nextDay={...today.today,personalDay:{...today.today.personalDay,id:"next-day",boundary:{...today.today.personalDay.boundary,localDate:"2026-10-25",endAt:"2026-10-25T21:00:00Z"}}};
+ const originalNow=Date.now,originalInterval=t.dom.window.setInterval;
+ let now=Date.parse("2026-10-24T20:59:59Z"),tick:()=>void=()=>{},todayReads=0;
+ Date.now=()=>now;
+ t.dom.window.setInterval=((handler:TimerHandler,delay?:number,...args:unknown[])=>{
+  if(delay===1000){tick=handler as ()=>void;return 99999;}
+  return originalInterval.call(t.dom.window,handler,delay,...args);
+ }) as typeof t.dom.window.setInterval;
  const initialWorkspace={...workspace,workspace:{...workspace.workspace,definitions,statistics:{currentDate:"2026-10-25",rows}}};
  const fetcher=globalThis.fetch;
  let command:unknown,resolveSave:(response:Response)=>void=()=>{};
  globalThis.fetch=async(url,options)=>{
+  if(String(url).endsWith("/today")){
+   todayReads++;
+   return new Response(JSON.stringify({...nextDay,workspace:initialWorkspace.workspace}),{headers:{"content-type":"application/json"}});
+  }
   if(!String(url).includes("/command"))return fetcher(url,options);
   command=JSON.parse(String(options?.body));
   return new Promise<Response>(resolve=>{resolveSave=resolve;});
  };
  try{
-  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult,initialWorkspace})));
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:beforeMidnight,initialWorkspace})));
+  const currentTask=()=>t.container.querySelector("#noor-r323-tasks .np-today-task-button");
+  assert.ok(currentTask());
+  now+=1000;
+  await act(async()=>tick());
+  assert.equal(todayReads,1);
+  assert.equal(t.container.querySelector("[data-board-date]")?.getAttribute("data-board-date"),"2026-10-25");
+  assert.ok(currentTask());
+  const todayAsr=t.container.querySelector<HTMLButtonElement>('[data-testid="activity-card-e2"] [role="checkbox"]')!;
+  assert.equal(todayAsr.disabled,true);
   await act(async()=>t.container.querySelector<HTMLButtonElement>(`[data-week-date="${date}"]`)!.click());
   const task=t.container.querySelector<HTMLButtonElement>("#noor-r323-tasks .np-today-task-button")!;
   assert.equal(task.querySelector("strong")?.textContent,"تمرين");
@@ -174,7 +195,7 @@ test("past day keeps compact task cards and opens the prayer editor for the sele
   assert.equal(checkbox.getAttribute("aria-checked"),"true");
   await act(async()=>resolveSave(new Response(null,{status:503})));
   assert.equal(checkbox.getAttribute("aria-checked"),"false");
- }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+ }finally{await act(async()=>root.unmount());Date.now=originalNow;t.dom.window.setInterval=originalInterval;t.restore();t.dom.window.close();}
 });
 
 const futurePrayerAt=new Date(Date.now()+3_600_000).toISOString();

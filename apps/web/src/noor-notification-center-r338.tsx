@@ -1,6 +1,8 @@
 import React,{useEffect,useRef,useState,type ReactElement, type KeyboardEvent} from "react";
 import {createPortal} from "react-dom";
 import type {NoorReminderAlertR314} from "./noor-reminders-r314.js";
+import {appointmentInstantR324} from "./noor-upcoming-events-r324.js";
+import {shiftStatisticDate,validStatisticDate} from "./progress-statistics.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 
 export type NoorNotificationAppointmentR338=Readonly<{
@@ -10,7 +12,32 @@ export type NoorNotificationHistoryR338=Readonly<{
  id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string;occurredAt:string;readAt:string|null;
 }>;
 type ObserveNotification={type:"observe-notification";id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string};
-type AchievementNotice = Readonly<{id:string;title:string;detail:string;open:()=>void}>;
+type AchievementNotice = Readonly<{id:string;title:string;detail:string;open:()=>void;scheduledFor:string;targetId:string}>;
+type RecoveryItem = Readonly<{title:string;weight:number}>;
+const recoveryReminderTimes=["08:00","12:00","16:00","20:00"] as const;
+const recoveryPrompts=[
+ "اختَر خطوة واحدة وابدأ بها.",
+ "ابدأ بما له أكبر أثر",
+ "ما زال فيه وقت لخطوة صغيرة",
+ "اختم يومك بخطوة",
+] as const;
+
+export function recoveryReminderSchedule(date:string,timeZone:string){
+ if(!validStatisticDate(date))return [];
+ return recoveryReminderTimes.map((clock,index)=>({index,at:appointmentInstantR324(date,clock,timeZone)}))
+  .flatMap(({index,at})=>at===null?[]:[{index,at}]);
+}
+
+export function recoveryReminder(date:string,nowMs:number,schedule:ReturnType<typeof recoveryReminderSchedule>,items:readonly RecoveryItem[],open:()=>void):AchievementNotice|null{
+ if(!validStatisticDate(date)||!items.length)return null;
+ const slot=schedule.filter(({at})=>at<=nowMs).at(-1);
+ if(!slot)return null;
+ const missedDate=shiftStatisticDate(date,-1);
+ const priority=items.reduce((best,item)=>item.weight>best.weight?item:best,items[0]!);
+ const prompt=slot.index===0?recoveryPrompts[0]:`${recoveryPrompts[slot.index]}: ${priority.title}.`;
+ return {id:`achievement-yesterday:${missedDate}:${slot.index+1}`,targetId:missedDate,
+  title:"فائت أمس",detail:`المتبقي: ${items.length} · ${prompt}`,scheduledFor:new Date(slot.at).toISOString(),open};
+}
 type Props=Readonly<{
  achievementNotices?:readonly AchievementNotice[];
  alerts:readonly NoorReminderAlertR314[];
@@ -47,8 +74,10 @@ export function NoorNotificationCenterR338({alerts,appointments,achievementNotic
   const first=reminderBaseId(item.definitionId);
   return item.repeat===2?[first,reminderId({...item,repeat:1})]:[first];
  }));
- const unreadHistory=history.filter(entry=>!read(entry.id)&&!activeIds.has(entry.id)&&!supersededReminderIds.has(entry.id));
- const visibleNotices=achievementNotices.filter(item=>!readIds.has(item.id));
+ // Achievement notices are derived from the current date and remaining work.
+ // Their stored entries remember reads but must not resurrect expired slots.
+ const unreadHistory=history.filter(entry=>!entry.id.startsWith("achievement-")&&!read(entry.id)&&!activeIds.has(entry.id)&&!supersededReminderIds.has(entry.id));
+ const visibleNotices=achievementNotices.filter(item=>!read(item.id));
  const count=activeIds.size+unreadHistory.length+visibleNotices.length;
  const enqueue=(action:()=>Promise<void>)=>{
   queue.current=queue.current.then(action).catch(()=>{});
@@ -60,17 +89,27 @@ export function NoorNotificationCenterR338({alerts,appointments,achievementNotic
   return true;
  };
  const markRead=(id:string,command?:ObserveNotification)=>{
+  setReadIds(ids=>new Set([...ids,id]));
   if(!onMarkRead)return;
   enqueue(async()=>{
-   if(command&&!await observe(command))return;
-   if(await onMarkRead(id,null)){
-    setReadIds(ids=>new Set([...ids,id]));
+   let saved=false;
+   try{
+    if(!command||await observe(command))saved=await onMarkRead(id,null);
+   }finally{
+    if(!saved)setReadIds(ids=>{
+     const next=new Set(ids);
+     next.delete(id);
+     return next;
+    });
    }
   });
  };
  const reminderCommand=(item:NoorReminderAlertR314):ObserveNotification=>({
   type:"observe-notification",id:reminderId(item),kind:"reminder",title:item.title,
   targetId:item.definitionId,scheduledFor:new Date(nowMs).toISOString(),
+ });
+ const achievementCommand=(item:AchievementNotice):ObserveNotification=>({
+  type:"observe-notification",id:item.id,kind:"reminder",title:item.title,targetId:item.targetId,scheduledFor:item.scheduledFor,
  });
  const appointmentCommand=(item:NoorNotificationAppointmentR338):ObserveNotification=>({
   type:"observe-notification",id:appointmentId(item),kind:"appointment",title:item.title,
@@ -104,13 +143,13 @@ export function NoorNotificationCenterR338({alerts,appointments,achievementNotic
  const overlay=open?<div className="np-r338-alert-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setOpen(false);}}>
   <section className="np-r338-alert-sheet" role="dialog" aria-modal="true" aria-label="مركز التنبيهات" dir="rtl" onKeyDown={trap}>
    <header><div><h2>مركز التنبيهات</h2><p>التذكيرات والمواعيد المرتبطة بيومك</p></div><button type="button" ref={closeButton} aria-label="إغلاق مركز التنبيهات" onClick={()=>setOpen(false)}>×</button></header>
-   {visibleNotices.length?<section className="np-r338-alert-group" aria-label="متابعة الإنجاز"><h3>متابعة الإنجاز</h3>{visibleNotices.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{setReadIds(ids=>new Set([...ids,item.id]));closeThen(item.open);}}>
+   {visibleNotices.length?<section className="np-r338-alert-group" aria-label="متابعة الإنجاز"><h3>متابعة الإنجاز</h3>{visibleNotices.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{markRead(item.id,achievementCommand(item));closeThen(item.open);}}>
     <span className="np-r338-alert-mark" aria-hidden="true"><NoorR323Icon name="bars"/></span><span className="np-r338-alert-copy"><strong>{item.title}</strong><small>{item.detail}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
    </button>)}</section>:null}
    {activeAlerts.length?<section className="np-r338-alert-group" aria-label="التذكيرات المستحقة"><h3>تذكيرات مستحقة <span>{activeAlerts.length}</span></h3>{activeAlerts.map(alert=><button className="np-r338-alert-row" type="button" key={alert.definitionId} onClick={()=>{markRead(reminderId(alert),reminderCommand(alert));closeThen(()=>onOpenReminder(alert.definitionId));}}>
     <span className="np-r338-alert-mark" aria-hidden="true"><NoorR323Icon name="bell"/></span><span className="np-r338-alert-copy"><strong>{alert.title}</strong><small>{alert.repeat?"تذكير متكرر · ":""}{reminderKind(alert.kind)} · {alert.time}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
    </button>)}</section>:null}
-   {activeAppointments.length?<section className="np-r338-alert-group" aria-label="المواعيد القادمة"><h3>المواعيد القادمة</h3>{appointments.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{markRead(appointmentId(item),appointmentCommand(item));closeThen(onOpenAppointment);}}>
+   {activeAppointments.length?<section className="np-r338-alert-group" aria-label="المواعيد القادمة"><h3>المواعيد القادمة</h3>{activeAppointments.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{markRead(appointmentId(item),appointmentCommand(item));closeThen(onOpenAppointment);}}>
     <span className="np-r338-alert-mark appointment" aria-hidden="true"><span>◷</span></span><span className="np-r338-alert-copy"><strong>{item.title}</strong><small>{item.when} · المتبقي {item.remaining}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
    </button>)}</section>:null}
    {unreadHistory.length?<section className="np-r338-alert-group" aria-label="السجل السابق"><h3>السجل السابق <span>{unreadHistory.length}</span></h3>{unreadHistory.slice(0,20).map(entry=><div className="np-r338-alert-row" key={entry.id}>
