@@ -3772,7 +3772,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
                       <span aria-hidden="true">{arabicNumber(rate)}<small>%</small></span>
                     </div>
                   </summary>
-                  <div className="np-list">{items.map(({execution:item,definition})=><ActivityCard key={item.id} item={item} definition={definition} busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)} onCommand={historyDate?historicalCommand:onCommand} onOpenSleep={!historyDate&&sleepHabits.some(habit=>habit.id===item.id)?trigger=>setSleepRequest({executionId:item.id,date:achievementDate,trigger}):undefined} historicalDate={historyDate} todayDate={view.localDate??undefined}/>)}</div>
+                  <div className="np-list">{items.map(({execution:item,definition})=><ActivityCard key={item.id} item={item} definition={definition} busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)} onOpenSleep={!historyDate&&sleepHabits.some(habit=>habit.id===item.id)?trigger=>setSleepRequest({executionId:item.id,date:achievementDate,trigger}):undefined} onCommand={historyDate?historicalCommand:onCommand} historicalDate={historyDate} todayDate={view.localDate??undefined}/>)}</div>
                 </details>;
               })}
           </div>
