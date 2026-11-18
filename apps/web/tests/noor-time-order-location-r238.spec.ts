@@ -34,13 +34,13 @@ test("R238 timezone previews local date and offers quick presets without changin
   const html=renderToStaticMarkup(createElement(NoorR232ControlLocation,{
     serverZone:"Asia/Riyadh",preferences:NOOR_R232_DEFAULT,onChange:()=>{},
   }));
-  assert.match(html,/اختيار سريع للمنطقة الزمنية/u);
+  assert.match(html,/المنطقة الزمنية/u);
   assert.match(html,/استعادة توقيت الحساب/u);
   assert.match(html,/Africa\/Cairo/u);
   assert.match(html,/Asia\/Dubai/u);
-  assert.match(html,/المنطقة الزمنية المعتمدة للحسابات/u);
-  assert.match(html,/لا يتغيران/u);
-  assert.match(html,/تحديد عبر GPS/u);
+  assert.match(html,/توقيت الحساب/u);
+  assert.match(html,/الموقع الحالي/u);
+  assert.doesNotMatch(html,/تنبيه:|لا يتغيران|اختيار سريع للمنطقة الزمنية/u);
   const source=readFileSync(new URL("../src/noor-time-location-control-r232.tsx",import.meta.url),"utf8");
   assert.match(source,/lastSearch\.current\+\+/u);
   assert.match(source,/selectedCity:preparedCity/u);
