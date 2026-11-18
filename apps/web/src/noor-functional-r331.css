@@ -277,7 +277,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 /* R339 — approved compact Personal home, genuine frosted surfaces and bounded sheets. */
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
  --noor-header-button: 42px;
- --noor-header-inset: 30px;
+ --noor-header-inset: 24px;
  position:relative!important;grid-template-areas:"brand brand brand" "greeting status status" "calendar calendar calendar"!important;
  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
  margin:0 0 12px!important;width:100%!important;padding:8px 0 12px!important;border-radius:24px!important;
@@ -318,8 +318,8 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{grid-area:status!important;justify-self:end!important;padding:4px 0!important}
 .np-page[data-appearance] .np-r339-header .np-header-calendar{background:none!important}
 @media(max-width:480px){
- .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{--noor-header-button:32px;--noor-header-inset:23px}
- .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{gap:4px!important;flex-wrap:nowrap!important}
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{--noor-header-button:32px;--noor-header-inset:17px}
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{gap:7px!important;flex-wrap:nowrap!important}
 }
 
 .np-page[data-appearance] .np-r331-board{background:var(--noor-board-glass,var(--ng-card))!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;border:1px solid #ffffff60!important;border-radius:24px!important}
@@ -1027,7 +1027,27 @@ button[aria-label^="إغلاق"] {
   background: var(--ng-bg, #fff);
 }
 
-.np-r323-greeting bdi { overflow-wrap: anywhere; }
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] > .np-r323-greeting {
+  display:flex;align-items:center;gap:.3em;min-width:0;max-width:100%;white-space:nowrap;
+  font-size:clamp(15px,2.25vw,30px)!important;
+}
+.np-r323-greeting > .np-greeting-text {
+  min-width:0;overflow:hidden;text-overflow:ellipsis;font:inherit;color:inherit;margin:0;
+}
+.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] > .np-header-clock {
+  font-size:clamp(28px,4vw,43px)!important;
+}
+@media(max-width:560px){
+  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] {
+    grid-template-columns:minmax(0,3fr) minmax(0,2fr)!important;
+  }
+}
+.np-profile-photo img{display:block;border-radius:50%;object-fit:cover;margin-block-end:12px}
+.np-header-avatar{inline-size:100%;block-size:100%;object-fit:cover;border-radius:50%}
+@media(min-width:561px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{gap:10px!important}}
+.np-sleep-habit-slot:not(:empty){margin-block:0 10px}
+.np-profile-photo fieldset{display:grid;gap:8px;border:0;padding:8px 0;margin:0}
+.np-profile-photo input[type=range]{padding:0;min-height:28px}
 #noor-r323-habits, #noor-r323-tasks { scroll-margin-top: 12px; }
 
 .np-create-prayer-settings { min-width: 0; margin-block: 12px; }
