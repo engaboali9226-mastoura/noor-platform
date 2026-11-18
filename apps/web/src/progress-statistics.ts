@@ -1,9 +1,9 @@
 import {R331_PRAYERS,type PrayerKeyR331,type PrayerDayScoreR334} from "../../noor-personal/src/domain/completion-r331.js";
-export type StatisticRow=Readonly<{id:string;definitionId:string;title:string;kind:'Habit'|'Task';date:string;weight:number;status:string;amount:number;unit:string;credit?:number;nonAchievement?:boolean}>;
+export type StatisticRow=Readonly<{id:string;definitionId:string;title:string;kind:'Habit'|'Task';date:string;weight:number;status:string;amount:number;unit:string;credit?:number;nonAchievement?:boolean;recoveryBonus?:boolean;completionDate?:string;recoveredWeight?:number}>;
 export type WeightedStatisticRow=StatisticRow|Readonly<Omit<StatisticRow,'kind'>&{kind:'Prayer';prayerKey:PrayerKeyR331}>;
 export type PrayerStatisticDayR334=Readonly<{date:string;score:PrayerDayScoreR334}>;
 export function validStatisticDate(value:unknown):value is string{return typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(value+'T00:00:00Z'))&&new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value;}
-export function parseStatisticRows(value:unknown):StatisticRow[]{if(!Array.isArray(value))return [];return value.flatMap(r=>{if(!r||typeof r!=='object'||typeof r.id!=='string'||typeof r.definitionId!=='string'||typeof r.title!=='string'||!['Habit','Task'].includes(r.kind)||!validStatisticDate(r.date)||typeof r.weight!=='number'||!Number.isFinite(r.weight)||r.weight<=0||typeof r.status!=='string'||typeof r.amount!=='number'||!Number.isFinite(r.amount)||r.amount<0||typeof r.unit!=='string'||('credit' in r&&(!Number.isFinite(r.credit)||r.credit<0||r.credit>1))||('nonAchievement' in r&&typeof r.nonAchievement!=='boolean'))return [];return [r as StatisticRow];});}
+export function parseStatisticRows(value:unknown):StatisticRow[]{if(!Array.isArray(value))return [];return value.flatMap(r=>{if(!r||typeof r!=='object'||typeof r.id!=='string'||typeof r.definitionId!=='string'||typeof r.title!=='string'||!['Habit','Task'].includes(r.kind)||!validStatisticDate(r.date)||typeof r.weight!=='number'||!Number.isFinite(r.weight)||r.weight<=0||typeof r.status!=='string'||typeof r.amount!=='number'||!Number.isFinite(r.amount)||r.amount<0||typeof r.unit!=='string'||('credit' in r&&(!Number.isFinite(r.credit)||r.credit<0||r.credit>1))||('nonAchievement' in r&&typeof r.nonAchievement!=='boolean')||('recoveryBonus' in r&&typeof r.recoveryBonus!=='boolean')||('completionDate' in r&&!validStatisticDate(r.completionDate))||('recoveredWeight' in r&&(!Number.isFinite(r.recoveredWeight)||r.recoveredWeight<0||r.recoveredWeight>r.weight)))return [];return [r as StatisticRow];});}
 export const statisticEligible=(r:WeightedStatisticRow)=>!r.nonAchievement&&r.status!=='Suppressed'&&r.status!=='Cancelled';
 /** R285: sessions contribute the frozen earned share of their one parent-task weight.
  * Legacy rows lacking a credit field retain historical all-or-nothing behavior.
@@ -11,7 +11,14 @@ export const statisticEligible=(r:WeightedStatisticRow)=>!r.nonAchievement&&r.st
 export function statisticEarnedShareR285(r:WeightedStatisticRow):number{
  return r.credit===undefined?(r.status==='Completed'?1:0):r.credit;
 }
-export function summarizeProgress(rows:readonly WeightedStatisticRow[]){const due=rows.filter(statisticEligible),weight=due.reduce((n,r)=>n+r.weight,0),completedWeight=due.reduce((n,r)=>n+r.weight*statisticEarnedShareR285(r),0);return {scheduled:due.length,completed:due.filter(r=>r.status==='Completed').length,weight,completedWeight,rate:weight?Math.round(completedWeight/weight*100):null};}
+export function summarizeProgress(rows:readonly WeightedStatisticRow[]){
+ const due=rows.filter(statisticEligible),scheduled=due.filter(row=>!row.recoveryBonus);
+ const scheduledDates=new Set(scheduled.map(row=>row.date));
+ const weight=due.reduce((n,row)=>n+(!row.recoveryBonus||!scheduledDates.has(row.date)?row.weight:0),0);
+ const completedWeight=due.reduce((n,row)=>n+row.weight*statisticEarnedShareR285(row),0);
+ return {scheduled:scheduled.length,completed:scheduled.filter(row=>row.status==="Completed").length,weight,completedWeight,
+  rate:weight?Math.min(100,Math.round(completedWeight/weight*100)):null};
+}
 export function shiftStatisticDate(date:string,days:number){return new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);}
 export function shiftStatisticMonth(date:string,months:number){const d=new Date(date+'T00:00:00Z'),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months);const end=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,end));return d.toISOString().slice(0,10);}
 export function statisticPeriods(rows:readonly WeightedStatisticRow[],currentDate:string|null){if(!validStatisticDate(currentDate))return [];const first=rows.filter(r=>statisticEligible(r)&&r.date<=currentDate).map(r=>r.date).sort()[0];if(!first)return [];return ([['week','الأسبوع',0],['month','الشهر',1],['quarter','ربع السنة',3],['half','نصف السنة',6]] as const).map(([key,label,months])=>{const unlockDate=months?shiftStatisticMonth(first,months):shiftStatisticDate(first,7),start=months?shiftStatisticMonth(currentDate,-months):shiftStatisticDate(currentDate,-7),end=shiftStatisticDate(currentDate,-1),periodRows=rows.filter(r=>r.date>=start&&r.date<=end);return {key,label,start,end,unlockDate,ready:currentDate>=unlockDate,rows:periodRows,...summarizeProgress(periodRows)};});}
@@ -19,7 +26,7 @@ export function statisticDays(rows:readonly WeightedStatisticRow[],currentDate:s
 
 export function statisticInsights(rows:readonly WeightedStatisticRow[],currentDate:string|null){
  if(!validStatisticDate(currentDate))return {current:0,best:0,perfect:0,change:null as number|null};
- const grouped=new Map<string,WeightedStatisticRow[]>();for(const r of rows)if(statisticEligible(r)&&r.date<=currentDate)grouped.set(r.date,[...(grouped.get(r.date)??[]),r]);
+ const grouped=new Map<string,WeightedStatisticRow[]>();for(const r of rows)if(statisticEligible(r)&&!r.recoveryBonus&&r.date<=currentDate)grouped.set(r.date,[...(grouped.get(r.date)??[]),r]);
  let current=0,best=0,perfect=0;for(const [date,items]of [...grouped].sort(([a],[b])=>a.localeCompare(b))){if(items.every(r=>r.status==='Completed')){current++;perfect++;best=Math.max(best,current);}else if(date!==currentDate)current=0;}
  const first=[...grouped.keys()].sort()[0],end=shiftStatisticDate(currentDate,-1),start=shiftStatisticDate(currentDate,-7),previous=shiftStatisticDate(currentDate,-14);
  const recent=summarizeProgress(rows.filter(r=>r.date>=start&&r.date<=end)),prior=summarizeProgress(rows.filter(r=>r.date>=previous&&r.date<start));
