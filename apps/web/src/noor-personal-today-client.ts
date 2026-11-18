@@ -54,7 +54,7 @@ export type NoorPersonalCommandInput =
   | Readonly<{type:"edit-activity-note";executionId:string;entryId:string;expectedNote:string;note:string|null}>
     | Readonly<{type:"reorder-display";scope:"Habit"|"Task"|"categories";expected:readonly string[];order:readonly string[]}>
     | Readonly<{type:"manage-category";action:"add"|"rename";name:string;previousName:string|null}>
-  | Readonly<{type:"update-definition";weight?:number;definitionId:string;expectedRevisionId:string;kind:"Task"|"Habit";title:string;category:string;description?:string;startDate:string;endDate:string|null;scheduleKind:"OneTime"|"Daily"|"Weekdays";weekdays:readonly number[];importance:"Essential"|"Important"|"Supporting"|"Optional";timeOfDay?:string; quranPlan?:NoorQuranHabitPlanR289|null;beveragePlan?:NoorBeveragePlanR294|null;countdownPlan?:NoorCountdownPlanR301|null;measurement?:{target:number;unit:string};sessionPlan?:NoorTaskSessionPlanDraft|null}>
+  | Readonly<{type:"update-definition";weight?:number;definitionId:string;expectedRevisionId:string;kind:"Task"|"Habit";title:string;category:string;subcategory?:string;description?:string;startDate:string;endDate:string|null;scheduleKind:"OneTime"|"Daily"|"Weekdays";weekdays:readonly number[];importance:"Essential"|"Important"|"Supporting"|"Optional";timeOfDay?:string; quranPlan?:NoorQuranHabitPlanR289|null;beveragePlan?:NoorBeveragePlanR294|null;countdownPlan?:NoorCountdownPlanR301|null;measurement?:{target:number;unit:string};sessionPlan?:NoorTaskSessionPlanDraft|null}>
   | Readonly<{type:"finance";operation:FinanceOperation}>
   | Readonly<{ type: "record-activity"; executionId: string; entryId: string; note: string; amount: number; endReason: "achieved" | "expired" | "cancelled" | null }>
   | Readonly<{ type: "delete-definition"; definitionId: string; confirm: true }>
@@ -71,6 +71,7 @@ export type NoorPersonalCommandInput =
       title: string;
       category: string;
       description?: string;
+      subcategory?: string;
       startDate: string;
       endDate: string | null;
       scheduleKind: "OneTime" | "Daily" | "Weekdays";
