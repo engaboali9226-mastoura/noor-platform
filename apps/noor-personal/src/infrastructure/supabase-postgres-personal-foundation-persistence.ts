@@ -522,6 +522,11 @@ FoundationTransaction {
           : null;
       },
 
+    findPersonalDayById: (userId, personalDayId) => {
+      const day = state.personalDays.find(row => row.userId === userId && row.id === personalDayId);
+      return day ? clone(day) : null;
+    },
+
     findPersonalDayByKey:
       key => {
         const matches =
