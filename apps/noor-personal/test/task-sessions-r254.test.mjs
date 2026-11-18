@@ -212,7 +212,7 @@ test("owner isolation denies cross-account session mutation",async()=>{
  await assert.rejects(()=>f.service.execute("attacker",{type:"configure-task-sessions",definitionId:"book",expectedRevisionId:before.revisionId,plan:null}));
  assert.deepEqual(f.get(),before);
 });
-test("day's weighted credit remains one parent weight; next day does not reset cumulative progress",async()=>{
+test("period uses the weight of each eligible session and preserves cumulative progress",async()=>{
  const f=fixture();await configure(f);await progress(f,"s1","event1",5);
  const state=f.store.snapshot();
  assert.ok(Math.abs(session.sessionDayCredit(state.definitions[0].activityLog,date)-1/6)<1e-12);
@@ -220,7 +220,10 @@ test("day's weighted credit remains one parent weight; next day does not reset c
  const nextExec={...execution,id:"execution-2",personalDayId:"day-2",scheduleOccurrenceKey:"2026-11-06",status:"Planned"};
  const snapshot={listDefinitions:()=>state.definitions,listPersonalDays:()=>[day,nextDay],listDailyExecutionForUser:()=>[execution,nextExec]};
  const workspace=buildPersonalWorkspace("owner",snapshot);
- assert.equal(workspace.insights.periods.week.completionRate,8);
+ assert.equal(workspace.insights.periods.week.completionRate,13);
+ assert.equal(workspace.statistics.rows[0].weight,execution.eligibility.weight*2);
+ assert.equal(workspace.statistics.rows[0].sessionWeight,execution.eligibility.weight);
+ assert.equal(workspace.statistics.rows[0].weight*workspace.statistics.rows[0].credit,execution.eligibility.weight/2);
  assert.equal(session.taskCumulativeProgress(state.definitions[0].activityLog),5);
 });
 test("one-time session task remains eligible on a later day, while an old one-time task does not",async()=>{
