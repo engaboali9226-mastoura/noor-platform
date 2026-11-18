@@ -7,6 +7,13 @@ export function recoveryCreditR331(due:string,performed:string):number {
 }
 export const R331_PRAYERS=["fajr","dhuhr","asr","maghrib","isha"] as const;
 export type PrayerKeyR331=typeof R331_PRAYERS[number];
+export function prayerHabitCandidateR334(raw:string):PrayerKeyR331|null{
+ const title=raw.normalize("NFKC").toLocaleLowerCase("ar").replace(/[\u064b-\u065f\u0670\u0640]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/^\s*[0-9٠-٩۰-۹]+\s*[-–—.]\s*/u,"").trim();
+ const match=title.match(/^(?:(?:صلاه|فرض)\s+)?(?:ال)?(فجر|ظهر|عصر|مغرب|عشاء)$/u);
+ if(match)return ({"فجر":"fajr","ظهر":"dhuhr","عصر":"asr","مغرب":"maghrib","عشاء":"isha"} as const)[match[1] as "فجر"|"ظهر"|"عصر"|"مغرب"|"عشاء"];
+ const english=title.match(/^(fajr|dhuhr|zuhr|asr|maghrib|isha)(?: prayer)?$/iu)?.[1];
+ return english?(english==="zuhr"?"dhuhr":english as PrayerKeyR331):null;
+}
 export type PrayerModeR331="group"|"excused"|"unexcused";
 export type PrayerTimingR331="ontime"|"late";
 export type PrayerRecordR331=Readonly<{key:PrayerKeyR331;mode:PrayerModeR331;timing:PrayerTimingR331;recordedAt:string}>;
