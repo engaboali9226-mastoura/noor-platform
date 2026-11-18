@@ -1069,6 +1069,7 @@ button[aria-label^="إغلاق"] {
 .np-detail-check[aria-checked=true]>span{border-color:#287b65;background:#287b65;color:white}
 .np-detail-check:focus-visible{outline:2px solid #83b8d1;outline-offset:2px;border-radius:9px}
 .np-detail-check:disabled{opacity:.45;cursor:not-allowed}
+.np-detail-check:disabled[aria-checked=true]{opacity:1}
 .np-prayer-check-mark{display:inline-block;margin-inline-end:3px;font-weight:800}
 .np-activity-dialog .np-session-editor-content{min-height:0;padding:0;background:transparent}
 .np-profile-photo fieldset{display:grid;gap:8px;border:0;padding:8px 0;margin:0}
