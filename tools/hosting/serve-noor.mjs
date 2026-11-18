@@ -41,7 +41,7 @@ export async function createHostedWebServer({staticDirectory,apiOrigin,publicOri
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//'))return reply(res,400,'Invalid request.',req.method);
    const url=new URL(req.url,origin);
-   if(url.pathname==='/healthz')return reply(res,['GET','HEAD'].includes(req.method)?200:405,'ok',req.method,releaseSha?{'X-Noor-Release-Sha':releaseSha}:{});
+   if(url.pathname==='/healthz')return reply(res,['GET','HEAD'].includes(req.method)?200:405,'ok',req.method,{'X-Noor-App-Shell':'1',...(releaseSha?{'X-Noor-Release-Sha':releaseSha}:{})});
    if(url.pathname==='/api/noor/username-login'&&usernameHandler){
     const {status,proof}=await usernameHandler(req);
     return reply(res,status,JSON.stringify(proof?{proof}:{}),req.method,{'Content-Type':'application/json'});
@@ -67,7 +67,7 @@ export async function createHostedWebServer({staticDirectory,apiOrigin,publicOri
    if(!info.isFile())return reply(res,404,'Not found.',req.method);
    const resolved=await realpath(target);if(!resolved.startsWith(root+path.sep))return reply(res,403,'Forbidden.',req.method);
    const content=await readFile(resolved);
-   res.writeHead(200,{'Content-Type':TYPES[path.extname(resolved)]??'application/octet-stream','Content-Length':content.length,'Cache-Control':(path.extname(resolved)==='.html'||pathname==='/noor-service-worker.js'||pathname==='/noor.webmanifest')?'no-store':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'public, max-age=300','X-Content-Type-Options':'nosniff'});
+   res.writeHead(200,{...(path.extname(resolved)==='.html'?{'X-Noor-App-Shell':'1'}:{}),'Content-Type':TYPES[path.extname(resolved)]??'application/octet-stream','Content-Length':content.length,'Cache-Control':(path.extname(resolved)==='.html'||pathname==='/noor-service-worker.js'||pathname==='/noor.webmanifest')?'no-store':pathname.startsWith('/assets/')?'public, max-age=31536000, immutable':'public, max-age=300','X-Content-Type-Options':'nosniff'});
    res.end(req.method==='HEAD'?undefined:content);
   }catch{if(!res.headersSent)reply(res,503,'Service temporarily unavailable.',req.method);else res.destroy();}
  });
