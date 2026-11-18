@@ -37,5 +37,13 @@ test('weekly prayer count merges completed habits, direct records and weighted r
  const history=[{date:past,records:[{key:'fajr'},{key:'fajr'}]},{date:today,records:[{key:'dhuhr'}]}];
  const projected=[{date:today,score:{rows:[{key:'fajr' as const,weight:20,credit:0,recorded:true}],excludedHabitDefinitionIds:[],weight:20,earnedWeight:0}}];
  const habits=[{date:past,key:'fajr' as const},{date:past,key:'isha' as const},{date:today,key:'dhuhr' as const},{date:future,key:'fajr' as const}];
- assert.deepEqual(weeklyCardSummaryR332([],days,history,['fajr','dhuhr','asr'],projected,habits).prayers,{recorded:4,due:8});
+ assert.deepEqual(weeklyCardSummaryR332([],days,history,projected,habits).prayers,{recorded:4,due:10});
+});
+
+test('weekly prayer target reaches 25 on day five even with a partial projection',()=>{
+ const today='2026-11-18';
+ const days=Array.from({length:7},(_,index)=>({date:`2026-11-${14+index}`,future:index>4}));
+ const history=days.slice(0,4).map(({date})=>({date,records:['fajr','dhuhr','asr','maghrib','isha'].map(key=>({key}))}));
+ const projected=[{date:today,score:{rows:[{key:'fajr' as const,weight:20,credit:1,recorded:true}],excludedHabitDefinitionIds:[],weight:20,earnedWeight:20}}];
+ assert.deepEqual(weeklyCardSummaryR332([],days,history,projected).prayers,{recorded:21,due:25});
 });
