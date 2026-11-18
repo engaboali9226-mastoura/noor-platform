@@ -1,9 +1,17 @@
 // R331: deterministic civil-date credit; no browser clock or adjustable weights.
-export function recoveryCreditR331(due:string,performed:string):number {
+function recoveryDays(due:string,performed:string):number {
  const valid=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s+"T00:00:00Z"))&&new Date(s+"T00:00:00Z").toISOString().slice(0,10)===s;
- if(!valid(due)||!valid(performed))return 0;
- const days=(Date.parse(performed+"T00:00:00Z")-Date.parse(due+"T00:00:00Z"))/86400000;
+ if(!valid(due)||!valid(performed))return -1;
+ return (Date.parse(performed+"T00:00:00Z")-Date.parse(due+"T00:00:00Z"))/86400000;
+}
+export function recoveryCreditR331(due:string,performed:string):number {
+ const days=recoveryDays(due,performed);
  return days<0?0:2**(-days);
+}
+/** Explicit completion-date records use the agreed linear deduction. */
+export function recoveryCreditR367(due:string,performed:string):number {
+ const days=recoveryDays(due,performed);
+ return days<0?0:Math.max(30,100-30*days)/100;
 }
 export const R331_PRAYERS=["fajr","dhuhr","asr","maghrib","isha"] as const;
 export type PrayerKeyR331=typeof R331_PRAYERS[number];
@@ -22,8 +30,9 @@ export function validPrayerRecordR331(value:unknown):value is PrayerRecordR331{
  const r=value as Record<string,unknown>;
  return R331_PRAYERS.includes(r.key as PrayerKeyR331)&&["group","excused","unexcused"].includes(String(r.mode))&&["ontime","late"].includes(String(r.timing))&&typeof r.recordedAt==="string"&&Number.isFinite(Date.parse(r.recordedAt));
 }
-export function completedShareR331(e:{status:string;scheduleOccurrenceKey:string;recoveredOnR331?:string}):number{
+export function completedShareR331(e:{status:string;scheduleOccurrenceKey:string;recoveredOnR331?:string;completionDateR367?:string}):number{
  if(e.status!=="Completed")return 0;
+ if(e.completionDateR367)return recoveryCreditR367(e.scheduleOccurrenceKey,e.completionDateR367);
  return e.recoveredOnR331===undefined?1:recoveryCreditR331(e.scheduleOccurrenceKey,e.recoveredOnR331);
 }
 
