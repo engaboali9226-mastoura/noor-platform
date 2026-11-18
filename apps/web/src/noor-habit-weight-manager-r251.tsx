@@ -1,17 +1,11 @@
 import {useState,type ReactElement} from "react";
-import {R331_PRAYERS,parsePrayerScoreApprovalR334,type PrayerScoreSnapshotR334,type PrayerModeR331,type PrayerTimingR331,type PrayerKeyR331} from "../../noor-personal/src/domain/completion-r331.js";
+import {R331_PRAYERS,parsePrayerScoreApprovalR334,prayerHabitCandidateR334,type PrayerScoreSnapshotR334,type PrayerModeR331,type PrayerTimingR331,type PrayerKeyR331} from "../../noor-personal/src/domain/completion-r331.js";
 import type {NoorPersonalCommandInput} from "./noor-personal-today-client.js";
 
 export type HabitWeightDefinition=Readonly<{id:string;revisionId:string;kind:"Habit"|"Task";title:string;category:string;importance:string;weight:number;state:string}>;
 type HabitExecution=Readonly<{definitionId:string;kind:"Habit"|"Task";weight:number;status:string}>;
 export type PrayerWeightKeyR334="fajr"|"dhuhr"|"asr"|"maghrib"|"isha";
-export function prayerHabitCandidateR334(raw:string):PrayerWeightKeyR334|null{
- const title=raw.normalize("NFKC").toLocaleLowerCase("ar").replace(/[\u064b-\u065f\u0670\u0640]/g,"").replace(/[أإآٱ]/g,"ا").replace(/ى/g,"ي").replace(/ة/g,"ه").replace(/^\s*[0-9٠-٩۰-۹]+\s*[-–—.]\s*/u,"").trim();
- const match=title.match(/^(?:(?:صلاه|فرض)\s+)?(?:ال)?(فجر|ظهر|عصر|مغرب|عشاء)$/u);
- if(match)return ({"فجر":"fajr","ظهر":"dhuhr","عصر":"asr","مغرب":"maghrib","عشاء":"isha"} as const)[match[1] as "فجر"|"ظهر"|"عصر"|"مغرب"|"عشاء"];
- const english=title.match(/^(fajr|dhuhr|zuhr|asr|maghrib|isha)(?: prayer)?$/iu)?.[1];
- return english?(english==="zuhr"?"dhuhr":english as PrayerWeightKeyR334):null;
-}
+export { prayerHabitCandidateR334 };
 // Read-only hints from account-owned definitions. Title matches never authorize exclusion.
 export function auditPrayerWeightsR334(definitions:readonly HabitWeightDefinition[]){
  const active=definitions.filter(d=>["Active","Paused"].includes(d.state));

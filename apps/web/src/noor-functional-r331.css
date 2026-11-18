@@ -1039,7 +1039,14 @@ button[aria-label^="إغلاق"] {
 }
 @media(max-width:560px){
   .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] {
-    grid-template-columns:minmax(0,3fr) minmax(0,2fr)!important;
+    grid-template-areas:"brand brand" "greeting greeting" "clock status" "calendar calendar"!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  }
+  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] > .np-r323-greeting {
+    grid-area:greeting!important;
+    justify-self:center!important;
+    font-size:clamp(20px,5.8vw,29px)!important;
+    line-height:1.3;
   }
 }
 .np-profile-photo img{display:block;border-radius:50%;object-fit:cover;margin-block-end:12px}
