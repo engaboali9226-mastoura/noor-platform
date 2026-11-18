@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import path from "node:path";
 import {pathToFileURL} from "node:url";
-const {recoveryCreditR331,completedShareR331,parsePersonalCommand,PersonalCommandService,InMemoryFoundationStore,SequenceIdGenerator,buildPersonalWorkspace}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+const {recoveryCreditR331,recoveryCreditR367,completedShareR331,parsePersonalCommand,PersonalCommandService,InMemoryFoundationStore,SequenceIdGenerator,buildPersonalWorkspace}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","index.js")).href);
+const {sessionEventCredit}=await import(pathToFileURL(path.resolve(process.env.NOOR_PERSONAL_BUILD_DIR??"dist","domain/task-sessions.js")).href);
 test("R331 deterministic decaying credit, date boundaries and old completion preservation",()=>{
  assert.equal(recoveryCreditR331("2026-11-13","2026-11-13"),1);
  assert.equal(recoveryCreditR331("2026-11-13","2026-11-14"),.5);
@@ -35,6 +36,40 @@ test("R331 recovery persists once with server date, applies decayed score to wor
  assert.equal(w.statistics.rows[0].credit,.25);assert.equal(w.insights.periods.week.completionRate,25);
  await service.execute("u",{type:"correct-historical-execution",executionId:e.id,localDate:due,expectedStatus:"Completed",completed:false});
  assert.equal(store.snapshot().dailyExecution[0].recoveredOnR331,undefined);
+});
+
+test("R367 awards selected-day recovery once and keeps its civil date distinct from recording",async()=>{
+ const now="2026-11-19T12:00:00.000Z",due="2026-11-16",performedOn="2026-11-18";
+ const dates=["2026-11-16","2026-11-17","2026-11-18","2026-11-19","2026-11-20"];
+ assert.deepEqual(dates.map(day=>recoveryCreditR367(due,day)),[1,.7,.4,.3,.3]);
+ assert.equal(recoveryCreditR367(due,"2026-11-15"),0);
+ const def={id:"d",userId:"u",kind:"Habit",revisionId:"r",title:"المشي",category:"الصحة",state:"Active",schedule:{kind:"Daily"},effectiveFromDate:due,importance:"Essential",weight:10,gatePolicy:"NonBlocking",targets:{}};
+ const item={id:"exec",userId:"u",personalDayId:"past",definitionId:"d",definitionRevisionId:"r",kind:"Habit",title:def.title,materializationKey:"key",scheduleOccurrenceKey:due,status:"Missed",eligibility:{definitionRevisionId:"r",importance:"Essential",weight:10,gatePolicy:"NonBlocking",targets:{}},version:1,createdAt:now,updatedAt:now};
+ const day={id:"today",userId:"u",boundary:{key:"today",localDate:"2026-11-19",startAt:"2026-11-18T21:00:00.000Z",endAt:"2026-11-19T21:00:00.000Z",timeZone:"Asia/Riyadh"},state:"Open",version:1,createdAt:now,updatedAt:now};
+ const store=new InMemoryFoundationStore({personalDays:[day],definitions:[def],dailyExecution:[item]});
+ const service=new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:store,accountTimeZone:"Asia/Riyadh"});
+ const command={type:"recover-historical-execution",executionId:item.id,localDate:due,performedOn,expectedStatus:"Missed"};
+ assert.ok(parsePersonalCommand(command));
+ assert.equal(parsePersonalCommand({...command,performedOn:"2026-11-31"}),null);
+ await assert.rejects(()=>service.execute("u",{...command,performedOn:"2026-11-20"}));
+ await assert.rejects(()=>service.execute("u",{...command,performedOn:"2026-11-15"}));
+ await service.execute("u",command);
+ const snapshot=store.snapshot();
+ assert.equal(snapshot.dailyExecution[0].completionDateR367,performedOn);
+ assert.equal(snapshot.dailyExecution[0].updatedAt,now);
+ await service.execute("u",command);
+ const workspace=buildPersonalWorkspace("u",{listDefinitions:()=>[def],listPersonalDays:()=>[day],listDailyExecutionForUser:()=>snapshot.dailyExecution});
+ assert.deepEqual(workspace.statistics.rows.map(row=>[row.date,row.credit,row.recoveryBonus??false,row.recoveredWeight]),[
+  [due,0,false,4],[performedOn,.4,true,4],
+ ]);
+ await assert.rejects(()=>service.execute("u",{...command,performedOn:"2026-11-17"}));
+});
+
+test("R367 mixed measured plans still credit unmeasured sessions",()=>{
+ const manual={target:null},quantified={target:50};
+ const plan={sessions:[manual,quantified]};
+ assert.equal(sessionEventCredit({target:50},plan,manual,0,true),.5);
+ assert.equal(sessionEventCredit({target:50},plan,quantified,50,false),.5);
 });
 
 test("R331 prayer reporting is day scoped, not allowed before the prayer, and survives durable storage reload",async()=>{
