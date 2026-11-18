@@ -14,7 +14,7 @@ test("R293: both task and habit forms offer optional saved description and date 
      busy:false,onCommand:noop,defaultStartDate:"2026-11-11",defaultKind:kind,categories:["القراءة"],
    }));
    assert.match(html,/name="description"/);
-   assert.match(html,/علامة الاستفهام/);
+   assert.match(html,kind==="Task"?/<summary>؟ الوصف<\/summary>/:/علامة الاستفهام/);
    assert.match(html,/<input(?=[^>]*name="startDate")(?=[^>]*type="hidden")(?=[^>]*value="2026-11-11")[^>]*>/);
    assert.doesNotMatch(html,/value="1900"/);
    assert.ok(html.indexOf(">2026</option>")>=0,"current year is a selectable year");
