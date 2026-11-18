@@ -23,7 +23,7 @@ test("R322 active Islamic night preview uses authenticated Fajr and keeps every 
  const now=Date.parse("2026-11-06T18:02:00Z");
  const html=renderWindows(now,"2026-11-07T02:50:00Z");
  assert.match(html,/data-testid="r322-premium-timer-hub"/);
- assert.match(html,/مؤقت الليل/);
+ assert.match(html,/<h2>الليل<\/h2>/);
  assert.match(html,/08:48:00/);
  assert.match(html,/data-testid="noor-day-night-friday-r232"/);
  assert.match(html,/ساعات الجمعة الخمس/);
@@ -38,13 +38,13 @@ test("R322 never makes up Fajr or a night duration when tomorrow's authority is 
 });
 test("R322 pre-dawn countdown falls back only to verified Fajr; never invents previous Maghrib",()=>{
  const html=renderWindows(Date.parse("2026-11-06T00:10:00Z"),"2026-11-06T02:45:00Z");
- assert.match(html,/مؤقت الليل/);
+ assert.match(html,/<h2>الليل<\/h2>/);
  assert.match(html,/02:35:00/);
  assert.match(html,/لم تتوفر بداية الليل لحساب مدته/);
 });
 test("R322: brand-new pre-dawn account can count to CURRENT verified Fajr even when nextFajrAt is missing",()=>{
  const html=renderWindows(Date.parse("2026-11-06T00:10:00Z"));
- assert.match(html,/مؤقت الليل/);
+ assert.match(html,/<h2>الليل<\/h2>/);
  assert.match(html,/02:35:00/);
  assert.match(html,/لم تتوفر بداية الليل لحساب مدته/);
  assert.match(html,/لم تتوفر مواقيت الغد من مصدر نور المعتمد/);
