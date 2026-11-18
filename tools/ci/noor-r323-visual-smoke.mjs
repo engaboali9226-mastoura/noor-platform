@@ -583,7 +583,27 @@ try{
   await find("#definition-title");
   await expect("window.noorQuickAddDialog === document.querySelector('.np-r324-quick-sheet')","The selected form stays in the original quick-add dialog");
   await expect("document.querySelector('[data-testid=r324-nav-plus]').getAttribute('aria-current')==='page'","Quick task navigation active");
+  const quickFieldsReadable=`(() => {
+    const dialog=document.querySelector(".np-r324-quick-sheet");
+    const body=dialog?.querySelector(".np-quick-form-body");
+    const title=body?.querySelector("#definition-title");
+    const date=body?.querySelector(".np-gregorian-parts");
+    const footer=dialog?.querySelector("footer [type=submit]");
+    if(!title||!date||!footer)return false;
+    const fields=[title,...date.querySelectorAll("select")];
+    const bounds=body.getBoundingClientRect();
+    return fields.every(field=>{
+      const r=field.getBoundingClientRect();
+      return r.width>=54&&r.height>=44&&r.left>=bounds.left-1&&r.right<=bounds.right+1
+        &&parseFloat(getComputedStyle(field).fontSize)>=16;
+    })&&body.scrollWidth<=body.clientWidth+1&&footer.getBoundingClientRect().bottom<=innerHeight
+      &&document.activeElement!==title;
+  })()`;
+  await expect(quickFieldsReadable,"Quick task fields are readable and the save button stays visible");
   await snap(screen.name+"-quick-task");
+  await run("document.querySelector('.np-r324-quick-sheet footer button').click()");
+  await run("document.querySelectorAll('.np-r324-quick-sheet > button')[1].click()");
+  await expect(quickFieldsReadable,"Quick habit fields are readable and the save button stays visible");
   await cdp("Page.navigate",{url:url+"?screen=personal&task-preview=1"});
   await find(".np-today-task-button");
   await snap(screen.name+"-header-preview");
