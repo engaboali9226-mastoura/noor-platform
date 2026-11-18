@@ -13,11 +13,10 @@ test("R241 city selection stays a preview until explicit authenticated account s
     onChange:()=>{},
     onCommit:async()=>true,
   }));
-  assert.match(html,/اعتماد المدينة والتوقيت للحساب/u);
+  assert.match(html,/حفظ الموقع/u);
   assert.match(html,/القاهرة/u);
   assert.match(html,/Africa\/Cairo/u);
-  assert.match(html,/تُرفض بأمان/u);
-  assert.match(html,/يؤكد الخادم الحفظ/u);
+  assert.doesNotMatch(html,/تُرفض بأمان|يؤكد الخادم الحفظ/u);
   assert.match(html,/value="Asia\/Riyadh"/u);
 });
 test("R241 without authorized commit route cannot submit the city",()=>{
@@ -27,7 +26,7 @@ test("R241 without authorized commit route cannot submit the city",()=>{
     preferences:{...NOOR_R232_DEFAULT,selectedCity},
     onChange:()=>{},
   }));
-  assert.match(html,/اعتماد المدينة والتوقيت للحساب/u);
+  assert.match(html,/حفظ الموقع/u);
   assert.match(html,/disabled=""/u);
 });
 
@@ -47,9 +46,9 @@ test("R244 still requires explicit authenticated city commit; manual zone is not
     preferences:{...NOOR_R232_DEFAULT,selectedCity:prepared,displayZone:"Asia/Dubai"},
     onChange:()=>{},onCommit:async()=>true,
   }));
-  assert.match(html,/المنطقة الزمنية \(معاينة، ثم اعتماد مع المدينة\)/u);
-  assert.match(html,/اعتماد المدينة والتوقيت للحساب/u);
-  assert.match(html,/يمكنك تعديل منطقة IANA الزمنية يدويًا/u);
+  assert.match(html,/التوقيت المختار/u);
+  assert.match(html,/حفظ الموقع/u);
+  assert.doesNotMatch(html,/يمكنك تعديل منطقة IANA الزمنية يدويًا/u);
   assert.match(html,/value="Africa\/Cairo"/u);
   assert.match(html,/Asia\/Dubai/u);
 });
