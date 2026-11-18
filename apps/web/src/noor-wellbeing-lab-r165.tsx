@@ -83,7 +83,8 @@ const BASE_STYLE = `
 
 `;
 
-export function NoorWellbeingLabR165({personalDate,separateSleep=false,timeZone='Asia/Riyadh',trustedWellbeing:provided}:{personalDate?:string|undefined;timeZone?:string;separateSleep?:boolean;trustedWellbeing?:NoorWellbeingPortR227}={}): ReactElement {
+type SleepRequest={executionId:string;date:string;trigger:HTMLButtonElement|null};
+export function NoorWellbeingLabR165({personalDate,separateSleep=false,sleepRequest,onSleepSaved,timeZone='Asia/Riyadh',trustedWellbeing:provided}:{personalDate?:string|undefined;timeZone?:string;separateSleep?:boolean;sleepRequest?:SleepRequest|null;onSleepSaved?:(request:SleepRequest)=>Promise<boolean>;trustedWellbeing?:NoorWellbeingPortR227}={}): ReactElement {
  const production=(((import.meta as ImportMeta & {env?:{PROD?:boolean}}).env?.PROD)===true);
  const cloudMode=production||provided!==undefined;
  const [serverPort,setServerPort]=useState<NoorWellbeingPortR227|undefined>();
@@ -94,12 +95,20 @@ export function NoorWellbeingLabR165({personalDate,separateSleep=false,timeZone=
  const [spaceSlot,setSpaceSlot]=useState<HTMLElement|null>(null);
  const [sleepSlot,setSleepSlot]=useState<HTMLElement|null>(null);
  const [sleepMode,setSleepMode]=useState(false);
+ const [activeSleepRequest,setActiveSleepRequest]=useState<SleepRequest|null>(null);
  const sleepLauncherRef=useRef<HTMLButtonElement>(null);
  const openPanel=(forSleep:boolean)=>{
+   setActiveSleepRequest(null);
    setSleepMode(forSleep);setTab(forSleep?'metrics':'journal');
    if(forSleep&&personalDate)setDate(personalDate);
    setOpen(true);
  };
+ useEffect(()=>{
+   if(!sleepRequest)return;
+   setActiveSleepRequest(sleepRequest);
+   setDate(sleepRequest.date);
+   setSleepMode(true);setTab('metrics');setOpen(true);
+ },[sleepRequest]);
  const [date,setDate]=useState(riyadhDate()),[mood,setMood]=useState(3),[energy,setEnergy]=useState(3);
  const [feelings,setFeelings]=useState<string[]>([]),[writing,setWriting]=useState(''),[trigger,setTrigger]=useState(''),[helpful,setHelpful]=useState('');
  const [journal,setJournal]=useState<Reflection[]>([]),[signals,setSignals]=useState<DailySignals[]>([]);
@@ -126,7 +135,7 @@ export function NoorWellbeingLabR165({personalDate,separateSleep=false,timeZone=
    return ()=>watcher.disconnect();
  },[separateSleep]);
 
- useEffect(()=>{if(!open)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';dialogRef.current?.focus();return()=>{document.body.style.overflow=previous;(sleepMode?sleepLauncherRef:launcherRef).current?.focus();};},[open,sleepMode]);
+ useEffect(()=>{if(!open)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';dialogRef.current?.focus();return()=>{document.body.style.overflow=previous;(activeSleepRequest?.trigger??(sleepMode?sleepLauncherRef:launcherRef).current)?.focus();};},[open,sleepMode,activeSleepRequest]);
  // Keep the dialog inside the visible screen when mobile browser chrome or the keyboard moves.
  useEffect(()=>{
   if(!open)return;
@@ -188,10 +197,19 @@ export function NoorWellbeingLabR165({personalDate,separateSleep=false,timeZone=
   event.preventDefault();if(busy)return;
   const fields=[[steps,100000],[sleep,1440],[screen,1440],[pickups,2000]] as const;const values=fields.map(([s,max])=>numberOrNull(s,max));
   if(!isValidLocalDate(date)||fields.some(([s],i)=>s!==''&&values[i]===null)){setError('راجع التاريخ والأرقام. القيم يجب أن تكون صحيحة وغير سالبة.');return;}
+  if(sleepMode&&values[1]==null&&!sleepQuality){setError('أدخل مدة النوم أو اختر الجودة قبل الحفظ.');return;}
   if(cloudMode&&(!cloudReady||!port)){setError('التخزين الآمن غير متاح؛ لم تُحفظ المؤشرات.');return;}
   const value:DailySignals={date,steps:values[0]??null,sleepMinutes:values[1]??null,screenMinutes:values[2]??null,pickups:values[3]??null,apps:[...appRows],source:'manual',...(sleepQuality?{sleepQuality}:{}),...(values[1]!=null?{sleepSource}:{})};
   setBusy(true);setError('');setStatus('');
-  try{if(cloudMode)await port!.saveSignals(value);setSignals(old=>[value,...old.filter(row=>row.date!==date)]);setStatus(cloudMode?'تم حفظ مؤشرات اليوم بأمان.':'حُفظت المؤشرات لهذه الجلسة فقط.');}
+  try{
+   if(cloudMode)await port!.saveSignals(value);
+   setSignals(old=>[value,...old.filter(row=>row.date!==date)]);
+   setStatus(sleepMode?'تم حفظ متابعة النوم.':cloudMode?'تم حفظ مؤشرات اليوم بأمان.':'حُفظت المؤشرات لهذه الجلسة فقط.');
+   if(sleepMode&&activeSleepRequest?.date===date&&onSleepSaved){
+    const completed=await onSleepSaved(activeSleepRequest).catch(()=>false);
+    if(!completed)setError('حُفظ النوم، وتعذّر تحديث إنجاز العادة. أعد الحفظ للمحاولة مجددًا.');
+   }
+  }
   catch{setError('تعذر تأكيد حفظ المؤشرات. بقيت القيم المدخلة كما هي؛ تحقق من السجل قبل إعادة الحفظ.');}
   finally{setBusy(false);}
  };
