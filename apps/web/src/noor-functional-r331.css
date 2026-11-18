@@ -1035,7 +1035,7 @@ button[aria-label^="إغلاق"] {
   min-width:0;overflow:hidden;text-overflow:ellipsis;font:inherit;color:inherit;margin:0;
 }
 .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] > .np-header-clock {
-  font-size:clamp(28px,4vw,43px)!important;
+  font-size:clamp(32px,4vw,43px)!important;
 }
 @media(max-width:560px){
   .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"] {
