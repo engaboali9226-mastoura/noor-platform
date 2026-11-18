@@ -20,7 +20,7 @@ import { NoorWellbeingLabR165 } from "./noor-wellbeing-lab-r165.js";
 import { noorLinkedActivityInsightsR312 } from "./noor-linked-activity-insights-r312.js";
 import { NoorReminderSettingsR314, NoorReminderRibbonR314 } from "./noor-reminder-settings-r314.js";
 import { noorDueRemindersR314 } from "./noor-reminders-r314.js";
-import { NoorNotificationCenterR338,type NoorNotificationAppointmentR338 } from "./noor-notification-center-r338.js";
+import { NoorNotificationCenterR338,recoveryReminder,recoveryReminderSchedule,type NoorNotificationAppointmentR338 } from "./noor-notification-center-r338.js";
 import { parseNoorReminderPlanR314, type NoorReminderPlanR314 } from "../../noor-personal/src/domain/reminder-plan-r314.js";
 import { NoorAccountSettingsR312 } from "./noor-account-settings-r312.js";
 import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays, statisticEligible, statisticInsights, statisticCalendar, shiftStatisticMonth, wholeWeekAchievement, yesterdayAchievement, validStatisticDate, shiftStatisticDate, weeklyCardSummaryR332, parsePrayerStatisticDaysR334, weightedStatisticRowsR334, statisticEarnedShareR285, type PrayerStatisticDayR334, type WeightedStatisticRow, type StatisticRow } from "./progress-statistics.js";
@@ -3340,7 +3340,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   // NOOR_WEEK_HISTORY_NAV_R109: visual paging only. Historical mutations remain R108 commands.
   const firstHistoryDate=weightedHistory.filter(r=>r.date<=achievementDate).map(r=>r.date).sort()[0]??null;
   const canGoOlder=!!firstHistoryDate && !!achievementWeek[6] && shiftStatisticDate(achievementWeek[6].date,(weekShift-1)*7)>=firstHistoryDate;
-  const yesterdayNotice=yesterdayAchievement(weightedHistory,achievementDate);
+
   const currentWeekStart=achievementWeek[0]?.date;
   const previousWeekStart=currentWeekStart?shiftStatisticDate(currentWeekStart,-7):null;
   const previousWeekRows=previousWeekStart&&currentWeekStart
@@ -3358,6 +3358,20 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     if(row.kind!=="Task"||def?.state!=="Active")return [];
     return (def.sessionPlan?.sessions??[]).filter(s=>s.scheduledDate===row.date&&!sessionFinishedR254(s,def.activityLog)).map(session=>({row,session,def,progress:sessionProgressR254(def.activityLog,session.id)}));
   });
+  const recoverySchedule=useMemo(()=>recoveryReminderSchedule(achievementDate,view.timeZone),[achievementDate,view.timeZone]);
+  const yesterdayDate=shiftStatisticDate(achievementDate,-1);
+  const yesterdaySessionIds=new Set(recoverableSessions.filter(item=>item.row.date===yesterdayDate).map(item=>item.row.id));
+  const yesterdayOutstanding=historicalRows.filter(row=>row.date===yesterdayDate&&
+    (!definitionsById.get(row.definitionId)?.sessionPlan||yesterdaySessionIds.has(row.id)));
+  const yesterdayReminder=achievementDate===civilLocalDate(nowMs,view.timeZone)
+    ?recoveryReminder(achievementDate,nowMs,recoverySchedule,yesterdayOutstanding,()=>{
+      setHistoryDate(null);
+      setRecoveryWeek(0);
+      setRecoveryDate(yesterdayDate);
+      setSessionRecovery(null);
+      setRecoverError("");
+      setShowRecovery(true);
+    }):null;
   const saveRecoveredSession=async()=>{
     if(!sessionRecovery||busy)return;
     const def=definitionsById.get(sessionRecovery.row.definitionId),s=sessionRecovery.session;
@@ -3674,8 +3688,8 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       </div>
       <button type="button" className="np-r339-profile np-r340-settings" aria-label="الضبط" onClick={onOpenSettings}><NoorR323Icon name="settings"/></button>
       <div className="np-top-actions"><button type="button" className="np-r339-profile" aria-label="الملف الشخصي" onClick={onOpenAccount}>{workspace?.profile?.avatarUrl?<img className="np-header-avatar" alt="" src={workspace.profile.avatarUrl}/>:<NoorR323Icon name="user"/>}</button><NoorNotificationCenterR338 achievementNotices={[
-        ...(yesterdayNotice?.missed.length?[{id:`achievement-yesterday:${yesterdayNotice.date}`,title:"فائت أمس",detail:`${arabicNumber(yesterdayNotice.missed.length)} غير مكتملة · راجع ما أُنجز وما بقي`,open:()=>{setHistoryDate(null);setShowYesterday(true);}}]:[]),
-        ...(previousWeekStart&&previousWeekTotals.rate!==null?[{id:`achievement-week:${previousWeekStart}`,title:"ملخص الأسبوع الماضي",detail:`${previousWeekTotals.rate}% إنجاز موزون · ${previousWeekTotals.completed} مكتمل · ${previousWeekTotals.scheduled-previousWeekTotals.completed} غير مكتمل`,open:()=>{setHistoryDate(null);setWeekShift(-1);requestAnimationFrame(()=>document.querySelector('[data-testid="r332-weekly-card"]')?.scrollIntoView({block:"start"}));}}]:[]),
+        ...(yesterdayReminder?[yesterdayReminder]:[]),
+        ...(previousWeekStart&&previousWeekTotals.rate!==null?[{id:`achievement-week:${previousWeekStart}`,targetId:previousWeekStart,scheduledFor:`${previousWeekStart}T00:00:00.000Z`,title:"ملخص الأسبوع الماضي",detail:`${previousWeekTotals.rate}% إنجاز موزون · ${previousWeekTotals.completed} مكتمل · ${previousWeekTotals.scheduled-previousWeekTotals.completed} غير مكتمل`,open:()=>{setHistoryDate(null);setWeekShift(-1);requestAnimationFrame(()=>document.querySelector('[data-testid="r332-weekly-card"]')?.scrollIntoView({block:"start"}));}}]:[]),
       ]} alerts={notificationAlerts} appointments={appointmentNotifications} history={workspace?.notificationHistory?.map(entry=>({id:entry.id,kind:entry.kind,title:entry.title,targetId:entry.targetId,scheduledFor:entry.scheduledFor,occurredAt:entry.occurredAt,readAt:entry.readAt}))??[]} todayDate={achievementDate} nowMs={nowMs} onObserve={onCommand} onMarkRead={(notificationId,expectedReadAt)=>onCommand({type:"mark-notification-read",notificationId,expectedReadAt})} onOpenReminder={navigateToReminder} onOpenAppointment={openUpcomingAppointments} onOpenSettings={onOpenReminders}/></div>
     </div>
 
@@ -4304,6 +4318,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   };
 
   const fastCommand=async(command:NoorPersonalCommandInput,beforeSave?:()=>Promise<void>):Promise<boolean>=>{
+    if(command.type==="observe-notification"||command.type==="mark-notification-read")return runCommand(command,true);
     if(isDefinitionSave(command)){
       if(!baseWorkspace)return false;
       const previous=command.type==="update-definition"?baseWorkspace.definitions.find(item=>item.id===command.definitionId):undefined;
