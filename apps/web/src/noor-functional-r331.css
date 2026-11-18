@@ -1118,3 +1118,68 @@ button[aria-label^="إغلاق"] {
   outline: 2px solid var(--ng-focus);
   outline-offset: 1px;
 }
+
+/* Center the single quick-add dialog and let its body scroll independently. */
+.np-r324-quick-backdrop{
+  inset:var(--noor-dialog-top,0px) 0 auto;
+  height:var(--noor-dialog-height,100dvh);
+  align-items:center;
+  box-sizing:border-box;
+  padding:12px;
+}
+.np-r324-quick-sheet{
+  display:flex;
+  flex-direction:column;
+  max-height:100%;
+  min-height:0;
+}
+.np-r324-quick-sheet header,
+.np-r324-quick-sheet footer{flex:none}
+.np-r324-quick-sheet .np-quick-form-body{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.np-r324-quick-sheet .np-quick-form-body :is(input,select,textarea){font-size:16px}
+.np-r324-quick-sheet footer,.np-recovery-date-sheet footer{display:flex;gap:8px;justify-content:flex-end}
+.np-r324-quick-sheet footer :is([type=submit],button.primary),.np-recovery-date-sheet footer [type=submit]{
+  background:var(--ng-accent);color:#fff;flex:1
+}
+
+:is(.np-r331-sheet,.np-r322-sheet,.np-r322-appointments-sheet,.np-r338-alert-sheet,
+    .np-r324-quick-sheet,.np-r286-remaining-dialog,.np-activity-dialog,
+    .np-cc-modal,.np-delete-dialog,.nr171-modal,.nw165-dialog) button[aria-label^="إغلاق"]{
+  display:inline-grid;
+  place-items:center;
+  box-sizing:border-box;
+  width:44px;
+  height:44px;
+  padding:0;
+  line-height:1;
+}
+.np-recovery-date-overlay{z-index:120010}
+.np-recovery-date-sheet{width:min(100%,420px);max-height:calc(var(--noor-dialog-height,100dvh) - 24px)}
+.np-recovery-date-sheet form{display:grid;gap:10px;padding:12px 0 0}
+.np-recovery-date-sheet form :is(h3,p){margin:0}
+.np-recovery-date-sheet fieldset{border:0;padding:0;margin:0;display:grid;gap:6px;min-width:0}
+.np-recovery-date-sheet legend{font-weight:800;margin-bottom:6px}
+.np-recovery-date-sheet fieldset label,.np-recovery-points{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;min-height:42px;border:1px solid var(--ng-line);
+  background:var(--ng-card);border-radius:10px;
+}
+.np-recovery-date-sheet fieldset label:has(input:checked),.np-recovery-points{
+  background:#e0f1e9;color:#206853;border-color:#9ac5b4;
+}
+.np-recovery-date-sheet fieldset label b,.np-recovery-points strong{margin-inline-start:auto;white-space:nowrap}
+.np-recovery-date-sheet input[type=radio]{accent-color:#287e67}
+.np-recovery-date-sheet .np-recovery-input{display:grid;gap:4px}
+.np-recovery-date-sheet .np-recovery-input :is(input,textarea){font:inherit;font-size:16px;min-width:0;width:100%}
+.np-recovery-date-sheet footer button{
+  min-height:44px;border:1px solid var(--ng-line);border-radius:10px;padding:6px 12px;font:inherit;color:var(--ng-ink);background:var(--ng-card)
+}
+.np-recovery-date-overlay > .np-recovery-date-sheet{
+  width:min(100%,420px)!important;
+  max-height:calc(var(--noor-dialog-height,100dvh) - 24px)!important
+}
+.np-r324-quick-sheet .np-quick-form-body.np-page{min-height:0;padding:0;background:transparent}
+.np-r324-quick-sheet .np-quick-form-body .np-form{margin:0}
+@media(max-width:540px){
+  .np-r324-quick-sheet .np-quick-form-body .np-form{grid-template-columns:minmax(0,1fr)}
+  .np-r324-quick-sheet .np-quick-form-body .np-field{min-width:0;grid-column:auto}
+}
