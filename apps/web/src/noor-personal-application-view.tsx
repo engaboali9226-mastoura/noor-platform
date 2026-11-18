@@ -4115,7 +4115,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       for(const change of corrections){
         const cmd=change.command;
         if(row.id!==change.executionId)continue;
-        if(cmd.type==="correct-historical-execution"&&row.date===cmd.localDate)status=cmd.completed?"Completed":"Missed";
+        if(cmd.type==="correct-historical-execution"&&row.date===cmd.localDate)status=cmd.completed?'Completed':'Missed';
         if(cmd.type==="record-prayer-r331"&&row.date===cmd.localDate)
           status=cmd.mode!==null?"Completed":cmd.expectedRecordedAt?"Missed":status;
       }
