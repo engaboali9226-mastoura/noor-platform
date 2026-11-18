@@ -9,7 +9,7 @@ import {riyadhDate,type Reflection,type DailySignals} from '../src/noor-wellbein
 import type {NoorWellbeingPortR227} from '../src/noor-wellbeing-journal-r227.js';
 
 test('R227 cloud personal-space reloads saved fields, awaits persistence, and never substitutes a local save on failure',async()=>{
- const dom=new JSDOM('<!doctype html><body><main id="root"></main></body>',{url:'http://localhost/'}),previous=new Map<string,PropertyDescriptor|undefined>();
+ const dom=new JSDOM('<!doctype html><body><main id="root"></main><div data-testid="sleep-habit-slot"></div></body>',{url:'http://localhost/'}),previous=new Map<string,PropertyDescriptor|undefined>();
  for(const [key,value]of Object.entries({window:dom.window,document:dom.window.document,navigator:dom.window.navigator,Node:dom.window.Node,Element:dom.window.Element,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true})){
   previous.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,writable:true,value});
  }
@@ -37,6 +37,19 @@ test('R227 cloud personal-space reloads saved fields, awaits persistence, and ne
   await submit();assert.equal(signals[0].apps[0].minutes,20);assert.match(dom.window.document.querySelector('[role="status"]')!.textContent!,/تم حفظ مؤشرات/);
   await act(async()=>button('مشاعري · تفريغ المشاعر').click());await act(async()=>button('حذف التدوينة').click());assert.equal(reflections.length,1);await act(async()=>button('تأكيد حذف التدوينة').click());assert.equal(reflections.length,0);
   await close();failRead=true;await open();assert.equal(dom.window.document.querySelector('fieldset')?.disabled,true);assert.match(dom.window.document.querySelector('[role="alert"]')!.textContent!,/تعذر فتح التخزين الآمن/);
+  await close();failRead=false;
+  await act(async()=>root.render(createElement(NoorWellbeingLabR165,{personalDate:riyadhDate(),trustedWellbeing:port,separateSleep:true})));
+  await open();await act(async()=>button('مؤشرات اليوم').click());
+  assert.doesNotMatch(dom.window.document.querySelector('[role="dialog"]')!.textContent!,/مدة النوم/);
+  await close();
+  await act(async()=>button('متابعة النوم').click());
+  const sleepDialog=dom.window.document.querySelector('[role="dialog"][aria-label="متابعة النوم"]')!;
+  assert.match(sleepDialog.textContent!,/جودة النوم/);
+  assert.doesNotMatch(sleepDialog.textContent!,/وقت الشاشة|الخطوات/);
+  assert.equal(sleepDialog.querySelector<HTMLInputElement>('input[type="number"]')?.value,'450');
+  await submit();assert.equal(signals[0].steps,7500);
+  await act(async()=>button('ملخص الأسبوع').click());
+  assert.match(sleepDialog.textContent!,/إتمام المتابعة: 1 من/);
  }finally{
   await act(async()=>root.unmount());dom.window.close();for(const[key,d]of previous){if(d)Object.defineProperty(globalThis,key,d);else Reflect.deleteProperty(globalThis,key);}
  }
