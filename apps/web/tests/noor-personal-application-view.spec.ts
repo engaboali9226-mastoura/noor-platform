@@ -136,6 +136,47 @@ test("prayer habit opens the prayer editor and saves against its own execution",
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
 
+test("past day keeps compact task cards and opens the prayer editor for the selected date",async()=>{
+ const t=installDom(),root=createRoot(t.container),date="2026-10-24";
+ const definitions=[workspace.workspace.definitions[0]!,{...workspace.workspace.definitions[1]!,title:"صلاة العصر"}];
+ const rows=[
+  {date,id:"past-task",definitionId:"d1",kind:"Task",title:"تمرين",status:"Planned",weight:1,amount:0,unit:""},
+  {date,id:"past-asr",definitionId:"d2",kind:"Habit",title:"صلاة العصر",status:"Missed",weight:1,amount:0,unit:""},
+ ];
+ const initialResult={...today,today:{...today.today,personalDay:{...today.today.personalDay,boundary:{...today.today.personalDay.boundary,localDate:"2026-10-25"}}}};
+ const initialWorkspace={...workspace,workspace:{...workspace.workspace,definitions,statistics:{currentDate:"2026-10-25",rows}}};
+ const fetcher=globalThis.fetch;
+ let command:unknown,resolveSave:(response:Response)=>void=()=>{};
+ globalThis.fetch=async(url,options)=>{
+  if(!String(url).includes("/command"))return fetcher(url,options);
+  command=JSON.parse(String(options?.body));
+  return new Promise<Response>(resolve=>{resolveSave=resolve;});
+ };
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult,initialWorkspace})));
+  await act(async()=>t.container.querySelector<HTMLButtonElement>(`[data-week-date="${date}"]`)!.click());
+  const task=t.container.querySelector<HTMLButtonElement>("#noor-r323-tasks .np-today-task-button")!;
+  assert.equal(task.querySelector("strong")?.textContent,"تمرين");
+  assert.equal(t.container.querySelector("#noor-r323-tasks .np-activity-item"),null);
+  await act(async()=>task.click());
+  const taskDialog=document.querySelector('[role="dialog"][aria-label="المهام"]')!;
+  assert.ok(taskDialog.querySelector('[data-testid="activity-card-past-task"]'));
+  assert.match(taskDialog.textContent??"",/تصحيح السجل/);
+  await act(async()=>taskDialog.querySelector<HTMLButtonElement>('[aria-label="إغلاق المهام"]')!.click());
+  const checkbox=t.container.querySelector<HTMLButtonElement>('[data-testid="activity-card-past-asr"] [role="checkbox"]')!;
+  await act(async()=>checkbox.click());
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+  assert.equal(command,undefined);
+  const editor=document.querySelector(".np-prayer-record-dialog")!;
+  assert.ok(editor);
+  await act(async()=>[...editor.querySelectorAll<HTMLButtonElement>("button")].find(button=>button.textContent==="حفظ الأداء")!.click());
+  assert.deepEqual(command,{type:"record-prayer-r331",localDate:date,key:"asr",mode:"group",timing:"ontime",expectedRecordedAt:null,habitExecutionId:"past-asr"});
+  assert.equal(checkbox.getAttribute("aria-checked"),"true");
+  await act(async()=>resolveSave(new Response(null,{status:503})));
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
 const futurePrayerAt=new Date(Date.now()+3_600_000).toISOString();
 const today={kind:"success" as const,today:{personalDay:{id:"day",userId:"user",state:"Open",boundary:{localDate:"2026-10-24",timeZone:"Asia/Riyadh"}},islamicContext:{hijriDate:{day:13,month:5,year:1448},prayerTimes:{fajr:"2026-10-25T01:37:00.000Z",nextFajr:"2026-10-26T01:38:00.000Z",sunrise:"2026-10-25T02:54:00.000Z",dhuhr:"2026-10-25T08:38:00.000Z",asr:"2026-10-25T11:52:00.000Z",maghrib:"2026-10-25T14:20:00.000Z",isha:"2026-10-25T15:50:00.000Z"}},nextPrayer:{name:"Fajr",at:futurePrayerAt,secondsRemaining:3600},tasks:[{id:"e1",definitionId:"d1",kind:"Task",title:"تمرين",status:"Planned"}],habits:[{id:"e2",definitionId:"d2",kind:"Habit",title:"المشي",status:"Pending"}],automationPending:0}};
 const workspace={kind:"success" as const,workspace:{definitions:[{id:"d1",kind:"Task",title:"تمرين",state:"Active",category:"الصحة والرياضة",schedule:{kind:"Weekdays",weekdays:[0,2,4]},effectiveFromDate:"2026-10-25",importance:"Important"},{id:"d2",kind:"Habit",title:"المشي",state:"Active",category:"الصحة والرياضة",schedule:{kind:"Daily"},effectiveFromDate:"2026-10-25",importance:"Supporting"}],insights:{currentStreakDays:2,bestStreakDays:4,periods:{week:{windowDays:7,scheduled:2,completed:0,completionRate:0,successfulDays:0},month:{windowDays:30,scheduled:2,completed:0,completionRate:0,successfulDays:0},quarter:{windowDays:90,scheduled:2,completed:0,completionRate:0,successfulDays:0},year:{windowDays:365,scheduled:2,completed:0,completionRate:0,successfulDays:0}}}}};
