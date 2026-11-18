@@ -9,6 +9,7 @@ import {readFileSync} from "node:fs";
 import {NoorBeverageTrackerR294} from "../src/noor-beverage-tracker-r294.js";
 
 const src=readFileSync(new URL("../src/noor-personal-application-view.tsx",import.meta.url),"utf8");
+const account=readFileSync(new URL("../src/noor-account-settings-r312.tsx",import.meta.url),"utf8");
 const drinks=readFileSync(new URL("../src/noor-beverage-tracker-r294.tsx",import.meta.url),"utf8");
 const row={id:"coffee",executionId:"coffee-day",title:"قهوة",category:"الصحة والرياضة",
  revisionId:"r1",startDate:"2026-11-11",endDate:null,weight:1,importance:"Optional" as const,status:"Pending",
@@ -44,12 +45,14 @@ test("R296: date history remains read-only, open on demand, and preserves count/
  assert.match(drinks,/set-beverage-bedtime/);
 });
 
-test("R296: sign-out exists solely in Control Center, never the day header",()=>{
- assert.equal((src.match(/aria-label="تسجيل الخروج والعودة إلى شاشة الدخول"/g)??[]).length,1);
+test("R358: sign-out and refresh exist solely in the profile page, never repeated in page headers",()=>{
  const dashboard=src.slice(src.indexOf("function Dashboard("),src.indexOf("function PersonalEntryLoading("));
  const center=src.slice(src.indexOf("function ControlCenter("),src.indexOf("function ActivityCard("));
  assert.doesNotMatch(dashboard,/تسجيل الخروج/);
- assert.match(center,/تسجيل الخروج/);
+ assert.doesNotMatch(center,/العودة لليوم|aria-label="العودة إلى اليوم"/);
+ assert.doesNotMatch(center,/np-r356-control-header[\s\S]*تسجيل الخروج[\s\S]*<\/header>/);
+ assert.match(account,/تسجيل الخروج/);
+ assert.match(account,/تحديث البيانات/);
  assert.match(src,/revokeNoorBrowserSessionR269/);
 });
 
