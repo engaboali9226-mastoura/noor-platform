@@ -1,5 +1,7 @@
 import type { ActivityEntry, IsoInstant, ProgressMeasurement, Schedule } from "./model.js";
 
+import { recoveryCreditR331, recoveryCreditR367 } from "./completion-r331.js";
+
 export type TaskSessionStatus = "Planned" | "InProgress" | "Completed";
 export interface TaskSessionDraft {
     readonly id: string;
@@ -184,6 +186,44 @@ export function sessionEventCredit(
     if (manualCompletion) return 1 / count;
     if (session.target === null) return 0;
     return Math.min(1, amount / session.target) / count;
+}
+
+/** Share of one session, independent of the parent quantity or session count. */
+export function sessionAchievementShare(session: Pick<TaskSession,"target">, amount: number): number {
+    return session.target === null ? 1 : Math.min(1, Math.max(0, amount / session.target));
+}
+
+export function recordedSessionAchievement(session: TaskSession, entry: ActivityEntry): number {
+    if (entry.sessionAchievementShare !== undefined) return entry.sessionAchievementShare;
+    const performed = entry.performedOnR331;
+    const factor = performed
+        ? (entry.achievementDateR367 ? recoveryCreditR367 : recoveryCreditR331)(entry.localDate, performed)
+        : 1;
+    return sessionAchievementShare(session, entry.amount) * factor;
+}
+
+export function sessionAchievementOnDate(plan: TaskSessionPlan, log: readonly ActivityEntry[], date: string) {
+    const bySession = new Map<string, ActivityEntry[]>();
+    for (const entry of log) {
+        if (!entry.taskSessionId) continue;
+        const entries = bySession.get(entry.taskSessionId) ?? [];
+        entries.push(entry);
+        bySession.set(entry.taskSessionId, entries);
+    }
+    let scheduled = 0;
+    let earned = 0;
+    for (const session of plan.sessions) {
+        const entries = bySession.get(session.id) ?? [];
+        const due = session.scheduledDate
+            ? session.scheduledDate === date
+            : !session.completedAt || entries.some(entry => entry.localDate >= date);
+        if (!due) continue;
+        scheduled++;
+        earned += Math.min(1, entries.reduce((total,entry) =>
+            entry.localDate === date && (!entry.achievementDateR367 || entry.achievementDateR367 === date)
+                ? total + recordedSessionAchievement(session,entry) : total, 0));
+    }
+    return {scheduled, earned};
 }
 
 /** Fixed daily share. Each session credit is recorded at event time so later replanning

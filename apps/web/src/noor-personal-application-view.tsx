@@ -1,7 +1,7 @@
-import { prepareTaskSessionPlan, sessionEventCredit } from "../../noor-personal/src/domain/task-sessions.js";
+import { prepareTaskSessionPlan, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate } from "../../noor-personal/src/domain/task-sessions.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {useDashboardDialog,useDialogViewport} from "./noor-dashboard-dialog.js";
-import { prayerDayScoreR334, validPrayerScoreSnapshotR334, type PrayerScoreSnapshotR334, R331_PRAYERS, validPrayerRecordR331, recoveryCreditR367, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
+import { prayerDayScoreR334, validPrayerScoreSnapshotR334, type PrayerScoreSnapshotR334, R331_PRAYERS, validPrayerRecordR331, recoveryCreditR367, canRecoverDueDate, RECOVERY_LOOKBACK_DAYS, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
 import { NoorBrandHeader, NOOR_BRAND } from "./noor-brand-r329.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 import {NoorPersonalInitialSetupR321} from "./noor-personal-initial-setup-r321.js";
@@ -108,7 +108,7 @@ type ExecutionItem = Readonly<{
   kind: "Task" | "Habit";
 }>;
 
-type ActivityEntry = Readonly<{ id:string; executionId:string; localDate:string; at:string; note:string; amount:number; endReason:"achieved"|"expired"|"cancelled"|null; taskSessionId?:string; sessionDayCredit?:number; performedOnR331?:string; achievementDateR367?:string; beverageTime?:string }>;
+type ActivityEntry = Readonly<{ id:string; executionId:string; localDate:string; at:string; note:string; amount:number; endReason:"achieved"|"expired"|"cancelled"|null; taskSessionId?:string; sessionDayCredit?:number; sessionAchievementShare?:number; performedOnR331?:string; achievementDateR367?:string; beverageTime?:string }>;
 type DefinitionItem = Readonly<{
   reminderPlan?:NoorReminderPlanR314;
   weight:number;
@@ -2681,7 +2681,7 @@ export function DefinitionForm({busy,onCommand,onSavingChange,defaultStartDate,d
   {!isCountdownEvent?<div className="np-field full"><label className="np-label" htmlFor="definition-repeat">التكرار *</label><select className="np-select" id="definition-repeat" name="scheduleKind" disabled={!!initial?.beveragePlan} value={scheduleKind} onChange={e=>setScheduleKind(e.currentTarget.value as typeof scheduleKind)}><option value="Daily">يوميًا — 7 أيام في الأسبوع</option><option value="Weekdays">أيام محددة من الأسبوع</option><option value="OneTime" disabled={selectedKind==="Habit"&&duration==="continuous"}>مرة واحدة</option></select></div>:null}
   {!isCountdownEvent&&scheduleKind==="Weekdays"?<div className="np-field full"><span className="np-label">أيام التكرار: {days.length} من 7 *</span><div className="np-weekdays">{WEEKDAYS.map(([value,label])=><label className="np-weekday" key={value}><input type="checkbox" name="weekday" value={value} checked={days.includes(value)} onChange={e=>setDays(e.currentTarget.checked?[...days,value].sort():days.filter(d=>d!==value))}/>{label}</label>)}</div></div>:null}
   {selectedKind==="Task"&&!isCountdownEvent?<><div className="np-field"><label className="np-label" htmlFor="progress-target">الكمية الإجمالية (اختياري)</label><input className="np-input" id="progress-target" name="progressTarget" type="number" min="0.000001" max="1000000000" step="0.000001" value={taskTarget} onInput={e=>setTaskTarget(e.currentTarget.value)} onChange={e=>setTaskTarget(e.currentTarget.value)}/></div><div className="np-field"><label className="np-label" htmlFor="progress-unit">وحدة الإنجاز</label><input className="np-input" id="progress-unit" name="progressUnit" maxLength={30} value={taskUnit} onChange={e=>setTaskUnit(e.currentTarget.value)}/></div>{automatic?<div className="np-field full np-task-plan-preview"><strong>{automaticDates.schedule.length?automaticDates.schedule.length+" جلسة موزعة تلقائيًا":"التوزيع التلقائي"}</strong>{automaticDates.schedule.length?<ol>{automaticDates.schedule.slice(0,5).map(({date,amount})=><li key={date}><time dir="ltr" dateTime={date}>{date}</time> · {amount} {taskUnit}</li>)}</ol>:null}{automaticDates.schedule.length>5?<small>+ {automaticDates.schedule.length-5} جلسة</small>:null}{automaticDates.error?<small>{automaticDates.error}</small>:null}<details><summary aria-label="شرح توزيع الجلسات">؟</summary><p>جلسة واحدة في كل يوم مختار داخل المدة. تُوزّع الكمية بالتساوي قدر الإمكان، وتظل الصفحات أعدادًا صحيحة.</p></details></div>:null}<details className="np-task-form-details np-field full"><summary>؟ إعداد الجلسات يدويًا</summary><TaskSessionPlannerR254 enabled={sessionEnabled} setEnabled={setSessionEnabled} distribution={sessionDistribution} setDistribution={setSessionDistribution} sessions={sessionDrafts} setSessions={setSessionDrafts} target={taskTarget?Number(taskTarget):null} unit={taskUnit} busy={busy} parentStartDate={plannerStartDate} parentEndDate={plannerEndDate||null} parentScheduleKind={scheduleKind} parentWeekdays={days}/></details></>:null}
-  {!isCountdownEvent?<details className="np-field full np-task-form-details"><summary>؟ وزن الإنجاز</summary><label className="np-label" htmlFor="definition-weight">وزن الإنجاز *</label><input className="np-input" id="definition-weight" name="weight" type="number" min="1" max="100" step="1" required defaultValue={initial?.weight??1}/><small>من 1 إلى 100. مثلًا: وزن 10 يساوي تأثير عشر عادات وزن كل منها 1. التعديل يطبّق على اليوم وما بعده، ويحافظ على أوزان الأيام السابقة.</small></details>:<p className="np-cc-help np-field full">المواعيد والأحداث المرتقبة معلوماتية؛ لا تدخل ضمن إنجاز المهام والعادات.</p>}
+  {!isCountdownEvent?<details className="np-field full np-task-form-details"><summary>؟ وزن الإنجاز</summary><label className="np-label" htmlFor="definition-weight">{selectedKind==="Task"?"وزن الإنجاز (لكل جلسة في المهام المجدولة)":"وزن الإنجاز"} *</label><input className="np-input" id="definition-weight" name="weight" type="number" min="1" max="100" step="1" required defaultValue={initial?.weight??1}/><small>من 1 إلى 100. مثلًا: وزن 10 يساوي تأثير عشر عادات وزن كل منها 1. التعديل يطبّق على اليوم وما بعده، ويحافظ على أوزان الأيام السابقة.</small></details>:<p className="np-cc-help np-field full">المواعيد والأحداث المرتقبة معلوماتية؛ لا تدخل ضمن إنجاز المهام والعادات.</p>}
   {initial?<p className="np-cc-help np-field full">التعديل يؤثر على الجدول الحالي والقادم. سجل الإنجاز والملاحظات السابق محفوظ. لا يمكن خفض الهدف عن الإنجاز المسجل أو تغيير وحدته بعد بدء القياس.</p>:null}
   {error?<p role="alert" className="np-action-error np-field full">{error}</p>:null}
  </form>;
@@ -3079,7 +3079,8 @@ function QuickAddDialog({busy,categories,date,appearance,onSave,onClose}:{
   const [saving,setSaving]=useState(false);
   const viewport=useDashboardDialog(".np-r324-quick-sheet");
   useEffect(()=>{
-    if(kind)document.querySelector<HTMLElement>(".np-r324-quick-sheet #definition-title")?.focus({preventScroll:true});
+    if(!kind)return;
+    document.querySelector<HTMLElement>(".np-r324-quick-sheet > header button")?.focus({preventScroll:true});
   },[kind]);
   const label=kind==="Task"?"إضافة مهمة":kind==="Habit"?"إضافة عادة":kind==="appointment"?"إضافة موعد":"إضافة سريعة";
   return createPortal(<div className="np-r324-quick-backdrop" data-appearance={appearance} style={viewport} onMouseDown={event=>{if(event.target===event.currentTarget&&!saving)onClose();}}>
@@ -3088,7 +3089,7 @@ function QuickAddDialog({busy,categories,date,appearance,onSave,onClose}:{
       {kind===null?([["Task","إضافة مهمة"],["Habit","إضافة عادة"],["appointment","إضافة موعد"]] as const).map(([value,title])=>
         <button type="button" key={value} onClick={()=>setKind(value)}>{title}</button>
       ):<>
-        <div className="np-quick-form-body np-page" data-appearance={appearance}><DefinitionForm busy={busy} defaultKind={kind==="Habit"?"Habit":"Task"}
+        <div className="np-quick-form-body"><DefinitionForm busy={busy} defaultKind={kind==="Habit"?"Habit":"Task"}
           defaultCountdownKind={kind==="appointment"?"appointment":"none"} defaultStartDate={date}
           categories={categories} onSavingChange={setSaving} onCommand={async command=>{
             const saved=await onSave(command);
@@ -3293,7 +3294,6 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const [showYesterday,setShowYesterday]=useState(false);
   const [showRecovery,setShowRecovery]=useState(false);
   const [recoveryDate,setRecoveryDate]=useState<string|null>(null);
-  const [recoveryWeek,setRecoveryWeek]=useState(0);
   const [showHistoryEvents,setShowHistoryEvents]=useState(false);
   const [historyEventPeriod,setHistoryEventPeriod]=useState<"today"|"week">("today");
   const [historyEventCalendar,setHistoryEventCalendar]=useState<"all"|"gregorian"|"hijri">("all");
@@ -3363,11 +3363,12 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const todayRows:StatisticRow[]=[...providedView.tasks,...providedView.habits].filter(item=>item.status!=="Suppressed"&&!definitionsById.get(item.definitionId)?.beveragePlan&&
     !["event","appointment"].includes(definitionsById.get(item.definitionId)?.countdownPlan?.kind??"task")&&sessionDueOnDate(item,achievementDate)).map(item=>{
     const def=definitionsById.get(item.definitionId);
-    const credit=def?.sessionPlan?Math.min(1,Math.max(0,def.activityLog
-      .filter(entry=>entry.taskSessionId&&entry.localDate===achievementDate&&(!entry.achievementDateR367||entry.achievementDateR367===achievementDate))
-      .reduce((sum,entry)=>sum+(entry.sessionDayCredit??0),0))):(item.status==="Completed"?1:0);
+    const scored=def?.sessionPlan?sessionAchievementOnDate(def.sessionPlan,def.activityLog,achievementDate):null;
     return {id:item.id,definitionId:item.definitionId,title:item.title,kind:item.kind,
-      date:achievementDate,weight:item.weight,status:item.status,amount:0,unit:"",credit};
+      date:achievementDate,weight:item.weight*(scored?.scheduled||1),status:item.status,amount:0,unit:"",
+      ...(scored?{sessionWeight:item.weight}:{}),
+      ...(scored?.scheduled===0?{nonAchievement:true}:{}),
+      credit:scored?scored.scheduled?scored.earned/scored.scheduled:0:item.status==="Completed"?1:0};
   });
   const prayerDays=workspace?.prayerAchievementR334??[];
   const weightedHistory=weightedStatisticRowsR334(workspace?.statistics.rows??[],prayerDays,achievementDate);
@@ -3378,9 +3379,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const displayedScore=summarizeProgress(displayedWeightedRows);
   const recoveryPoints=displayedWeightedRows.filter(row=>row.recoveryBonus).reduce((total,row)=>total+row.weight*statisticEarnedShareR285(row),0);
   const sessionPoints=displayedWeightedRows.reduce((total,row)=>total+(row.kind==="Task"&&definitionsById.get(row.definitionId)?.sessionPlan?row.weight*statisticEarnedShareR285(row):0),0);
-  const completionRate=sessionPoints>0||recoveryPoints>0
-    ?displayedScore.weight?Math.min(100,Number((100*displayedScore.completedWeight/displayedScore.weight).toFixed(2))):0
-    :displayedScore.rate??0;
+  const completionRate=displayedScore.rate??0;
   const achievementWeek=wholeWeekAchievement(weightedHistory,achievementDate,weightedToday),yesterday=yesterdayAchievement(weightedHistory,displayedDate);
   // NOOR_WEEK_HISTORY_NAV_R109: visual paging only. Historical mutations remain R108 commands.
   const firstHistoryDate=weightedHistory.filter(r=>r.date<=achievementDate).map(r=>r.date).sort()[0]??null;
@@ -3397,8 +3396,9 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     return {...day,date,current:false,future:false,...summarizeProgress(weightedHistory.filter(r=>r.date===date))};
   });
   const historicalRows=(workspace?.statistics.rows??[]).filter(r=>r.date<achievementDate&&!r.recoveryBonus&&!(r.kind==="Habit"&&prayerDays.find(p=>p.date===r.date)?.score.excludedHabitDefinitionIds.includes(r.definitionId))&&statisticEligible(r)&&["Missed","Pending","Planned","InProgress"].includes(r.status)).sort((a,b)=>b.date.localeCompare(a.date)||b.weight-a.weight);
-  const recoverable=historicalRows.filter(r=>{const d=definitionsById.get(r.definitionId);return d&&!(r.kind==="Habit"&&prayerHabitCandidateR334(d.title))&&!d.sessionPlan&&!d.beveragePlan&&!["event","appointment"].includes(d.countdownPlan?.kind??"task")&&(!d.measurement||d.activityLog.filter(a=>a.executionId===r.id).reduce((sum,a)=>sum+a.amount,0)>=d.measurement.target);});
-  const recoverableSessions=historicalRows.flatMap(row=>{
+  const recentMisses=historicalRows.filter(row=>canRecoverDueDate(row.date,achievementDate)&&row.weight>0);
+  const recoverable=recentMisses.filter(r=>{const d=definitionsById.get(r.definitionId);return d&&!(r.kind==="Habit"&&prayerHabitCandidateR334(d.title))&&!d.sessionPlan&&!d.beveragePlan&&!["event","appointment"].includes(d.countdownPlan?.kind??"task")&&(!d.measurement||d.activityLog.filter(a=>a.executionId===r.id).reduce((sum,a)=>sum+a.amount,0)>=d.measurement.target);});
+  const recoverableSessions=recentMisses.flatMap(row=>{
     const def=definitionsById.get(row.definitionId);
     if(row.kind!=="Task"||def?.state!=="Active")return [];
     return (def.sessionPlan?.sessions??[]).filter(s=>s.scheduledDate===row.date&&!sessionFinishedR254(s,def.activityLog)).map(session=>({row,session,def,progress:sessionProgressR254(def.activityLog,session.id)}));
@@ -3411,7 +3411,6 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const yesterdayReminder=achievementDate===civilLocalDate(nowMs,view.timeZone)
     ?recoveryReminder(achievementDate,nowMs,recoverySchedule,yesterdayOutstanding,()=>{
       setHistoryDate(null);
-      setRecoveryWeek(0);
       setRecoveryDate(yesterdayDate);
       setSessionRecovery(null);
       setRecoverError("");
@@ -3469,11 +3468,10 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     const ok=await onCommand({type:"record-prayer-r331",localDate:displayedDate,key:prayerEditor.key,mode:clear?null:prayerEditor.mode,timing:clear?null:prayerEditor.timing,expectedRecordedAt:prior?.recordedAt??null,...(prayerEditor.habitExecutionId?{habitExecutionId:prayerEditor.habitExecutionId}:{})});
     if(ok)setPrayerEditor(null);else setPrayerSaveError("تعذر حفظ تسجيل الصلاة. حاول مرة أخرى.");
   };
-  const recoveryCount=historicalRows.length;
-  const recoverySheetDates=Array.from({length:7},(_,i)=>shiftStatisticDate(achievementDate,-(recoveryWeek*7+i+1)));
-  const selectedRecoveryDate=recoveryDate&&recoverySheetDates.includes(recoveryDate)?recoveryDate:recoverySheetDates[0]!;
-  const hasOlderRecovery=historicalRows.some(r=>r.date<recoverySheetDates[6]!);
-  const recoveryDayRows=historicalRows.filter(r=>r.date===selectedRecoveryDate);
+  const recoveryCount=recoverable.length+recoverableSessions.length;
+  const recoverySheetDates=[...new Set([...recoverable.map(row=>row.date),...recoverableSessions.map(({row})=>row.date)])].sort().reverse();
+  const selectedRecoveryDate=recoveryDate&&recoverySheetDates.includes(recoveryDate)?recoveryDate:recoverySheetDates[0];
+  const recoveryDayRows=recoverable.filter(r=>r.date===selectedRecoveryDate);
   const recoveryDaySessions=recoverableSessions.filter(r=>r.row.date===selectedRecoveryDate);
   const taskCategories=new Map<string,ExecutionItem[]>();
   for(const task of [...view.tasks].sort((a,b)=>(definitionsById.get(a.definitionId)?.displayOrder??Number.MAX_SAFE_INTEGER)-(definitionsById.get(b.definitionId)?.displayOrder??Number.MAX_SAFE_INTEGER))){const category=definitionsById.get(task.definitionId)?.category?.trim()||"عام";const list=taskCategories.get(category)??[];list.push(task);taskCategories.set(category,list);}
@@ -3775,9 +3773,9 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       }}/></div>
       <button type="button" className="np-r331-tile np-r331-small np-r339-recovery"
         aria-haspopup="dialog" aria-expanded={showRecovery}
-        onClick={()=>{setRecoveryWeek(0);setRecoveryDate(null);setSessionRecovery(null);setRecoverError("");setShowRecovery(true);}}>
+        onClick={()=>{setRecoveryDate(null);setSessionRecovery(null);setRecoverError("");setShowRecovery(true);}}>
         <span>تدارك ما فاتك</span>
-        <strong aria-label={`${recoveryCount} عنصر غير مكتمل`}>
+        <strong aria-label={`${recoveryCount} عنصر قابل للتدارك`}>
           {arabicNumber(recoveryCount)}
         </strong>
       </button>
@@ -3798,13 +3796,13 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
           {(()=>{
             const row=(recoverySave??sessionRecovery)!.row;
             const performedOn=(recoverySave??sessionRecovery)!.performedOn;
-            const def=definitionsById.get(row.definitionId);
             const session=sessionRecovery?.session;
-            const fraction=session&&def?.sessionPlan?sessionEventCredit(def.measurement,def.sessionPlan,session,Number(sessionRecovery?.amount)||0,session.target===null):1;
+            const weight=session?(row.sessionWeight??row.weight):row.weight;
+            const fraction=session?sessionAchievementShare(session,Number(sessionRecovery?.amount)||0):1;
             const points=(weight:number)=>Number(weight.toFixed(3));
-            const dates=Array.from({length:4},(_,index)=>shiftStatisticDate(achievementDate,index-3)).filter(date=>date>=row.date);
+            const dates=Array.from({length:RECOVERY_LOOKBACK_DAYS+1},(_,index)=>shiftStatisticDate(achievementDate,index-RECOVERY_LOOKBACK_DAYS)).filter(date=>date>=row.date);
             return <>
-              <h3>{session?.title??row.title}</h3><p>الاستحقاق {weekDateLabel(row.date,true)} ، وزن {points(row.weight*fraction)} نقطة</p>
+              <h3>{session?.title??row.title}</h3><p>الاستحقاق {weekDateLabel(row.date,true)} ، وزن {points(weight)} نقطة</p>
               <fieldset><legend>يوم الإتمام</legend>{dates.map(date=><label key={date}>
                 <input type="radio" name="recovery-date" value={date} checked={date===performedOn}
                   onChange={()=>{if(sessionRecovery)setSessionRecovery({...sessionRecovery,performedOn:date});else if(recoverySave)setRecoverySave({...recoverySave,performedOn:date});}}/>
@@ -3815,7 +3813,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
                 value={sessionRecovery.amount} min="0.000001" step="any" required onChange={event=>setSessionRecovery({...sessionRecovery,amount:event.currentTarget.value})}/></label>:null}
               {sessionRecovery?<label className="np-recovery-input">ملاحظة اختيارية<textarea dir="rtl" rows={2} maxLength={2000}
                 value={sessionRecovery.note} onChange={event=>setSessionRecovery({...sessionRecovery,note:event.currentTarget.value})}/></label>:null}
-              <div className="np-recovery-points"><span>الوزن المحتسب</span><strong>{points(row.weight*fraction*recoveryCreditR367(row.date,performedOn))} نقطة</strong></div>
+              <div className="np-recovery-points"><span>الوزن المحتسب</span><strong>{points(weight*fraction*recoveryCreditR367(row.date,performedOn))} نقطة</strong></div>
               {recoverError?<p role="alert">{recoverError}</p>:null}
               <footer><button type="submit" disabled={busy||recoverySaving}>حفظ الإتمام</button><button type="button" disabled={busy||recoverySaving}
                 onClick={()=>{setRecoverySave(null);setSessionRecovery(null);}}>إلغاء</button></footer>
@@ -3824,7 +3822,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         </form>
       </section>
     </div>,document.body):null}
-    {showRecovery?createPortal(<div className="np-r331-overlay" style={dashboardDialog} onMouseDown={event=>{if(event.target===event.currentTarget)setShowRecovery(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="تدارك الفائت" onKeyDown={e=>{if(e.key==="Escape")setShowRecovery(false);}}><header><h2>تدارك الفائت</h2><button type="button" onClick={()=>{setSessionRecovery(null);setShowRecovery(false);}} aria-label="إغلاق التدارك">×</button></header><div className="np-r339-recovery-days">{recoverySheetDates.map(date=><button type="button" key={date} aria-pressed={date===selectedRecoveryDate} onClick={()=>{setRecoveryDate(date);setSessionRecovery(null);setRecoverError("");}}>{weekDateLabel(date,true)}<br/>{weekDateLabel(date)}</button>)}</div><div className="np-r331-options" aria-label="أسابيع التدارك"><button type="button" disabled={!hasOlderRecovery} onClick={()=>{setRecoveryWeek(w=>w+1);setRecoveryDate(null);setSessionRecovery(null);}}>الأسبوع الأقدم</button><button type="button" disabled={recoveryWeek===0} onClick={()=>{setRecoveryWeek(w=>Math.max(0,w-1));setRecoveryDate(null);setSessionRecovery(null);}}>الأسبوع الأحدث</button></div><p>اختر يوم الإتمام لعرض الوزن المحتسب قبل الحفظ.</p>{recoveryDaySessions.length?<h3>جلسات مجدولة فائتة</h3>:null}{recoveryDaySessions.map(({row,session,def,progress})=><article key={row.id+"-"+session.id} className="np-r331-recovery-row"><div><strong>{session.title}</strong><small>{def.title} · {row.date} · {Math.round(recoveryCreditR367(row.date,achievementDate)*100)}% من وزن الجزء المنجز</small>{session.target!==null?<small>{progress} / {session.target} {def.measurement?.unit??""}</small>:null}</div><button type="button" disabled={busy} onClick={()=>{setRecoverError("");setSessionRecovery({row,session,entryId:globalThis.crypto.randomUUID(),amount:session.target===null?"0":String(Math.round((session.target-progress)*1e6)/1e6),note:"",performedOn:achievementDate});}}>تسجيل التقدم</button></article>)}{!recoveryDayRows.length?<p>لا توجد عناصر فائتة.</p>:recoveryDayRows.map(row=><article key={row.id} className="np-r331-recovery-row"><div><strong>{row.title}</strong><small>{row.date} · {Number((row.weight*recoveryCreditR367(row.date,achievementDate)).toPrecision(5))} من {row.weight} نقطة</small></div>{recoverable.some(r=>r.id===row.id)?<button type="button" disabled={busy} onClick={()=>{void recovery(row)}}>تسجيل الإتمام</button>:<button type="button" onClick={()=>{setHistoryDate(row.date);setWeekShift(Math.floor((Date.parse(row.date+"T00:00:00Z")-Date.parse(achievementWeek[0]!.date+"T00:00:00Z"))/604800000));setShowRecovery(false);}}>عرض السجل</button>}</article>)}{recoverError?<p role="alert">{recoverError}</p>:null}</section></div>,document.body):null}
+    {showRecovery?createPortal(<div className="np-r331-overlay" style={dashboardDialog} onMouseDown={event=>{if(event.target===event.currentTarget)setShowRecovery(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="تدارك الفائت" onKeyDown={e=>{if(e.key==="Escape")setShowRecovery(false);}}><header><h2>تدارك الفائت</h2><button type="button" onClick={()=>{setSessionRecovery(null);setShowRecovery(false);}} aria-label="إغلاق التدارك">×</button></header><div className="np-r339-recovery-days">{recoverySheetDates.map(date=><button type="button" key={date} aria-pressed={date===selectedRecoveryDate} onClick={()=>{setRecoveryDate(date);setSessionRecovery(null);setRecoverError("");}}>{weekDateLabel(date,true)}<br/>{weekDateLabel(date)}</button>)}</div>{recoveryDaySessions.length?<h3>جلسات مجدولة فائتة</h3>:null}{recoveryDaySessions.map(({row,session,def,progress})=><article key={row.id+"-"+session.id} className="np-r331-recovery-row"><div><strong>{session.title}</strong><small>{def.title} · {row.date} · وزن الجلسة {row.sessionWeight??row.weight}</small>{session.target!==null?<small>{progress} / {session.target} {def.measurement?.unit??""}</small>:null}</div><button type="button" disabled={busy} onClick={()=>{setRecoverError("");setSessionRecovery({row,session,entryId:globalThis.crypto.randomUUID(),amount:session.target===null?"0":String(Math.round((session.target-progress)*1e6)/1e6),note:"",performedOn:achievementDate});}}>تسجيل التقدم</button></article>)}{!recoveryCount?<p role="status">لا يوجد فائت قابل للتدارك في آخر {RECOVERY_LOOKBACK_DAYS} أيام.</p>:recoveryDayRows.map(row=><article key={row.id} className="np-r331-recovery-row"><div><strong>{row.title}</strong><small>{row.date} · {Number((row.weight*recoveryCreditR367(row.date,achievementDate)).toPrecision(5))} من {row.weight} نقطة</small></div><button type="button" disabled={busy} onClick={()=>{void recovery(row)}}>تسجيل الإتمام</button></article>)}{recoverError?<p role="alert">{recoverError}</p>:null}</section></div>,document.body):null}
 
     <div className="np-r331-overlay np-r339-overlay" style={dashboardDialog} hidden={!showPrayerTimes} onMouseDown={e=>{if(e.target===e.currentTarget)setShowPrayerTimes(false);}}><div className="np-r331-sheet" role="dialog" aria-modal={showPrayerTimes} aria-label="مواقيت الصلوات" onKeyDown={e=>{if(e.key==="Escape")setShowPrayerTimes(false);}}><header><h2>مواقيت الصلوات</h2><button type="button" aria-label="إغلاق مواقيت الصلوات" onClick={()=>setShowPrayerTimes(false)}>×</button></header><section id="noor-r331-prayers" aria-label="الصلوات" className="np-card np-prayer-card" data-header-layout="padding-only-132" data-prayer-layout="compact-five-obligatory-r331" data-testid="prayer-card">
       <div className="np-prayer-card-head">
@@ -4253,10 +4251,11 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         }
         const prior=currentRows.get(item.id);
         const log=definition?.activityLog.filter(entry=>entry.localDate===date)??[];
-        const credit=definition?.sessionPlan
-          ?Math.min(1,log.reduce((total,entry)=>total+(entry.sessionDayCredit??0),0))
-          :item.status==="Completed"?1:0;
-        currentRows.set(item.id,{...item,date,credit,amount:log.reduce((total,entry)=>total+entry.amount,0),
+        const scored=definition?.sessionPlan?sessionAchievementOnDate(definition.sessionPlan,definition.activityLog,date):null;
+        const credit=scored?scored.scheduled?scored.earned/scored.scheduled:0:item.status==="Completed"?1:0;
+        currentRows.set(item.id,{...item,date,credit,weight:item.weight*(scored?.scheduled||1),
+          ...(scored?{sessionWeight:item.weight}:{}),...(scored?.scheduled===0?{nonAchievement:true}:{}),
+          amount:log.reduce((total,entry)=>total+entry.amount,0),
           unit:prior?.unit??definition?.measurement?.unit??""});
       }
       result={...result,statistics:{...result.statistics,rows:[
@@ -4462,6 +4461,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       const amount=manual?0:command.amount;
       const entry:ActivityEntry={id:command.entryId,executionId:execution.id,taskSessionId:session.id,localDate,
         at:new Date().toISOString(),amount,note:manual?"":command.note,endReason:null,
+        sessionAchievementShare:sessionAchievementShare(session,amount),
         sessionDayCredit:sessionEventCredit(definition.measurement,plan,session,amount,manual)};
       return queueChange({command,executionId:execution.id,definitionId:definition.id,title:session.title,entry});
     }

@@ -217,6 +217,7 @@ export interface ActivityEntry {
     readonly endReason: "achieved" | "expired" | "cancelled" | null;
     readonly taskSessionId?: string;
     readonly sessionDayCredit?: number;
+    readonly sessionAchievementShare?: number;
     readonly beverageTime?: string; // owner-entered wall clock; `at` remains the immutable audit instant
 }
 export interface ProgressMeasurement { readonly target: number; readonly unit: string; }

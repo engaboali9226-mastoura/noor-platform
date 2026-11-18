@@ -33,6 +33,7 @@ test('R291 healthz includes only validated commit fingerprint, no secrets or use
  assert.equal(head.status,200);
  assert.equal(head.body,'');
  assert.equal(head.headers['x-noor-release-sha'],'a'.repeat(40));
+ assert.equal(head.headers['x-noor-app-shell'],'1');
  const wrongMethod=await request(port,'/healthz',{method:'POST'});
  assert.equal(wrongMethod.status,405);
  assert.deepEqual(observed,[]);
@@ -47,7 +48,7 @@ test('R291 release fingerprint rejects missing, malformed, secret-like and exten
 });
 test('serves the application and deep links without reading the API',()=>fixture(async({port,observed})=>{
  const root=await request(port,'/'),deep=await request(port,'/noor-personal/control',{headers:{accept:'text/html'}});
- assert.equal(root.status,200);assert.equal(root.headers['cache-control'],'no-store');assert.match(root.body,/synthetic shell/);assert.equal(deep.body,root.body);assert.deepEqual(observed,[]);
+ assert.equal(root.status,200);assert.equal(root.headers['cache-control'],'no-store');assert.match(root.body,/synthetic shell/);assert.equal(deep.body,root.body);assert.equal(deep.headers['x-noor-app-shell'],'1');assert.deepEqual(observed,[]);
 }));
 test('serves assets with MIME, cache controls, and empty HEAD bodies',()=>fixture(async({port})=>{
  const asset=await request(port,'/assets/app-fixture.js'),head=await request(port,'/assets/app-fixture.js',{method:'HEAD'});

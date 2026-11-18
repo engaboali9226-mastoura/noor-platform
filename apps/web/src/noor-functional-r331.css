@@ -1130,13 +1130,18 @@ button[aria-label^="إغلاق"] {
 .np-r324-quick-sheet{
   display:flex;
   flex-direction:column;
+  width:min(100%,580px);
+  font-family:system-ui,Tahoma,Arial,sans-serif;
   max-height:100%;
   min-height:0;
+  overflow:hidden;
 }
 .np-r324-quick-sheet header,
 .np-r324-quick-sheet footer{flex:none}
-.np-r324-quick-sheet .np-quick-form-body{min-height:0;overflow-y:auto;overscroll-behavior:contain}
-.np-r324-quick-sheet .np-quick-form-body :is(input,select,textarea){font-size:16px}
+.np-r324-quick-sheet .np-quick-form-body{
+  flex:0 1 auto;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;
+  padding:3px;scroll-padding-block:6px;
+}
 .np-r324-quick-sheet footer,.np-recovery-date-sheet footer{display:flex;gap:8px;justify-content:flex-end}
 .np-r324-quick-sheet footer :is([type=submit],button.primary),.np-recovery-date-sheet footer [type=submit]{
   background:var(--ng-accent);color:#fff;flex:1
@@ -1177,9 +1182,28 @@ button[aria-label^="إغلاق"] {
   width:min(100%,420px)!important;
   max-height:calc(var(--noor-dialog-height,100dvh) - 24px)!important
 }
-.np-r324-quick-sheet .np-quick-form-body.np-page{min-height:0;padding:0;background:transparent}
-.np-r324-quick-sheet .np-quick-form-body .np-form{margin:0}
-@media(max-width:540px){
-  .np-r324-quick-sheet .np-quick-form-body .np-form{grid-template-columns:minmax(0,1fr)}
-  .np-r324-quick-sheet .np-quick-form-body .np-field{min-width:0;grid-column:auto}
+.np-quick-form-body .np-form{
+  box-sizing:border-box;min-width:0;margin:0;padding:0;border:0;background:transparent;
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;
+}
+.np-quick-form-body .np-field{min-width:0;align-content:start}
+.np-quick-form-body .np-gregorian-date{grid-column:1/-1}
+.np-quick-form-body .np-gregorian-parts{
+  grid-template-columns:minmax(0,.75fr) minmax(0,1.45fr) minmax(0,.95fr);
+}
+.np-quick-form-body :is(.np-label,.np-task-form-details summary){
+  font-size:14px;line-height:1.5;color:var(--ng-ink);
+}
+.np-quick-form-body :is(.np-input,.np-select,.np-gregorian-parts select){
+  box-sizing:border-box;width:100%;min-width:0;max-width:100%;min-height:44px;
+  padding:8px;font-size:16px;border:1px solid var(--ng-muted);border-radius:10px;
+  background:var(--ng-bg);color:var(--ng-ink);
+}
+.np-quick-form-body :is(.np-input,.np-select,.np-gregorian-parts select):focus-visible{
+  outline:2px solid var(--ng-focus);outline-offset:1px;
+}
+.np-quick-form-body .np-task-form-details:not([open]) > :not(summary){display:none}
+@media(max-width:580px){
+  .np-r324-quick-sheet{padding:12px}
+  .np-quick-form-body .np-form{grid-template-columns:minmax(0,1fr)}
 }
