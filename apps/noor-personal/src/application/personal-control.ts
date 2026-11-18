@@ -1,9 +1,9 @@
-import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, recoveryCreditR367, completedShareR331, prayerHabitCandidateR334, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
+import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, recoveryCreditR367, canRecoverDueDate, RECOVERY_LOOKBACK_DAYS, completedShareR331, prayerHabitCandidateR334, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import { validPersonalAvatar } from "../domain/personal-records.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
-import { prepareTaskSessionPlan, sessionProgress, sessionStatus, sessionQuantity, sessionDayCredit, sessionEventCredit, isPageUnit, validSessionDateR286, assertTaskSessionDatesMatchParentR286, sessionScheduledOnDateR286, type TaskSessionPlanDraft } from "../domain/task-sessions.js";
+import { prepareTaskSessionPlan, sessionProgress, sessionStatus, sessionQuantity, sessionDayCredit, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate, recordedSessionAchievement, isPageUnit, validSessionDateR286, assertTaskSessionDatesMatchParentR286, sessionScheduledOnDateR286, type TaskSessionPlanDraft } from "../domain/task-sessions.js";
 import { applyFinanceOperation, emptyFinanceLedger, parseFinanceOperation, type FinanceOperation, type FinanceLedger } from "../domain/model.js";
 import type {
     AutomationOutboxEvent,
@@ -125,7 +125,7 @@ export interface PersonalInsights {
     }>;
 }
 
-export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;readonly recoveryBonus?:boolean;readonly completionDate?:string;readonly recoveredWeight?:number;}
+export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;readonly recoveryBonus?:boolean;readonly completionDate?:string;readonly recoveredWeight?:number;readonly sessionWeight?:number;}
 export interface PersonalWorkspace {
     readonly profile?: PersonalProfile | null;
     readonly historicalEvents?: readonly PersonalHistoricalEvent[];
@@ -1053,7 +1053,7 @@ export class PersonalCommandService {
                     }
                     const currentDay=activePersonalDay(transaction,userId,now),civilToday=currentDay.boundary.localDate;
                     const performedOn=p.performedOn??civilToday;
-                    if(p.performedOn&&(performedOn>civilToday||performedOn<shiftLocalDate(civilToday,-3)))
+                    if(p.performedOn&&(!canRecoverDueDate(p.localDate,civilToday)||performedOn>civilToday||performedOn<shiftLocalDate(civilToday,-RECOVERY_LOOKBACK_DAYS)))
                         throw new Error("RECOVERY_DATE_OUTSIDE_WINDOW");
                     if(p.localDate>=civilToday||!["Missed","Pending","Planned","InProgress"].includes(instance.status)||definition.state!=="Active")throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     if(log.length>=10000)throw new Error("ACTIVITY_LIMIT_REACHED");
@@ -1064,6 +1064,7 @@ export class PersonalCommandService {
                     if(definition.measurement&&(isPageUnit(definition.measurement.unit)&&!Number.isSafeInteger(p.amount)||Math.round((log.reduce((sum,e)=>sum+e.amount,0)+p.amount)*1e6)>Math.round(definition.measurement.target*1e6)))throw new Error("PROGRESS_EXCEEDS_TARGET");
                     const finished=manual||Math.round((previous+p.amount)*1e6)>=Math.round(session.target!*1e6);
                     const entry={id:p.entryId,executionId:instance.id,taskSessionId:session.id,localDate:p.localDate,performedOnR331:performedOn,...(p.performedOn?{achievementDateR367:performedOn}:{}),at:now,amount:p.amount,note:p.note,endReason:null,
+                      sessionAchievementShare:sessionAchievementShare(session,p.amount)*creditFactor,
                       sessionDayCredit:sessionEventCredit(definition.measurement,definition.sessionPlan,session,p.amount,manual)*creditFactor};
                     transaction.saveDefinition({...definition,activityLog:[...log,entry],sessionPlan:{...definition.sessionPlan,sessions:definition.sessionPlan.sessions.map(s=>s.id!==session.id?s:{...s,updatedAt:now,...(finished?{completedAt:now}:{})})}});
                     return;
@@ -1116,6 +1117,7 @@ export class PersonalCommandService {
                       localDate:day.boundary.localDate,at:now,
                       amount,note:parsed.type==="record-task-session-progress"?parsed.note:"",
                       endReason:null,
+                      sessionAchievementShare:sessionAchievementShare(session,amount),
                       sessionDayCredit:sessionEventCredit(definition.measurement,definition.sessionPlan,session,amount,
                         parsed.type==="complete-task-session")};
                     transaction.saveDefinition({...definition,activityLog:[...log,entry],
@@ -1345,7 +1347,7 @@ export class PersonalCommandService {
                     if(definition.beveragePlan)throw new Error("BEVERAGE_HISTORY_IS_EVENT_SOURCED");
                     if(parsed.type==="recover-historical-execution"){
                         const performedOn=parsed.performedOn??civilToday;
-                        if(parsed.performedOn&&(performedOn>civilToday||performedOn<shiftLocalDate(civilToday,-3)))
+                        if(parsed.performedOn&&(!canRecoverDueDate(parsed.localDate,civilToday)||performedOn>civilToday||performedOn<shiftLocalDate(civilToday,-RECOVERY_LOOKBACK_DAYS)))
                             throw new Error("RECOVERY_DATE_OUTSIDE_WINDOW");
                         if(instance.status==="Completed"&&instance.recoveredOnR331&&
                             (instance.completionDateR367??null)===(parsed.performedOn??null))return;
@@ -1845,23 +1847,36 @@ export function buildPersonalWorkspace(
         const newestSessionRecovery=log.filter(entry=>entry.achievementDateR367).at(-1);
         const metadataDate=completionDate??newestSessionRecovery?.achievementDateR367;
         const share=completedShareR331(e);
-        const row:PersonalStatisticRow={id:e.id,definitionId:e.definitionId,title:definition?.title??e.title,kind:e.kind,date,weight,status:e.status,
+        const sessionPlan=definition?.sessionPlan;
+        const projected=sessionPlan?sessionAchievementOnDate(sessionPlan,definition.activityLog??[],date):null;
+        const recoveredSession=sessionPlan?.sessions.find(session=>session.id===newestSessionRecovery?.taskSessionId);
+        const recoveredShare=completionDate?share:recoveredSession&&newestSessionRecovery
+            ?recordedSessionAchievement(recoveredSession,newestSessionRecovery):0;
+        const row:PersonalStatisticRow={id:e.id,definitionId:e.definitionId,title:definition?.title??e.title,kind:e.kind,date,
+            weight:weight*(projected?.scheduled||1),status:e.status,
             amount:log.reduce((n,a)=>n+a.amount,0),unit:definition?.measurement?.unit??"",
-            ...(definition?.beveragePlan||["event","appointment"].includes(definition?.countdownPlan?.kind??"task")?{nonAchievement:true}:{}),
-            ...(metadataDate?{completionDate:metadataDate,recoveredWeight:weight*(completionDate?share:newestSessionRecovery?.sessionDayCredit??0)}:{}),
-            credit:definition?.sessionPlan
-                ?sessionDayCredit(log.filter(entry=>!entry.achievementDateR367||entry.achievementDateR367===date),date)
-                :completionDate&&completionDate!==date?0:share};
-        const bonusByDate=new Map<string,number>();
-        if(completionDate&&completionDate!==date&&share>0)bonusByDate.set(completionDate,share);
+            ...(projected?{sessionWeight:weight}:{}),
+            ...(projected?.scheduled===0||definition?.beveragePlan||["event","appointment"].includes(definition?.countdownPlan?.kind??"task")?{nonAchievement:true}:{}),
+            ...(metadataDate?{completionDate:metadataDate,recoveredWeight:weight*recoveredShare}:{}),
+            credit:projected?projected.scheduled?projected.earned/projected.scheduled:0:completionDate&&completionDate!==date?0:share};
+        const bonuses:PersonalStatisticRow[]=[];
+        if(completionDate&&completionDate!==date&&completionDate<=currentLocalDate&&share>0)
+            bonuses.push({...row,id:`recovery:${e.id}:${completionDate}`,date:completionDate,status:"Completed",amount:0,credit:share,recoveryBonus:true});
+        const sessionBonuses=new Map<string,{date:string;credit:number}>();
         for(const entry of log){
             const performed=entry.achievementDateR367;
-            if(!performed||performed===date||!entry.taskSessionId)continue;
-            bonusByDate.set(performed,(bonusByDate.get(performed)??0)+(entry.sessionDayCredit??0));
+            const session=sessionPlan?.sessions.find(s=>s.id===entry.taskSessionId);
+            if(!performed||performed===date||performed>currentLocalDate||!session)continue;
+            const key=performed+":"+session.id;
+            const credit=(sessionBonuses.get(key)?.credit??0)+recordedSessionAchievement(session,entry);
+            sessionBonuses.set(key,{date:performed,credit:Math.min(1,credit)});
         }
-        return [row,...[...bonusByDate].filter(([performed,credit])=>performed<=currentLocalDate&&credit>0)
-            .map(([performed,credit])=>({...row,id:`recovery:${e.id}:${performed}`,date:performed,status:"Completed" as const,
-                amount:0,credit:Math.min(1,credit),recoveryBonus:true,completionDate:performed,recoveredWeight:weight*Math.min(1,credit)}))];
+        for(const [id,{date:performed,credit}] of sessionBonuses){
+            if(credit<=0)continue;
+            bonuses.push({...row,id:`recovery:${e.id}:${id}`,date:performed,status:"Completed",weight,amount:0,credit,
+                nonAchievement:false,recoveryBonus:true,completionDate:performed,recoveredWeight:weight*credit});
+        }
+        return [row,...bonuses];
     });
     // Only owner-scoped, explicitly issued day snapshots can contribute.
     const prayerAchievementR334: {date:LocalDate;score:PrayerDayScoreR334}[]=[];
@@ -1884,7 +1899,7 @@ export function buildPersonalWorkspace(
     // separately projected prayer credit.
     const prayerByDate=new Map(prayerAchievementR334.map(day=>[day.date,day.score]));
     const insightDates=[...new Set([...rows.map(row=>row.date),...prayerByDate.keys()])].sort();
-    const insightInputs=prayerAchievementR334.length||rows.some(row=>row.completionDate)?insightDates.map(date=>{
+    const insightInputs=prayerAchievementR334.length||rows.some(row=>row.completionDate||row.sessionWeight)?insightDates.map(date=>{
         const prayer=prayerByDate.get(date)??null;
         const eligible=rows.filter(row=>row.date===date&&!row.recoveryBonus&&!row.nonAchievement&&countsTowardCompletion(row.status));
         const counted=eligible.filter(row=>row.kind!=="Habit"||!prayer?.excludedHabitDefinitionIds.includes(row.definitionId));
@@ -1893,7 +1908,7 @@ export function buildPersonalWorkspace(
     const periodR334=(windowDays:number):PersonalPeriodInsight=>{
         if(!currentLocalDate)return periodInsight(execution,currentLocalDate,windowDays,defs);
         const startDate=shiftLocalDate(currentLocalDate,-(windowDays-1));
-        const usesDatedRecovery=rows.some(row=>row.completionDate&&row.date>=startDate&&row.date<=currentLocalDate);
+        const usesDatedRecovery=rows.some(row=>(row.completionDate||row.sessionWeight)&&row.date>=startDate&&row.date<=currentLocalDate);
         if(!usesDatedRecovery&&!prayerAchievementR334.some(day=>day.date>=startDate&&day.date<=currentLocalDate))return periodInsight(execution,currentLocalDate,windowDays,defs);
         const input=insightInputs.filter(day=>day.date>=startDate&&day.date<=currentLocalDate);
         const score=projectPrayerAchievementPeriodR334({startDate,endDate:currentLocalDate,currentDate:currentLocalDate,days:input});
