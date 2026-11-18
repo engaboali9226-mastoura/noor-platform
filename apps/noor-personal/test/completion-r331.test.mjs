@@ -87,3 +87,18 @@ test("R331 late scheduled session preserves date and records only delayed increm
  assert.ok(parsePersonalCommand(c));await assert.rejects(()=>service.execute("u",{...c,amount:7}));await assert.rejects(()=>service.execute("other",c));await service.execute("u",c);await service.execute("u",c);const d=store.snapshot().definitions[0];assert.equal(d.activityLog.length,2);assert.equal(d.activityLog[1].performedOnR331,"2026-11-14");assert.equal(d.activityLog[1].localDate,due);assert.equal(d.activityLog[1].sessionDayCredit,.15);assert.equal(d.sessionPlan.sessions[0].completedAt,now);
  const w=buildPersonalWorkspace("u",{listDefinitions:()=>[d],listPersonalDays:()=>[day],listDailyExecutionForUser:()=>[e]});assert.ok(Math.abs(w.statistics.rows[0].credit-.55)<1e-9);
 });
+
+test("retrying the same definition creation does not make a duplicate or overwrite the first save",async()=>{
+ const now="2026-11-14T12:00:00.000Z";
+ const day={id:"today",userId:"u",boundary:{key:"today",localDate:"2026-11-14",startAt:"2026-11-13T21:00:00.000Z",endAt:"2026-11-14T21:00:00.000Z",timeZone:"Asia/Riyadh"},state:"Open",version:1,createdAt:now,updatedAt:now};
+ const store=new InMemoryFoundationStore({personalDays:[day]});
+ const service=new PersonalCommandService({clock:{now:()=>now},idGenerator:new SequenceIdGenerator(),transaction:store,accountTimeZone:"Asia/Riyadh"});
+ const input={type:"create-definition",requestId:"8ef5160a-5c27-48f6-8adb-03e2f0645522",kind:"Habit",title:"المشي",category:"الصحة",startDate:day.boundary.localDate,endDate:null,scheduleKind:"Daily",weekdays:[],importance:"Supporting"};
+ const command=parsePersonalCommand(input);
+ assert.ok(command);
+ assert.equal(parsePersonalCommand({...input,requestId:"invalid"}),null);
+ await service.execute("u",command);
+ await service.execute("u",{...command,title:"تعديل من إعادة المحاولة"});
+ assert.equal(store.snapshot().definitions.length,1);
+ assert.equal(store.snapshot().definitions[0].title,"المشي");
+});
