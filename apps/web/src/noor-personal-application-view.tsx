@@ -3015,7 +3015,7 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
 }
 
 const END_REASON_LABELS = {achieved:"تم الإنجاز",expired:"انتهى الوقت دون اكتمال",cancelled:"إلغاء المهمة"};
-function ActivityCard({item,definition,busy,pending=false,historicalDate=null,todayDate,onCommand,remainingMode=false,showSessions=false,onOpenSleep,onConfirmedCommand=onCommand}:{item:ExecutionItem;definition?:DefinitionItem|undefined;busy:boolean;pending?:boolean;historicalDate?:string|null;todayDate?:string|undefined;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>;remainingMode?:boolean;showSessions?:boolean;onOpenSleep?:(trigger:HTMLButtonElement)=>void;onConfirmedCommand?:(command:NoorPersonalCommandInput)=>Promise<boolean>}):ReactElement {
+function ActivityCard({item,definition,busy,pending=false,historicalDate=null,todayDate,onCommand,remainingMode=false,showSessions=false,onOpenSleep,prayerCompletion,onConfirmedCommand=onCommand}:{item:ExecutionItem;definition?:DefinitionItem|undefined;busy:boolean;pending?:boolean;historicalDate?:string|null;todayDate?:string|undefined;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>;remainingMode?:boolean;showSessions?:boolean;onOpenSleep?:(trigger:HTMLButtonElement)=>void;prayerCompletion?:{checked:boolean;disabled:boolean;open:()=>void}|undefined;onConfirmedCommand?:(command:NoorPersonalCommandInput)=>Promise<boolean>}):ReactElement {
  const [mode,setMode]=useState<"note"|"finish"|"sessions"|"complete"|null>(null);
  const formId=useId();
  const viewport=useDialogViewport(mode!==null);
@@ -3076,7 +3076,7 @@ function ActivityCard({item,definition,busy,pending=false,historicalDate=null,to
   <div className="np-activity-actions"><button aria-label={`تسجيل ملاحظة${task?" أو تقدم":""}: ${displayTitle}`} title="تسجيل ملاحظة" className="np-btn secondary np-pencil" onClick={()=>open("note")} type="button"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m15 5 4 4M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15l-1 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>{task&&!remainingMode?<span>{definition?.measurement?"تسجيل تقدم":"ملاحظة"}</span>:null}</button>
   {task&&!taskNeedsDetails&&!historicalDate&&definition&&(!remainingMode?!definition.measurement&&!definition.sessionPlan:sessionsDone&&parentTargetDone&&(!definition.measurement||total>=definition.measurement.target))&&!ended?<button type="button" className="np-btn secondary np-r331-task-done" aria-pressed={completed} disabled={disabled||pending} onClick={()=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:!completed});}}>{completed?"إلغاء إتمام اليوم":"تم اليوم"}</button>:null}
   {taskNeedsDetails&&(!ended||completed)?<button type="button" role="checkbox" aria-checked={completed} aria-haspopup="dialog" aria-label={`تسجيل تفاصيل ${displayTitle}`} className="np-habit-check-target np-detail-check" disabled={disabled||pending||ended} onClick={()=>open(definition?.sessionPlan?"sessions":"complete")}><span aria-hidden="true">{completed?"✓":""}</span></button>:null}
-  {task ? remainingMode ? null : historicalDate ? <button className="np-btn complete" disabled={disabled||pending} onClick={()=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:!completed});}} type="button">{historicalDate?(completed?"إلغاء الإتمام":"تصحيح السجل"):"إنهاء"}</button> : <button className="np-btn complete" disabled={disabled||pending} onClick={()=>open("finish")} type="button">{ended?"منتهية":showSessions?"إنهاء المهمة":"إنهاء"}</button> : onOpenSleep?<button type="button" role="checkbox" aria-checked={completed} aria-haspopup="dialog" aria-label={completed?"مراجعة النوم":"تسجيل النوم"} className="np-habit-check-target np-detail-check" disabled={disabled||pending} onClick={event=>onOpenSleep(event.currentTarget)}><span aria-hidden="true">{completed?"✓":""}</span></button>:<label className="np-habit-check-target"><input aria-label={`إتمام عادة ${displayTitle} ${historicalDate?`بتاريخ ${historicalDate}`:"اليوم"}`} className="np-habit-check" type="checkbox" checked={completed} aria-busy={pending} disabled={disabled} onChange={event=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:event.currentTarget.checked});}}/></label>}</div>
+  {task ? remainingMode ? null : historicalDate ? <button className="np-btn complete" disabled={disabled||pending} onClick={()=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:!completed});}} type="button">{historicalDate?(completed?"إلغاء الإتمام":"تصحيح السجل"):"إنهاء"}</button> : <button className="np-btn complete" disabled={disabled||pending} onClick={()=>open("finish")} type="button">{ended?"منتهية":showSessions?"إنهاء المهمة":"إنهاء"}</button> : prayerCompletion?<button type="button" role="checkbox" aria-checked={prayerCompletion.checked} aria-haspopup="dialog" aria-label={`تسجيل أداء ${displayTitle}`} className="np-habit-check-target np-detail-check" disabled={disabled||pending||prayerCompletion.disabled} onClick={prayerCompletion.open}><span aria-hidden="true">{prayerCompletion.checked?"✓":""}</span></button>: onOpenSleep?<button type="button" role="checkbox" aria-checked={completed} aria-haspopup="dialog" aria-label={completed?"مراجعة النوم":"تسجيل النوم"} className="np-habit-check-target np-detail-check" disabled={disabled||pending} onClick={event=>onOpenSleep(event.currentTarget)}><span aria-hidden="true">{completed?"✓":""}</span></button>:<label className="np-habit-check-target"><input aria-label={`إتمام عادة ${displayTitle} ${historicalDate?`بتاريخ ${historicalDate}`:"اليوم"}`} className="np-habit-check" type="checkbox" checked={completed} aria-busy={pending} disabled={disabled} onChange={event=>{void onCommand({type:"set-execution-completed",executionId:item.id,completed:event.currentTarget.checked});}}/></label>}</div>
   {mode!=="sessions"&&task&&definition?.sessionPlan&&!historicalDate?<TaskSessionListR254 plan={definition.sessionPlan} log={log} definitionId={definition.id} executionId={canRecord&&["Planned","Pending","InProgress"].includes(item.status)?item.id:null} busy={busy||pending} onCommand={onCommand} title={displayTitle} unit={definition.measurement?.unit??""} revisionId={definition.revisionId} taskGeneralNote={definition.taskGeneralNote??""} todayDate={todayDate} expanded={showSessions}/>:null}
   {mode ? createPortal(<div className={`np-activity-backdrop np-activity-editor-overlay${remainingMode?" np-r331-remaining-editor":""}`} style={viewport} onClick={event=>{if(event.target===event.currentTarget)close();}}><div aria-modal="true" aria-label={`${mode==="finish"?"إنهاء":"تسجيل"} ${displayTitle}`} className="np-activity-dialog" ref={panel} role="dialog" tabIndex={-1} onKeyDown={event=>{
    if(event.key==="Escape"){event.preventDefault();event.stopPropagation();if(noteEdit){if(!busy){setNoteEdit(null);setNoteError("");}}else close();}
@@ -3221,7 +3221,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     : showTaskList ? '[aria-label="المهام"][role="dialog"]'
     : showRecovery ? '[aria-label="تدارك الفائت"][role="dialog"]'
     : showPrayerTimes ? '[aria-label="مواقيت الصلوات"][role="dialog"]' : null);
-  const [prayerEditor,setPrayerEditor]=useState<{key:PrayerKeyR331;label:string;mode:PrayerModeR331;timing:PrayerTimingR331}|null>(null);
+  const [prayerEditor,setPrayerEditor]=useState<{key:PrayerKeyR331;label:string;mode:PrayerModeR331;timing:PrayerTimingR331;habitExecutionId?:string}|null>(null);
   const prayerDialog = useDashboardDialog(prayerEditor ? ".np-prayer-record-dialog" : null);
   const [prayerSaveError,setPrayerSaveError]=useState("");
   const [recoverError,setRecoverError]=useState("");
@@ -3329,10 +3329,27 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     if(!ok)setRecoverError("تعذر حفظ الاستدراك. أعد المحاولة بعد تحديث البيانات.");
   };
   const prayerRecords=workspace?.prayerHistoryR331.find(r=>r.date===(historyDate??achievementDate))?.records??[];
+  const openPrayerEditor=(key:PrayerKeyR331,label:string,habitExecutionId?:string)=>{
+    const record=prayerRecords.find(row=>row.key===key);
+    setPrayerSaveError("");
+    setPrayerEditor({key,label,mode:record?.mode??"group",timing:record?.timing??"ontime",...(habitExecutionId?{habitExecutionId}:{})});
+  };
+  const prayerHabitCompletion=(item:ExecutionItem)=>{
+    if(item.kind!=="Habit"||historyDate)return undefined;
+    const title=definitionsById.get(item.definitionId)?.title??item.title;
+    const key=workspace?.prayerScorePolicyR334?.legacyHabitKeys?.[item.definitionId]??prayerHabitCandidateR334(title);
+    if(!key)return undefined;
+    const prayer=view.prayerTimes.find(row=>row.key===key);
+    return {
+      checked:prayerRecords.some(row=>row.key===key),
+      disabled:!prayer||!(Date.parse(prayer.at)<=nowMs),
+      open:()=>{setShowRemaining(false);openPrayerEditor(key,prayer?.label??title,item.id);},
+    };
+  };
   const savePrayer=async(clear=false)=>{
     if(!prayerEditor||busy||historyDate)return;
     const prior=prayerRecords.find(r=>r.key===prayerEditor.key);
-    const ok=await onCommand({type:"record-prayer-r331",localDate:achievementDate,key:prayerEditor.key,mode:clear?null:prayerEditor.mode,timing:clear?null:prayerEditor.timing,expectedRecordedAt:prior?.recordedAt??null});
+    const ok=await onCommand({type:"record-prayer-r331",localDate:achievementDate,key:prayerEditor.key,mode:clear?null:prayerEditor.mode,timing:clear?null:prayerEditor.timing,expectedRecordedAt:prior?.recordedAt??null,...(prayerEditor.habitExecutionId?{habitExecutionId:prayerEditor.habitExecutionId}:{})});
     if(ok)setPrayerEditor(null);else setPrayerSaveError("تعذر حفظ تسجيل الصلاة. حاول مرة أخرى.");
   };
   const recoveryCount=historicalRows.length;
@@ -3666,7 +3683,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             <span className="np-prayer-symbol">{prayerSymbol(prayer.key)}</span>
             <span className="np-prayer-label">{prayer.label}</span>
             {!historyDate?<span className="np-prayer-time"><span>{prayerClock}</span>{" "}<span className="np-prayer-period">{prayerPeriod}</span></span>:null}
-            <button type="button" role="checkbox" aria-checked={!!record} aria-haspopup="dialog" className="np-r331-prayer-record" data-prayer-mode={record?.mode??"pending"} aria-label={`تسجيل أداء ${prayer.label}`} disabled={busy||!!historyDate||!prayerStarted} onClick={()=>{setPrayerSaveError("");setPrayerEditor({key:prayer.key as PrayerKeyR331,label:prayer.label,mode:record?.mode??"group",timing:record?.timing??"ontime"});}}><span aria-hidden="true" className="np-prayer-check-mark">{record?"✓":"□"}</span>{record?record.mode==="group"?"جماعة":record.mode==="excused"?"بعذر":"دون عذر":"تسجيل"}{record?.timing==="late"?" · فات الوقت":""}</button>
+            <button type="button" role="checkbox" aria-checked={!!record} aria-haspopup="dialog" className="np-r331-prayer-record" data-prayer-mode={record?.mode??"pending"} aria-label={`تسجيل أداء ${prayer.label}`} disabled={busy||!!historyDate||!prayerStarted} onClick={()=>openPrayerEditor(prayer.key as PrayerKeyR331,prayer.label)}><span aria-hidden="true" className="np-prayer-check-mark">{record?"✓":"□"}</span>{record?record.mode==="group"?"جماعة":record.mode==="excused"?"بعذر":"دون عذر":"تسجيل"}{record?.timing==="late"?" · فات الوقت":""}</button>
             {isNext && nextPrayer ? <span className="np-countdown" data-testid="prayer-countdown">
               <svg aria-hidden="true" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" stroke="currentColor" strokeWidth="1.5"/><path d="M12 7.8v4.6l3 1.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5"/></svg>
               <span className="np-countdown-digits">{formatCountdown(countdown)}</span>
@@ -3722,7 +3739,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             const row=recoverable.find(r=>r.id===x.id&&r.date===historyDate);
             return <div key={x.id} className="np-r331-recovery-row" data-testid={`remaining-activity-${x.id}`}><div><strong>{x.title}</strong><small>{x.kind==="Habit"?"عادة":"مهمة"} · وزن {x.weight}</small></div>{row?<button type="button" disabled={busy} onClick={()=>{void recovery(row);}}>تم الآن</button>:<button type="button" onClick={()=>{setShowRemaining(false);setRecoveryWeek(Math.max(0,Math.floor((Date.parse(achievementDate+"T00:00:00Z")-Date.parse(historyDate+"T00:00:00Z")-86400000)/(7*86400000))));setRecoveryDate(historyDate);setSessionRecovery(null);setShowRecovery(true);}}>عرض التدارك</button>}</div>;
           }
-          return <ActivityCard key={x.id} item={x} definition={d} busy={busy||lockedIds.includes(x.id)} pending={pendingIds.includes(x.id)} onCommand={onCommand} onConfirmedCommand={onConfirmedCommand} onOpenSleep={sleepAction(x)} todayDate={view.localDate??undefined} remainingMode/>;
+          return <ActivityCard key={x.id} item={x} definition={d} busy={busy||lockedIds.includes(x.id)} pending={pendingIds.includes(x.id)} onCommand={onCommand} onConfirmedCommand={onConfirmedCommand} onOpenSleep={sleepAction(x)} prayerCompletion={prayerHabitCompletion(x)} todayDate={view.localDate??undefined} remainingMode/>;
         })}
         {recoverError&&historyDate?<p role="alert">{recoverError}</p>:null}
       </div>:<p role="status">اكتملت جميع المهام والعادات المستحقة لهذا اليوم.</p>}</section></div>,document.body):null}
@@ -3793,7 +3810,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
                       <span aria-hidden="true">{arabicNumber(rate)}<small>%</small></span>
                     </div>
                   </summary>
-                  <div className="np-list">{items.map(({execution:item,definition})=><ActivityCard key={item.id} item={item} definition={definition} busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)} onOpenSleep={sleepAction(item)} onCommand={historyDate?historicalCommand:onCommand} historicalDate={historyDate} todayDate={view.localDate??undefined}/>)}</div>
+                  <div className="np-list">{items.map(({execution:item,definition})=><ActivityCard key={item.id} item={item} definition={definition} busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)} onOpenSleep={sleepAction(item)} prayerCompletion={prayerHabitCompletion(item)} onCommand={historyDate?historicalCommand:onCommand} historicalDate={historyDate} todayDate={view.localDate??undefined}/>)}</div>
                 </details>;
               })}
           </div>
@@ -3894,6 +3911,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
 
   const refreshEpoch=useRef(0);
   const commandInFlight=useRef(false);
+  const commandTail=useRef<Promise<void>|null>(null);
   const [syncing,setSyncing]=useState(false);
   const syncSequence=useRef(0);
   const resumeRefreshRef=useRef({lastAttemptAt:Date.now(),pending:false});
@@ -4015,8 +4033,12 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   }, [nowMs,view?.nextPrayer?.at,dayBoundaryEndAt]);
 
   const runCommand = async (command: NoorPersonalCommandInput, background=false): Promise<boolean> => {
-    if (commandInFlight.current) return false;
+    const previous=commandTail.current;
+    let release!:()=>void;
+    const turn=new Promise<void>(resolve=>{release=resolve;});
+    commandTail.current=turn;
     commandInFlight.current=true;
+    if(previous)await previous;
     ++refreshEpoch.current;
     if(!background)setBusy(true);
     setActionError(null);
@@ -4050,9 +4072,13 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       }
       return true;
     } finally {
-      commandInFlight.current=false;
       if(!background)setBusy(false);
-      queueMicrotask(()=>{if(alive.current){void drainFast();void drainOrder();}});
+      if(commandTail.current===turn){
+        commandTail.current=null;
+        commandInFlight.current=false;
+        queueMicrotask(()=>{if(alive.current){void drainFast();void drainOrder();}});
+      }
+      release();
     }
   };
 
