@@ -86,7 +86,7 @@ const BASE_STYLE = `
 `;
 
 type SleepRequest={executionId:string;date:string;trigger:HTMLButtonElement|null};
-export function NoorWellbeingLabR165({personalDate,separateSleep=false,sleepRequest,onSleepSaved,timeZone='Asia/Riyadh',trustedWellbeing:provided}:{personalDate?:string|undefined;timeZone?:string;separateSleep?:boolean;sleepRequest?:SleepRequest|null;onSleepSaved?:(request:SleepRequest)=>Promise<boolean>;trustedWellbeing?:NoorWellbeingPortR227}={}): ReactElement {
+export function NoorWellbeingLabR165({personalDate,separateSleep=false,sleepRequest,onSleepSaved,timeZone='Asia/Riyadh',trustedWellbeing:provided}:{personalDate?:string|undefined;timeZone?:string;separateSleep?:boolean;sleepRequest?:SleepRequest|null;onSleepSaved?:(request:SleepRequest,saveSignals:()=>Promise<void>)=>Promise<boolean>;trustedWellbeing?:NoorWellbeingPortR227}={}): ReactElement {
  const production=(((import.meta as ImportMeta & {env?:{PROD?:boolean}}).env?.PROD)===true);
  const cloudMode=production||provided!==undefined;
  const [serverPort,setServerPort]=useState<NoorWellbeingPortR227|undefined>();
@@ -204,13 +204,16 @@ export function NoorWellbeingLabR165({personalDate,separateSleep=false,sleepRequ
   const value:DailySignals={date,steps:values[0]??null,sleepMinutes:values[1]??null,screenMinutes:values[2]??null,pickups:values[3]??null,apps:[...appRows],source:'manual',...(sleepQuality?{sleepQuality}:{}),...(values[1]!=null?{sleepSource}:{})};
   setBusy(true);setError('');setStatus('');
   try{
-   if(cloudMode)await port!.saveSignals(value);
-   setSignals(old=>[value,...old.filter(row=>row.date!==date)]);
-   setStatus(sleepMode?'تم حفظ متابعة النوم.':cloudMode?'تم حفظ مؤشرات اليوم بأمان.':'حُفظت المؤشرات لهذه الجلسة فقط.');
+   const persist=async()=>{
+    if(cloudMode)await port!.saveSignals(value);
+    setSignals(old=>[value,...old.filter(row=>row.date!==date)]);
+   };
    if(sleepMode&&activeSleepRequest?.date===date&&onSleepSaved){
-    const completed=await onSleepSaved(activeSleepRequest).catch(()=>false);
-    if(completed)setOpen(false);
-    else setError('حُفظ النوم، وتعذّر تحديث إنجاز العادة. أعد الحفظ للمحاولة مجددًا.');
+    if(await onSleepSaved(activeSleepRequest,persist))setOpen(false);
+    else setError('تعذر بدء حفظ متابعة النوم. أعد المحاولة.');
+   }else{
+    await persist();
+    setStatus(sleepMode?'تم حفظ متابعة النوم.':cloudMode?'تم حفظ مؤشرات اليوم بأمان.':'حُفظت المؤشرات لهذه الجلسة فقط.');
    }
   }
   catch{setError('تعذر تأكيد حفظ المؤشرات. بقيت القيم المدخلة كما هي؛ تحقق من السجل قبل إعادة الحفظ.');}
