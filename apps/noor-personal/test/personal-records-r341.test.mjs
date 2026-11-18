@@ -24,6 +24,13 @@ const profileCommand = (expectedUpdatedAt = null, extra = {}) => ({
   ...extra,
 });
 
+test("profile commands accept compact JPEG avatars and reject other embedded formats",()=>{
+  const avatarUrl="data:image/jpeg;base64,/9j/2Q==";
+  assert.equal(parsePersonalCommand(profileCommand(null,{avatarUrl}))?.avatarUrl,avatarUrl);
+  assert.equal(parsePersonalCommand(profileCommand(null,{avatarUrl:"data:image/svg+xml;base64,PHN2Zz4="})),null);
+  assert.equal(parsePersonalCommand(profileCommand(null,{avatarUrl:`data:image/jpeg;base64,/9j/${"A".repeat(33000)}`})),null);
+});
+
 const eventCommand = (extra = {}) => ({
   type: "create-historical-event",
   id: "event-1",

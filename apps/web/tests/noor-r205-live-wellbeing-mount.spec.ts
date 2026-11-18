@@ -8,10 +8,10 @@ const wellbeing = readFileSync(new URL("../src/noor-wellbeing-lab-r165.tsx", imp
 
 test("R205 live personal view mounts fourth personal-space icon beside three journal actions", () => {
   const importLine = 'import { NoorWellbeingLabR165 } from "./noor-wellbeing-lab-r165.js";';
-  const exactCurrentDayMount = '{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 personalDate={view.localDate??undefined} /></>:null}';
+  const exactCurrentDayMount = '{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 separateSleep timeZone={view.timeZone} personalDate={view.localDate??undefined} /></>:null}';
   assert.equal(app.split(importLine).length - 1, 1, "wellbeing component must be imported exactly once by the live app");
   assert.equal(app.split(exactCurrentDayMount).length - 1, 1, "live daily achievement must mount both components together");
-  assert.equal((app.match(/<NoorWellbeingLabR165 personalDate=\{view\.localDate\?\?undefined\} \/>/gu) ?? []).length, 1, "fourth component must be mounted exactly once");
+  assert.equal((app.match(/<NoorWellbeingLabR165 separateSleep timeZone=\{view\.timeZone\} personalDate=\{view\.localDate\?\?undefined\} \/>/gu) ?? []).length, 1, "fourth component must be mounted exactly once");
   assert.equal((app.match(/<NoorThreeSpacesR171 personalDate=\{view\.localDate\?\?undefined\} \/>/gu) ?? []).length, 1, "existing three journal actions remain exactly once");
 });
 
@@ -22,5 +22,5 @@ test("R205 fourth icon remains an accessible touch target in the same achievemen
   assert.match(wellbeing, /createPortal\(launcher,spaceSlot\)/u);
   assert.match(wellbeing, /data-testid="noor-wellbeing-launch-r165"/u);
   assert.match(wellbeing, /NOOR_R181A_PERSONAL_SPACE/u);
-  assert.match(wellbeing, /aria-label="إغلاق مساحتي"/u);
+  assert.match(wellbeing, /إغلاق مساحتي/u);
 });

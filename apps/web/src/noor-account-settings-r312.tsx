@@ -5,6 +5,22 @@ import type { NoorPersonalCommandInput } from "./noor-personal-today-client.js";
 
 type Profile = Readonly<{displayName:string;avatarUrl:string|null;birthDate:string|null;updatedAt:string}>;
 
+function cropAvatar(image:HTMLImageElement,zoom:number,x:number,y:number):string {
+  const canvas=document.createElement("canvas");
+  canvas.width=canvas.height=192;
+  const context=canvas.getContext("2d");
+  if(!context)throw new Error("Avatar resize unavailable");
+  const side=Math.min(image.naturalWidth,image.naturalHeight)/zoom;
+  context.fillStyle="#fff";
+  context.fillRect(0,0,192,192);
+  context.drawImage(image,(image.naturalWidth-side)*x,(image.naturalHeight-side)*y,side,side,0,0,192,192);
+  for(const quality of [.84,.68,.5,.32]){
+    const data=canvas.toDataURL("image/jpeg",quality);
+    if(data.length<=32768)return data;
+  }
+  throw new Error("Avatar exceeds size limit");
+}
+
 /** Current-password reauthentication is necessary: the Noor app cookie is
  * not a Supabase browser session. Neither the password nor provider session
  * is stored locally. Identity subject stays unchanged after an email edit. */
@@ -17,9 +33,29 @@ export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCo
   const [error,setError]=useState("");
   const [displayName,setDisplayName]=useState(profile?.displayName??"");
   const [avatarUrl,setAvatarUrl]=useState(profile?.avatarUrl??"");
+  const [photo,setPhoto]=useState<HTMLImageElement|null>(null);
+  const [crop,setCrop]=useState({zoom:1,x:.5,y:.5});
+  const [photoBusy,setPhotoBusy]=useState(false);
   const [birthDate,setBirthDate]=useState(profile?.birthDate??"");
   const [profileBusy,setProfileBusy]=useState(false);
   useEffect(()=>{setDisplayName(profile?.displayName??"");setAvatarUrl(profile?.avatarUrl??"");setBirthDate(profile?.birthDate??"");},[profile]);
+  const adjustPhoto=(image:HTMLImageElement,position:typeof crop)=>{
+    try{setAvatarUrl(cropAvatar(image,position.zoom,position.x,position.y));setCrop(position);setError("");}
+    catch{setError("تعذّر تجهيز الصورة. جرّب صورة أخرى.");}
+  };
+  const choosePhoto=async(file:File)=>{
+    setError("");setMessage("");
+    if(file.size>12*1024*1024||!["image/jpeg","image/png","image/webp"].includes(file.type)){
+      setError("اختر صورة JPG أو PNG أو WebP بحجم لا يتجاوز 12 ميغابايت.");return;
+    }
+    setPhotoBusy(true);
+    const url=URL.createObjectURL(file);
+    try{
+      const image=new Image();image.src=url;await image.decode();
+      adjustPhoto(image,{zoom:1,x:.5,y:.5});setPhoto(image);
+    }catch{setError("تعذّر فتح الصورة. جرّب صورة أخرى.");}
+    finally{URL.revokeObjectURL(url);setPhotoBusy(false);}
+  };
   const submit=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
     if(busy||parentBusy)return;
@@ -37,11 +73,14 @@ export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCo
   };
   const saveProfile=async(event:FormEvent<HTMLFormElement>)=>{
     event.preventDefault();
-    if(!onCommand||profileBusy||parentBusy)return;
+    if(!onCommand||profileBusy||parentBusy||photoBusy)return;
     setProfileBusy(true);setError("");setMessage("");
-    const ok=await onCommand({type:"set-personal-profile",expectedUpdatedAt:profile?.updatedAt??null,displayName:displayName.trim(),avatarUrl:avatarUrl.trim()||null,birthDate:birthDate||null});
-    if(ok)setMessage("تم حفظ ملفك الشخصي.");else setError("تعذّر حفظ ملفك الشخصي. أعد المحاولة بعد تحديث البيانات.");
-    setProfileBusy(false);
+    try{
+      const ok=await onCommand({type:"set-personal-profile",expectedUpdatedAt:profile?.updatedAt??null,displayName:displayName.trim(),avatarUrl:avatarUrl.trim()||null,birthDate:birthDate||null});
+      if(ok){setMessage("تم حفظ ملفك الشخصي.");setPhoto(null);}
+      else setError("تعذّر حفظ ملفك الشخصي. أعد المحاولة بعد تحديث البيانات.");
+    }catch{setError("تعذّر الاتصال لحفظ الملف الشخصي.");}
+    finally{setProfileBusy(false);}
   };
   return <section className="np-r312-account np-r358-account" data-testid="noor-account-settings-r312" aria-label="إعدادات الحساب">
     <section className="np-r358-account-card" aria-labelledby="np-r358-profile-title">
@@ -49,8 +88,16 @@ export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCo
       <form className="np-r358-account-grid" onSubmit={event=>{void saveProfile(event);}}>
         <label>الاسم الظاهر<input type="text" maxLength={120} value={displayName} onChange={e=>setDisplayName(e.currentTarget.value)} disabled={profileBusy||parentBusy} required placeholder="الاسم"/></label>
         <label>تاريخ الميلاد<input type="date" value={birthDate} onChange={e=>setBirthDate(e.currentTarget.value)} disabled={profileBusy||parentBusy}/></label>
-        <label className="np-r358-account-wide">رابط الصورة<input type="url" maxLength={2048} value={avatarUrl} onChange={e=>setAvatarUrl(e.currentTarget.value)} disabled={profileBusy||parentBusy} placeholder="https://…"/></label>
-        <div className="np-r358-account-actions np-r358-account-wide"><button type="submit" disabled={profileBusy||parentBusy}>{profileBusy?"جارٍ الحفظ…":"حفظ التغييرات"}</button></div>
+        <div className="np-r358-account-wide np-profile-photo">
+          {avatarUrl?<img src={avatarUrl} alt="معاينة الصورة الشخصية" width={96} height={96}/>:null}
+          <label>رفع صورة شخصية<input type="file" accept="image/jpeg,image/png,image/webp" disabled={profileBusy||parentBusy||photoBusy} onChange={e=>{const file=e.currentTarget.files?.[0];e.currentTarget.value="";if(file)void choosePhoto(file);}}/></label>
+          {photo?<fieldset disabled={profileBusy||parentBusy||photoBusy}>
+            <legend>ضبط الصورة</legend>
+            {([["zoom","التكبير",1,3],["x","الموضع الأفقي",0,1],["y","الموضع الرأسي",0,1]] as const).map(([key,label,min,max])=><label key={key}>{label}<input type="range" min={min} max={max} step={.05} value={crop[key]} onChange={e=>adjustPhoto(photo,{...crop,[key]:Number(e.currentTarget.value)})}/></label>)}
+          </fieldset>:null}
+          {avatarUrl?<button type="button" disabled={profileBusy||parentBusy||photoBusy} onClick={()=>{setAvatarUrl("");setPhoto(null);}}>إزالة الصورة</button>:null}
+        </div>
+        <div className="np-r358-account-actions np-r358-account-wide"><button type="submit" disabled={profileBusy||parentBusy||photoBusy}>{profileBusy?"جارٍ الحفظ…":"حفظ التغييرات"}</button></div>
       </form>
     </section>
     <section className="np-r358-account-card" aria-labelledby="np-r358-security-title">

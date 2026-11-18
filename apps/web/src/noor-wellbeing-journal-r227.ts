@@ -2,7 +2,7 @@
  * No browser persistence, account IDs, key material or developer sharing.
  */
 import {createNoorPrivateJournalClientR193,type NoorJournalFetchR193,type NoorPrivateJournalEntryR193} from './noor-private-journal-client-r193.js';
-import {isValidLocalDate,validateReflection,type Reflection,type DailySignals} from './noor-wellbeing-data-r165.js';
+import {isValidLocalDate,isSleepQuality,validateReflection,type Reflection,type DailySignals} from './noor-wellbeing-data-r165.js';
 
 export interface NoorWellbeingPortR227 {
  read():Promise<{reflections:Reflection[];signals:DailySignals[]}>;
@@ -22,7 +22,13 @@ function reflection(value:unknown,id:string):Reflection {
  return result;
 }
 function signals(value:unknown):DailySignals {
- if(!object(value)||!keys(value,['date','steps','sleepMinutes','screenMinutes','pickups','apps','source'])||typeof value.date!=='string'||!isValidLocalDate(value.date)||value.source!=='manual'||!amount(value.steps,100000)||!amount(value.sleepMinutes,1440)||!amount(value.screenMinutes,1440)||!amount(value.pickups,2000)||!Array.isArray(value.apps)||value.apps.length>100)throw Error('WELLBEING_INVALID_SIGNALS');
+ if(!object(value)||!keys(value,['date','steps','sleepMinutes','screenMinutes','pickups','apps','source',
+  ...(Object.hasOwn(value,'sleepQuality')?['sleepQuality']:[]),...(Object.hasOwn(value,'sleepSource')?['sleepSource']:[])])||
+  typeof value.date!=='string'||!isValidLocalDate(value.date)||value.source!=='manual'||!amount(value.steps,100000)||
+  !amount(value.sleepMinutes,1440)||!amount(value.screenMinutes,1440)||!amount(value.pickups,2000)||
+  ('sleepQuality' in value&&!isSleepQuality(value.sleepQuality))||
+  ('sleepSource' in value&&(value.sleepMinutes===null||!['manual','apple-health'].includes(String(value.sleepSource))))||
+  !Array.isArray(value.apps)||value.apps.length>100)throw Error('WELLBEING_INVALID_SIGNALS');
  const names=new Set<string>();
  for(const app of value.apps){
   if(!object(app)||!keys(app,['name','minutes','opens'])||typeof app.name!=='string'||!app.name.trim()||app.name.length>80||names.has(app.name)||app.minutes===null||!amount(app.minutes,1440)||!amount(app.opens,2000))throw Error('WELLBEING_INVALID_APP');

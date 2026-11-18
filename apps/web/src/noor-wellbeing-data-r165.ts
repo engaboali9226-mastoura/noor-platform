@@ -10,15 +10,38 @@ export type Reflection = Readonly<{
   helpful: string;
 }>;
 export type AppMinutes = Readonly<{ name: string; minutes: number; opens: number | null }>;
+export const SLEEP_QUALITY_LABELS = {
+  "very-low":"منخفض جدًا", low:"منخفض", okay:"جيد", high:"مرتفع", "very-high":"مرتفع جدًا",
+} as const;
+export type SleepQuality = keyof typeof SLEEP_QUALITY_LABELS;
+export function isSleepQuality(value:unknown):value is SleepQuality {
+  return typeof value==="string"&&Object.hasOwn(SLEEP_QUALITY_LABELS,value);
+}
 export type DailySignals = Readonly<{
   date: string;
   steps: number | null;
   sleepMinutes: number | null;
+  sleepQuality?: SleepQuality;
+  sleepSource?: 'manual' | 'apple-health';
   screenMinutes: number | null;
   pickups: number | null;
   apps: readonly AppMinutes[];
   source: 'manual' | 'synthetic';
 }>;
+
+export function sleepWeek(signals:readonly DailySignals[],through:string) {
+  const end=new Date(through+"T00:00:00Z");
+  if(!isValidLocalDate(through))return null;
+  const start=new Date(end);
+  start.setUTCDate(end.getUTCDate()-((end.getUTCDay()+1)%7));
+  const dates:string[]=[];
+  for(const day=new Date(start);day<=end;day.setUTCDate(day.getUTCDate()+1))dates.push(day.toISOString().slice(0,10));
+  const byDate=new Map(signals.map(row=>[row.date,row]));
+  const days=dates.map(date=>({date,signal:byDate.get(date)}));
+  const tracked=days.filter(({signal})=>signal&&(signal.sleepQuality||signal.sleepMinutes!==null)).length;
+  const low=days.filter(({signal})=>signal?.sleepQuality==="low"||signal?.sleepQuality==="very-low");
+  return {days,tracked,low,rate:Math.round(100*tracked/days.length)};
+}
 const DATE = /^\d{4}-\d{2}-\d{2}$/u;
 export function isValidLocalDate(date: string): boolean {
   return DATE.test(date) && !Number.isNaN(Date.parse(date + 'T00:00:00Z'))
