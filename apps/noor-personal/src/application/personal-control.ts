@@ -1,4 +1,4 @@
-import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
+import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, prayerHabitCandidateR334, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import { validPersonalAvatar } from "../domain/personal-records.js";
@@ -48,7 +48,7 @@ export type PersonalCommand =
     | PrayerScoreApprovalR334
     | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:LocalDate;taskSessionId:string;entryId:string;amount:number;note:string}>
     | Readonly<{type:"recover-historical-execution";executionId:string;localDate:LocalDate;expectedStatus:ExecutionStatus}>
-    | Readonly<{type:"record-prayer-r331";localDate:LocalDate;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null}>
+    | Readonly<{type:"record-prayer-r331";localDate:LocalDate;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null;habitExecutionId?:string}>
     | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;plan:NoorReminderPlanR314|null}>
     | Readonly<{type:"set-friday-mosque-hour";hour:FridayMosqueHour|null;expectedHour:FridayMosqueHour|null}>
     | Readonly<{type:"configure-task-sessions";definitionId:string;expectedRevisionId:string;plan:TaskSessionPlanDraft|null}>
@@ -465,10 +465,10 @@ export function parsePersonalCommand(
         return {type:"recover-historical-execution",executionId:value.executionId,localDate:value.localDate as LocalDate,expectedStatus:value.expectedStatus as ExecutionStatus};
     }
     if(value.type==="record-prayer-r331"){
-        if(!exactKeys(value,["type","localDate","key","mode","timing","expectedRecordedAt"])||!localDate(value.localDate)||!R331_PRAYERS.includes(value.key as PrayerKeyR331)||
+        if(!exactKeys(value,["type","localDate","key","mode","timing","expectedRecordedAt",...(Object.hasOwn(value,"habitExecutionId")?["habitExecutionId"]:[])])||(Object.hasOwn(value,"habitExecutionId")&&!boundedIdentifier(value.habitExecutionId))||!localDate(value.localDate)||!R331_PRAYERS.includes(value.key as PrayerKeyR331)||
           !((value.mode===null&&value.timing===null)||(["group","excused","unexcused"].includes(String(value.mode))&&["ontime","late"].includes(String(value.timing))))||
           !(value.expectedRecordedAt===null||(typeof value.expectedRecordedAt==="string"&&Number.isFinite(Date.parse(value.expectedRecordedAt)))))return null;
-        return {type:"record-prayer-r331",localDate:value.localDate as LocalDate,key:value.key as PrayerKeyR331,mode:value.mode as PrayerModeR331|null,timing:value.timing as PrayerTimingR331|null,expectedRecordedAt:value.expectedRecordedAt as string|null};
+        return {type:"record-prayer-r331",localDate:value.localDate as LocalDate,key:value.key as PrayerKeyR331,mode:value.mode as PrayerModeR331|null,timing:value.timing as PrayerTimingR331|null,expectedRecordedAt:value.expectedRecordedAt as string|null,...(typeof value.habitExecutionId==="string"?{habitExecutionId:value.habitExecutionId}:{})};
     }
     if(value.type==="correct-historical-execution"){
         if(!exactKeys(value,["type","executionId","localDate","expectedStatus","completed"]) ||
@@ -1288,6 +1288,22 @@ export class PersonalCommandService {
                     const records=(day.prayerRecordsR331??[]).filter(validPrayerRecordR331);
                     const previous=records.find(x=>x.key===p.key);
                     if((previous?.recordedAt??null)!==p.expectedRecordedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                    if(p.habitExecutionId){
+                        const habit=transaction.findDailyExecutionById(userId,p.habitExecutionId);
+                        const definition=habit&&transaction.findDefinitionById(userId,habit.definitionId);
+                        const key=definition&&(day.prayerScoreSnapshotR334?.legacyHabitKeys[definition.id]??prayerHabitCandidateR334(definition.title));
+                        if(!habit||habit.userId!==userId||habit.personalDayId!==day.id||habit.kind!=="Habit"||
+                           !definition||definition.state!=="Active"||definition.beveragePlan||key!==p.key||
+                           !["Pending","Planned","InProgress","Completed","Missed"].includes(habit.status)){
+                            throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                        }
+                        const status=p.mode!==null?"Completed":previous?defaultOpenStatus(habit):habit.status;
+                        if(status!==habit.status){
+                            const updated={...habit,status,version:habit.version+1,updatedAt:now};
+                            transaction.saveDailyExecution(updated);
+                            enqueueExecutionStatusEvent({transaction,idGenerator:this.dependencies.idGenerator,now,instance:updated});
+                        }
+                    }
                     if(previous?.mode===p.mode&&previous?.timing===p.timing||!previous&&p.mode===null)return;
                     const next=records.filter(x=>x.key!==p.key);
                     if(p.mode!==null&&p.timing!==null)next.push({key:p.key,mode:p.mode,timing:p.timing,recordedAt:now});
