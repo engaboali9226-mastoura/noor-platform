@@ -163,83 +163,43 @@ export function NoorR232ControlLocation({serverZone,preferences,onChange,onCommi
    }catch{setMessage("تعذر اعتماد الموقع الآن. لا تعتبر المعاينة مواقيت صلاة معتمدة.");}
    finally{setSaving(false);}
  };
- return <section data-testid="noor-r232-location-settings" className="np-r232-control">
-   <div className="np-cc-title"><div><h2>التوقيت والموقع</h2><p>اختيار المدينة ومعاينة توقيتها قبل اعتماد تغيير موقع الحساب؛ مواقيت الصلاة الحالية لا تتبدل بمعاينة ساعة أخرى.</p></div></div>
-   <section className="np-r312-time-quick" aria-label="مدن سريعة للاعتماد">
-    <h3>اختر مدينة بنقرة واحدة</h3><p>تظهر ساعة المدينة للمعاينة أولًا؛ الحفظ للحساب يتطلب الضغط على زر الاعتماد أدناه.</p>
+ return <section data-testid="noor-r232-location-settings" className="np-r232-control np-r358-location">
+   <div className="np-cc-title"><div><h2>التوقيت والموقع</h2></div></div>
+   <section className="np-r358-location-card" aria-labelledby="np-r358-city-title">
+    <header><h3 id="np-r358-city-title">المدينة</h3>{selected?<strong>{selected.name}، {selected.country}</strong>:null}</header>
     <div className="np-r312-city-buttons">{quickCities.map(city=><button type="button" key={city.timeZone}
       className="np-cc-button" aria-pressed={selected?.timeZone===city.timeZone&&selected?.name===city.name}
-      onClick={()=>select(city)}>{city.name}<small dir="ltr">{city.timeZone}</small></button>)}</div>
-   </section>
-   <div className="np-r232-setting-grid">
-    <label>المنطقة الزمنية المعتمدة للحسابات
-     <input className="np-input" value={serverZone} readOnly aria-readonly="true"/>
-    </label>
-    <label>المنطقة الزمنية (معاينة، ثم اعتماد مع المدينة)
-     <input aria-label="منطقة زمنية للعرض" className="np-input"
-      type="text" list="np-r233-zones" value={zoneInput} maxLength={90}
-      onChange={e=>setZoneInput(e.target.value)}
-      onBlur={()=>commitZone(zoneInput)}
-      placeholder="Asia/Riyadh"/>
-     <datalist id="np-r233-zones">{suggestedZones.map(zone=>
-       <option key={zone} value={zone}/>)}</datalist>
-    </label>
-    <div className="np-r238-zone-shortcuts" role="group" aria-label="اختيار سريع للمنطقة الزمنية">
-      {suggestedZones.slice(0,8).map(zone=><button key={zone} type="button"
-        className="np-cc-button" aria-pressed={previewZone===zone}
-        onClick={()=>commitZone(zone)}>{zone.replaceAll("_"," ")}</button>)}
-      <button className="np-cc-button" type="button"
-        onClick={()=>commitZone("")}>استعادة توقيت الحساب</button>
-    </div>
-    <div className="np-r312-dual-clock" aria-label="مقارنة التوقيت">
-     <div className="np-r312-clock-tile"><small>توقيت الحساب · محفوظ</small><strong>{new Intl.DateTimeFormat("ar-SA-u-nu-latn",{timeZone:serverZone,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(previewNow))}</strong><span dir="ltr">{serverZone}</span></div>
-     <div className="np-r312-clock-tile" role="status" aria-label="معاينة الساعة في المنطقة الزمنية المختارة"><small>توقيت المنطقة المختارة · معاينة</small><strong>{previewClock}</strong><span dir="ltr">{previewZone}</span><span>{previewDate}</span></div>
-    </div>
-    <p className="np-r232-note" role="note">الساعة الثانية للعرض فقط؛ مواقيت الصلاة واليوم الشخصي لا يتغيران. يُحفظ تغيير توقيت الحساب ويُعاد حساب مواقيت الصلاة واليوم بعد اعتماد المدينة بنجاح على الخادم؛ لا يُعاد تأريخ الإنجازات المغلقة.</p>
-    <label>بداية الضحى بعد الشروق
-     <select className="np-select" value={preferences.afterSunrise}
-      onChange={e=>onChange({...preferences,afterSunrise:Number(e.target.value)})}>
-      {[15,20,25,30].map(v=><option key={v} value={v}>{v} دقيقة</option>)}
-     </select>
-    </label>
-    <label>نهاية الضحى قبل الظهر
-     <select className="np-select" value={preferences.beforeDhuhr}
-      onChange={e=>onChange({...preferences,beforeDhuhr:Number(e.target.value)})}>
-      {[5,10,15,20].map(v=><option key={v} value={v}>{v} دقيقة</option>)}
-     </select>
-    </label>
-    <p className="np-r232-note" role="note">ساعات الجمعة الخمس تنتهي تلقائيًا عند وقت صلاة الظهر المعتمد من نور. لا يلزم إدخال وقت يدوي.</p>
-   </div>
-   <div className="np-r232-location-search">
-    <label htmlFor="np-r232-city-search">البحث عن المدينة والمنطقة الزمنية</label>
+      onClick={()=>select(city)}>{city.name}</button>)}</div>
     <div className="np-r232-search-row">
-     <input id="np-r232-city-search" className="np-input" type="search" value={query}
+     <input id="np-r232-city-search" aria-label="البحث عن المدينة" className="np-input" type="search" value={query}
       onChange={e=>{setQuery(e.target.value);lastSearch.current++;setResults([]);setSearching(false);}}
       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void search();}}}
-      placeholder="مثال: الرياض، القاهرة، جدة"/>
-     <button className="np-cc-button" type="button" disabled={searching}
-      onClick={()=>{void search();}}>{searching?"جارٍ البحث…":"بحث"}</button>
-     <button className="np-cc-button" type="button" onClick={gps}
-       title="يُرسل موقع الجهاز إلى خدمة خارجية لتحديد المدينة بعد موافقتك">تحديد عبر GPS</button>
+      placeholder="ابحث عن مدينة"/>
+     <button className="np-cc-button" type="button" disabled={searching} onClick={()=>{void search();}}>{searching?"جارٍ البحث…":"بحث"}</button>
+     <button className="np-cc-button" type="button" onClick={gps} title="تحديد المدينة من موقع الجهاز">الموقع الحالي</button>
     </div>
-    <p className="np-r238-privacy">البحث يتم بخدمة Open-Meteo. عند استخدام GPS تُرسل الإحداثيات لخدمة BigDataCloud لتحديد المدينة فقط، ولا تُحفظ الإحداثيات الدقيقة في نور.</p>
-    {results.length?<div className="np-r232-city-results" aria-label="نتائج البحث عن المدن">
-      {results.map((city,i)=><button type="button" className="np-cc-button" key={i}
-        onClick={()=>select(city)}>{city.name}، {city.country} — {city.timeZone}</button>)}
-    </div>:null}
-    {selected?<div className="np-r232-note">
-      <p>المدينة المختارة: <strong>{selected.name}، {selected.country}</strong> ({selected.timeZone})</p>
-      <small>يمكنك تعديل منطقة IANA الزمنية يدويًا مع إبقاء إحداثيات المدينة المختارة. تحقق من صحة المنطقة قبل الاعتماد لأنها ستؤثر على تاريخ نور ومواقيت الصلاة.</small>
-      <div className="np-r232-search-row">
-       <button type="button" className="np-cc-button" disabled={saving||!onCommit}
-         onClick={()=>{void save();}}>{saving?"جارٍ اعتماد الموقع…":"اعتماد المدينة والتوقيت للحساب"}</button>
-       <button type="button" className="np-cc-button" disabled={saving}
-         onClick={()=>{onChange({...preferences,selectedCity:null,displayZone:null});setZoneInput("");}}>إلغاء الاختيار</button>
-      </div>
-      <small>الاعتماد ينقل المنطقة الزمنية ومواقيت الصلاة إلى حسابك على الأجهزة الأخرى. إذا اختلف التاريخ الميلادي الحالي بين المدينتين، يُرفض التغيير حمايةً لإنجازات الأيام السابقة.</small>
-    </div>:null}
-    {message?<p role="status" className="np-r232-note">{message}</p>:null}
-   </div>
-   <p className="np-r232-warning"><strong>تنبيه:</strong> البحث والمعاينة مؤقتان؛ لا تتغير مواقيت الصلاة حتى تضغط «اعتماد المدينة والتوقيت للحساب» ويؤكد الخادم الحفظ. تغييرات المنطقة الزمنية التي تسبب اختلاف تاريخ اليوم الحالي تُرفض بأمان دون تعديل الإنجازات. اختيار منطقة زمنية يدويًا دون مدينة يظل معاينة فقط. عند اختيار مدينة، يمكن اعتماد المنطقة اليدوية معها من الزر الصريح، وليس بمجرد معاينة الساعة.</p>
+    {results.length?<div className="np-r232-city-results" aria-label="نتائج البحث عن المدن">{results.map((city,i)=><button type="button" className="np-cc-button" key={i} onClick={()=>select(city)}><span>{city.name}، {city.country}</span><small dir="ltr">{city.timeZone}</small></button>)}</div>:null}
+   </section>
+   <section className="np-r358-location-card" aria-labelledby="np-r358-zone-title">
+    <header><h3 id="np-r358-zone-title">المنطقة الزمنية</h3></header>
+    <div className="np-r358-zone-grid">
+     <label>توقيت الحساب<input className="np-input" value={serverZone} readOnly aria-readonly="true"/></label>
+     <label>التوقيت المختار<input aria-label="منطقة زمنية للعرض" className="np-input" type="text" list="np-r233-zones" value={zoneInput} maxLength={90} onChange={e=>setZoneInput(e.target.value)} onBlur={()=>commitZone(zoneInput)} placeholder="Asia/Riyadh"/><datalist id="np-r233-zones">{suggestedZones.map(zone=><option key={zone} value={zone}/>)}</datalist></label>
+    </div>
+    <div className="np-r312-dual-clock" aria-label="مقارنة التوقيت">
+     <div className="np-r312-clock-tile"><small>الحساب</small><strong>{new Intl.DateTimeFormat("ar-SA-u-nu-latn",{timeZone:serverZone,hour:"numeric",minute:"2-digit",hour12:true}).format(new Date(previewNow))}</strong><span dir="ltr">{serverZone}</span></div>
+     <div className="np-r312-clock-tile" role="status" aria-label="معاينة الساعة في المنطقة الزمنية المختارة"><small>المختار</small><strong>{previewClock}</strong><span>{previewDate}</span><span dir="ltr">{previewZone}</span></div>
+    </div>
+    <button className="np-r358-text-button" type="button" onClick={()=>commitZone("")}>استعادة توقيت الحساب</button>
+   </section>
+   <section className="np-r358-location-card" aria-labelledby="np-r358-day-title">
+    <header><h3 id="np-r358-day-title">إيقاع اليوم</h3></header>
+    <div className="np-r358-zone-grid">
+     <label>بداية الضحى بعد الشروق<select className="np-select" value={preferences.afterSunrise} onChange={e=>onChange({...preferences,afterSunrise:Number(e.target.value)})}>{[15,20,25,30].map(v=><option key={v} value={v}>{v} دقيقة</option>)}</select></label>
+     <label>نهاية الضحى قبل الظهر<select className="np-select" value={preferences.beforeDhuhr} onChange={e=>onChange({...preferences,beforeDhuhr:Number(e.target.value)})}>{[5,10,15,20].map(v=><option key={v} value={v}>{v} دقيقة</option>)}</select></label>
+    </div>
+   </section>
+   {selected?<div className="np-r358-location-save"><strong>{selected.name} · <span dir="ltr">{selected.timeZone}</span></strong><div><button type="button" className="np-cc-button primary" disabled={saving||!onCommit} onClick={()=>{void save();}}>{saving?"جارٍ الحفظ…":"حفظ الموقع"}</button><button type="button" className="np-cc-button" disabled={saving} onClick={()=>{onChange({...preferences,selectedCity:null,displayZone:null});setZoneInput("");}}>إلغاء</button></div></div>:null}
+   {message?<p role="status" className="np-r358-location-status">{message}</p>:null}
  </section>;
 }
