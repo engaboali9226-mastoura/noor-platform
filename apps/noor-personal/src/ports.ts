@@ -116,6 +116,8 @@ export interface FoundationTransaction {
         instant: IsoInstant,
     ): PersonalDay | null;
 
+    findPersonalDayById?(userId: string, personalDayId: string): PersonalDay | null;
+
     findPersonalDayByKey(
         key: string,
     ): PersonalDay | null;

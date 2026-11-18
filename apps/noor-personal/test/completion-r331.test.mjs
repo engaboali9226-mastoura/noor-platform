@@ -58,7 +58,8 @@ test("R331 prayer reporting is day scoped, not allowed before the prayer, and su
 });
 
 test("recording a prayer from its habit commits prayer details and completion together",async()=>{
- const now="2026-11-14T12:00:00.000Z",date="2026-11-14";
+ let now="2026-11-14T12:00:00.000Z";
+ const date="2026-11-14";
  const day={id:"day",userId:"u",boundary:{key:"today",localDate:date,startAt:"2026-11-13T21:00:00.000Z",endAt:"2026-11-14T21:00:00.000Z",timeZone:"Asia/Riyadh"},state:"Open",version:1,createdAt:now,updatedAt:now};
  const eligibility={definitionRevisionId:"r",importance:"Essential",weight:8,gatePolicy:"NonBlocking",targets:{}};
  const definition={id:"d",userId:"u",kind:"Habit",revisionId:"r",title:"صلاة الفجر",state:"Active",schedule:{kind:"Daily"},effectiveFromDate:date,...eligibility};
@@ -74,6 +75,18 @@ test("recording a prayer from its habit commits prayer details and completion to
  const saved=store.snapshot();
  assert.equal(saved.dailyExecution[0].status,"Completed");
  assert.equal(saved.personalDays[0].prayerRecordsR331[0].key,"fajr");
+ const recordedAt=now;
+ now="2026-11-14T21:12:00.000Z"; // The next civil day has started in Riyadh.
+ await assert.rejects(()=>service.execute("other",{...command,expectedRecordedAt:recordedAt}));
+ await assert.rejects(()=>service.execute("u",{...command,localDate:"2026-11-15",expectedRecordedAt:recordedAt}));
+ await service.execute("u",{...command,mode:"excused",timing:"late",expectedRecordedAt:recordedAt});
+ assert.equal(store.snapshot().personalDays[0].prayerRecordsR331[0].recordedAt,now);
+ assert.equal(store.snapshot().personalDays[0].prayerRecordsR331[0].mode,"excused");
+ await service.execute("u",{...command,mode:null,timing:null,expectedRecordedAt:now});
+ assert.equal(store.snapshot().dailyExecution[0].status,"Missed");
+ await service.execute("u",command);
+ assert.equal(store.snapshot().dailyExecution[0].status,"Completed");
+ assert.equal(store.snapshot().personalDays[0].prayerRecordsR331[0].recordedAt,now);
 });
 
 test("R331 late scheduled session preserves date and records only delayed increment with immutable decayed share",async()=>{

@@ -1280,31 +1280,37 @@ export class PersonalCommandService {
                     const updated=applyFinanceOperation(ledger,userId,command.operation,now,financialZone);
                     transaction.saveFinance(userId,updated);return;
                 }
-                // NOOR_HISTORY_EDITOR_R108: corrections require a real persisted occurrence.
-                // The event timestamp remains NOW; the activity date is the original personal day.
                 if(command.type==="record-prayer-r331"){
                     const p=parsePersonalCommand(command);
                     if(!p||p.type!=="record-prayer-r331")throw new Error("INVALID_PRAYER_RECORD");
-                    const day=activePersonalDay(transaction,userId,now);
-                    if(day.userId!==userId||day.boundary.localDate!==p.localDate)throw new PersonalControlError("EXECUTION_NOT_CURRENT");
+                    const currentDay=transaction.findOpenPersonalDayContaining(userId,now);
+                    const habit=p.habitExecutionId?transaction.findDailyExecutionById(userId,p.habitExecutionId):null;
+                    if(p.habitExecutionId&&(!habit||habit.userId!==userId))throw new PersonalControlError("EXECUTION_NOT_FOUND");
+                    const day=currentDay?.boundary.localDate===p.localDate&&(!habit||habit.personalDayId===currentDay.id)
+                        ?currentDay:habit&&transaction.findPersonalDayById?.(userId,habit.personalDayId);
+                    if(!day||day.userId!==userId||day.boundary.localDate!==p.localDate)throw new PersonalControlError("EXECUTION_NOT_CURRENT");
+                    const historical=day.id!==currentDay?.id;
+                    const civilToday=new IntlTimeZoneAdapter().localDateForInstant(now,currentDay?.boundary.timeZone??day.boundary.timeZone);
+                    if(p.localDate>civilToday||historical&&(p.localDate>=civilToday||!habit))
+                        throw new PersonalControlError("EXECUTION_NOT_CURRENT");
                     const context=transaction.findDailyIslamicContextByPersonalDayId(day.id);
                     const at=context?.prayerTimes[p.key];
                     if(!at||!Number.isFinite(Date.parse(at))||Date.parse(at)>Date.parse(now))throw new Error("PRAYER_NOT_STARTED");
                     const records=(day.prayerRecordsR331??[]).filter(validPrayerRecordR331);
                     const previous=records.find(x=>x.key===p.key);
                     if((previous?.recordedAt??null)!==p.expectedRecordedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
-                    if(p.habitExecutionId){
-                        const habit=transaction.findDailyExecutionById(userId,p.habitExecutionId);
-                        const definition=habit&&transaction.findDefinitionById(userId,habit.definitionId);
+                    if(habit){
+                        const definition=transaction.findDefinitionById(userId,habit.definitionId);
                         const key=definition&&(day.prayerScoreSnapshotR334?.legacyHabitKeys[definition.id]??prayerHabitCandidateR334(definition.title));
-                        if(!habit||habit.userId!==userId||habit.personalDayId!==day.id||habit.kind!=="Habit"||
-                           !definition||definition.state!=="Active"||definition.beveragePlan||key!==p.key||
+                        if(habit.personalDayId!==day.id||habit.kind!=="Habit"||
+                           !definition||(!historical&&definition.state!=="Active")||definition.beveragePlan||key!==p.key||
                            !["Pending","Planned","InProgress","Completed","Missed"].includes(habit.status)){
                             throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                         }
-                        const status=p.mode!==null?"Completed":previous?defaultOpenStatus(habit):habit.status;
-                        if(status!==habit.status){
-                            const updated={...habit,status,version:habit.version+1,updatedAt:now};
+                        const status=p.mode!==null?"Completed":previous?(historical?"Missed":defaultOpenStatus(habit)):habit.status;
+                        if(status!==habit.status||historical&&p.mode!==null&&habit.recoveredOnR331){
+                            const {recoveredOnR331,...withoutRecovery}=habit;
+                            const updated:DailyExecutionInstance={...(historical?withoutRecovery:habit),status,version:habit.version+1,updatedAt:now};
                             transaction.saveDailyExecution(updated);
                             enqueueExecutionStatusEvent({transaction,idGenerator:this.dependencies.idGenerator,now,instance:updated});
                         }
@@ -1315,6 +1321,8 @@ export class PersonalCommandService {
                     transaction.savePersonalDay({...day,prayerRecordsR331:next,version:day.version+1,updatedAt:now});
                     return;
                 }
+                // NOOR_HISTORY_EDITOR_R108: corrections require a real persisted occurrence.
+                // The event timestamp remains NOW; the activity date is the original personal day.
                 if(command.type==="correct-historical-execution" || command.type==="record-historical-progress" || command.type==="recover-historical-execution"){
                     const parsed=parsePersonalCommand(command);
                     if(!parsed || (parsed.type!=="correct-historical-execution" && parsed.type!=="record-historical-progress" && parsed.type!=="recover-historical-execution"))
