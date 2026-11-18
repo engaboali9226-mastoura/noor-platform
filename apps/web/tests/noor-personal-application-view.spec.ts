@@ -183,6 +183,17 @@ test("midnight rollover keeps compact task cards and past prayer recording on it
   const taskDialog=document.querySelector('[role="dialog"][aria-label="المهام"]')!;
   assert.ok(taskDialog.querySelector('[data-testid="activity-card-past-task"]'));
   assert.match(taskDialog.textContent??"",/تصحيح السجل/);
+  await act(async()=>[...taskDialog.querySelectorAll<HTMLButtonElement>("button")].find(button=>button.textContent==="تصحيح السجل")!.click());
+  const recovery=document.querySelector<HTMLElement>('.np-recovery-date-sheet')!;
+  assert.ok(recovery);
+  assert.equal(command,undefined);
+  await act(async()=>recovery.querySelector<HTMLInputElement>(`input[value="${date}"]`)!.click());
+  await act(async()=>recovery.querySelector("form")!.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
+  assert.deepEqual(command,{type:"recover-historical-execution",executionId:"past-task",localDate:date,performedOn:date,expectedStatus:"Planned"});
+  await act(async()=>resolveSave(new Response(null,{status:503})));
+  await act(async()=>recovery.querySelector<HTMLButtonElement>('[aria-label="إغلاق تسجيل الإتمام"]')!.click());
+  command=undefined;
+
   await act(async()=>taskDialog.querySelector<HTMLButtonElement>('[aria-label="إغلاق المهام"]')!.click());
   const checkbox=t.container.querySelector<HTMLButtonElement>('[data-testid="activity-card-past-asr"] [role="checkbox"]')!;
   await act(async()=>checkbox.click());
@@ -196,6 +207,50 @@ test("midnight rollover keeps compact task cards and past prayer recording on it
   await act(async()=>resolveSave(new Response(null,{status:503})));
   assert.equal(checkbox.getAttribute("aria-checked"),"false");
  }finally{await act(async()=>root.unmount());Date.now=originalNow;t.dom.window.setInterval=originalInterval;t.restore();t.dom.window.close();}
+});
+
+test("R367 quick add changes form inside one centered overlay",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('[data-testid="r324-nav-plus"]')!.click());
+  const dialog=document.querySelector<HTMLElement>(".np-r324-quick-sheet")!;
+  assert.deepEqual([...dialog.querySelectorAll(":scope > button")].map(button=>button.textContent),["إضافة مهمة","إضافة عادة","إضافة موعد"]);
+  await act(async()=>dialog.querySelector<HTMLButtonElement>(":scope > button")!.click());
+  assert.ok(document.querySelector(".np-r324-quick-sheet")===dialog);
+  assert.ok(dialog.querySelector("#np-definition-edit-form"));
+  assert.ok(t.container.querySelector('[data-testid="r331-announcement-board"]'));
+  await act(async()=>[...dialog.querySelectorAll<HTMLButtonElement>("footer button")].find(button=>button.textContent==="رجوع")!.click());
+  assert.equal(dialog.querySelectorAll(":scope > button").length,3);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("R367 latest session points visibly update the daily percentage even below an integer boundary",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const date=today.today.personalDay.boundary.localDate;
+ const def={...workspace.workspace.definitions[0]!,weight:1,measurement:{target:4,unit:"صفحة"},
+  sessionPlan:{distribution:"equal",sessions:Array.from({length:4},(_,i)=>({
+   id:`s-${i}`,title:`الجلسة ${i+1}`,objective:"",target:1,rangeStart:null,rangeEnd:null,scheduledDate:date,
+   order:i+1,note:"",revision:0,createdAt:date+"T00:00:00Z",updatedAt:date+"T00:00:00Z",completedAt:null,
+  }))}};
+ const heavyHabit={...today.today.habits[0]!,weight:99};
+ const input={...today,today:{...today.today,habits:[heavyHabit]}};
+ const fetcher=globalThis.fetch;
+ let resolve:(response:Response)=>void=()=>{};
+ globalThis.fetch=async(url,options)=>String(url).includes("/command")
+  ?new Promise<Response>(r=>{resolve=r;})
+  :fetcher(url,options);
+ const score=()=>t.container.querySelector('[data-testid="today-completion-rate"]')?.textContent;
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:input,initialWorkspace:{...workspace,workspace:{...workspace.workspace,definitions:[def,workspace.workspace.definitions[1]!]}}})));
+  assert.equal(score(),"0%");
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('.np-today-task-button')!.click());
+  await act(async()=>document.querySelector<HTMLInputElement>('[data-testid="r285-session-complete-s-0"]')!.click());
+  assert.equal(score(),"0.25%");
+  assert.match(t.container.querySelector('[data-testid="daily-session-achievement"]')?.textContent??"",/0.25 نقطة/);
+  await act(async()=>resolve(new Response(null,{status:503})));
+  assert.equal(score(),"0%");
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
 
 const futurePrayerAt=new Date(Date.now()+3_600_000).toISOString();
