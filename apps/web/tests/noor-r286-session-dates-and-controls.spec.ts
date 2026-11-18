@@ -3,12 +3,28 @@ import test from "node:test";
 import {readFileSync} from "node:fs";
 import {createElement} from "react";
 import {renderToStaticMarkup} from "react-dom/server";
-import {TaskSessionPlannerR254,TaskSessionListR254} from "../src/noor-task-sessions-r254.js";
+import {automaticTaskSessionSchedule,createAutomaticTaskSessionDrafts,TaskSessionPlannerR254,TaskSessionListR254} from "../src/noor-task-sessions-r254.js";
+import {parsePersonalCommand} from "../../noor-personal/src/application/personal-control.js";
 import type {StoredTaskSessionR254} from "../src/noor-task-sessions-r254.js";
 const session:StoredTaskSessionR254={id:"reading-1",title:"قراءة الفصل الأول",objective:"الفهم والتلخيص",
  target:12,rangeStart:1,rangeEnd:12,scheduledDate:"2026-11-11",order:1,note:"",revision:0,
  createdAt:"2026-11-10T18:00:00Z",updatedAt:"2026-11-10T18:00:00Z",completedAt:null};
 const plan={distribution:"custom" as const,sessions:[session]};
+test("automatic task follows selected weekdays, preserves whole pages and saves a separate subcategory",()=>{
+ const schedule=automaticTaskSessionSchedule({start:"2026-11-16",end:"2026-11-22",weekdays:[1,3,5],total:10,unit:"صفحة"});
+ assert.deepEqual(schedule,[
+  {date:"2026-11-16",amount:4},{date:"2026-11-18",amount:3},{date:"2026-11-20",amount:3},
+ ]);
+ const sessions=createAutomaticTaskSessionDrafts(schedule,"صفحة");
+ assert.deepEqual(sessions.map(({rangeStart,rangeEnd})=>[rangeStart,rangeEnd]),[[1,4],[5,7],[8,10]]);
+ const command=parsePersonalCommand({
+  type:"create-definition",kind:"Task",title:"كتاب",category:"قراءة",subcategory:" تطوير الذات ",
+  startDate:"2026-11-16",endDate:"2026-11-22",scheduleKind:"Weekdays",weekdays:[1,3,5],importance:"Supporting",
+  measurement:{target:10,unit:"صفحة"},sessionPlan:{distribution:"equal",sessions},
+ });
+ assert.equal(command?.type==="create-definition"&&command.subcategory,"تطوير الذات");
+ assert.throws(()=>automaticTaskSessionSchedule({start:"2026-11-16",end:"2026-11-22",weekdays:[1,3,5],total:2,unit:"صفحة"}));
+});
 const display=(todayDate:string)=>renderToStaticMarkup(createElement(TaskSessionListR254,{
  plan,log:[],definitionId:"reading-task",executionId:"today-execution",
  busy:false,onCommand:async()=>true,title:"قراءة كتاب",unit:"صفحة",todayDate,
