@@ -50,6 +50,16 @@ test('R227 cloud personal-space reloads saved fields, awaits persistence, and ne
   await submit();assert.equal(signals[0].steps,7500);
   await act(async()=>button('ملخص الأسبوع').click());
   assert.match(sleepDialog.textContent!,/إتمام المتابعة: 1 من/);
+  await act(async()=>dom.window.document.querySelector<HTMLButtonElement>('[aria-label="إغلاق متابعة النوم"]')!.click());
+  const date=riyadhDate();
+  let completedId:string|null=null;
+  await act(async()=>root.render(createElement(NoorWellbeingLabR165,{
+   personalDate:date,trustedWellbeing:port,separateSleep:true,
+   sleepRequest:{executionId:'sleep-habit',date,trigger:null},
+   onSleepSaved:async request=>{assert.equal(signals[0].sleepMinutes,450);completedId=request.executionId;return true;},
+  })));
+  await submit();
+  assert.equal(completedId,'sleep-habit');
  }finally{
   await act(async()=>root.unmount());dom.window.close();for(const[key,d]of previous){if(d)Object.defineProperty(globalThis,key,d);else Reflect.deleteProperty(globalThis,key);}
  }
