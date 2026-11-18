@@ -570,10 +570,18 @@ try{
   await run("document.querySelector('[data-testid=r324-nav-plus]').click()");
   await find(".np-r324-quick-sheet");
   await expect("document.querySelectorAll('.np-r324-quick-sheet > button').length===3","Quick add exposes task habit and appointment");
+  await expect(`(() => {
+    const dialog=document.querySelector(".np-r324-quick-sheet");
+    const rect=dialog?.getBoundingClientRect();
+    const close=dialog?.querySelector("header button")?.getBoundingClientRect();
+    return rect&&close&&Math.abs(rect.top+rect.height/2-innerHeight/2)<4&&Math.abs(close.width-close.height)<1;
+  })()`,"Quick add is vertically centered and the close control is circular");
+  await run("window.noorQuickAddDialog = document.querySelector('.np-r324-quick-sheet')");
   await snap(screen.name+"-quick-add");
   await run("document.querySelector('.np-r324-quick-sheet > button').click()");
   await expect("Array.from(document.querySelector(\'#definition-kind\')?.options??[]).map(o=>o.value).includes(\'appointment\')","Add form exposes appointment as a selectable type");
   await find("#definition-title");
+  await expect("window.noorQuickAddDialog === document.querySelector('.np-r324-quick-sheet')","The selected form stays in the original quick-add dialog");
   await expect("document.querySelector('[data-testid=r324-nav-plus]').getAttribute('aria-current')==='page'","Quick task navigation active");
   await snap(screen.name+"-quick-task");
   await cdp("Page.navigate",{url:url+"?screen=personal&task-preview=1"});
