@@ -13,6 +13,12 @@ export function recoveryCreditR367(due:string,performed:string):number {
  const days=recoveryDays(due,performed);
  return days<0?0:Math.max(30,100-30*days)/100;
 }
+export const RECOVERY_LOOKBACK_DAYS = 3;
+export function canRecoverDueDate(due:string,today:string):boolean {
+ const days=recoveryDays(due,today);
+ return days>=1&&days<=RECOVERY_LOOKBACK_DAYS;
+}
+
 export const R331_PRAYERS=["fajr","dhuhr","asr","maghrib","isha"] as const;
 export type PrayerKeyR331=typeof R331_PRAYERS[number];
 export function prayerHabitCandidateR334(raw:string):PrayerKeyR331|null{
