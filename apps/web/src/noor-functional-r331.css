@@ -1046,6 +1046,8 @@ button[aria-label^="إغلاق"] {
 .np-header-avatar{inline-size:100%;block-size:100%;object-fit:cover;border-radius:50%}
 @media(min-width:561px){.np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-top-actions{gap:10px!important}}
 .np-sleep-habit-slot:not(:empty){margin-block:0 10px}
+.np-page .nts-session-heading .nts-session-due{display:flex;align-items:center;flex-wrap:wrap;gap:.45em;font-size:12px;font-weight:700;color:var(--text);line-height:1.5}
+.np-page .nts-session-due time{white-space:nowrap;font-variant-numeric:tabular-nums}
 .np-profile-photo fieldset{display:grid;gap:8px;border:0;padding:8px 0;margin:0}
 .np-profile-photo input[type=range]{padding:0;min-height:28px}
 #noor-r323-habits, #noor-r323-tasks { scroll-margin-top: 12px; }
