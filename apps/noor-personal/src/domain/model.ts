@@ -257,6 +257,7 @@ export interface ExecutionDefinition {
     readonly taskGeneralNote?: string;
     /** Optional owner-authored description displayed in the '?' details. */
     readonly description?: string;
+    readonly subcategory?: string;
     readonly id: string;
     readonly userId: string;
     readonly kind: DefinitionKind;
