@@ -1,6 +1,7 @@
+import { prepareTaskSessionPlan, sessionEventCredit } from "../../noor-personal/src/domain/task-sessions.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {useDashboardDialog,useDialogViewport} from "./noor-dashboard-dialog.js";
-import { validPrayerScoreSnapshotR334, type PrayerScoreSnapshotR334, R331_PRAYERS, validPrayerRecordR331, recoveryCreditR331, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
+import { prayerDayScoreR334, validPrayerScoreSnapshotR334, type PrayerScoreSnapshotR334, R331_PRAYERS, validPrayerRecordR331, recoveryCreditR331, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
 import { NoorBrandHeader, NOOR_BRAND } from "./noor-brand-r329.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 import {NoorPersonalInitialSetupR321} from "./noor-personal-initial-setup-r321.js";
@@ -66,11 +67,33 @@ export interface NoorPersonalApplicationViewProps {
   readonly initialWorkspace?: NoorPersonalWorkspaceResult;
 }
 
-type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'}>;
+type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'}>;
+type DefinitionSave = Extract<FastCommand,{type:'create-definition'|'update-definition'}>;
+function isDefinitionSave(command:NoorPersonalCommandInput):command is DefinitionSave {
+  return command.type==='create-definition'||command.type==='update-definition';
+}
+function isSessionSave(command:NoorPersonalCommandInput):command is Extract<FastCommand,{type:'record-task-session-progress'|'complete-task-session'}> {
+  return command.type==='record-task-session-progress'||command.type==='complete-task-session';
+}
 type FastCompletion=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'correct-historical-execution'}>;
 function isFastCompletion(command:FastCommand):command is FastCompletion{return command.type==='set-execution-completed'||command.type==='correct-historical-execution';}
-function fastFailureKey(change:FastChange):string{return isFastCompletion(change.command)?`completion:${change.executionId}`:`entry:${'entryId' in change.command?change.command.entryId:''}`;}
-type FastChange={command:FastCommand;executionId:string;definitionId:string;title:string;entry?:ActivityEntry};
+function fastFailureKey(change:FastChange):string {
+  const {command}=change;
+  if(isFastCompletion(command))return `completion:${change.executionId}`;
+  if(command.type==="record-prayer-r331")return `prayer:${command.localDate}:${command.key}`;
+  if(isDefinitionSave(command))return `definition:${change.definitionId}`;
+  return `entry:${command.entryId}`;
+}
+type FastChange={
+  command:FastCommand;
+  executionId:string;
+  definitionId:string;
+  title:string;
+  entry?:ActivityEntry;
+  definition?:DefinitionItem;
+  prayerAt?:string;
+  beforeSave?:()=>Promise<void>;
+};
 type UnknownRecord = Record<string, unknown>;
 
 type ExecutionItem = Readonly<{
@@ -110,6 +133,26 @@ type DefinitionItem = Readonly<{
   endDate: string | null;
   importance: string;
 }>;
+
+function previewDefinition(command:DefinitionSave,id:string,previous:DefinitionItem|undefined,at:string):DefinitionItem {
+  const sessionPlan=command.sessionPlan===undefined?previous?.sessionPlan:prepareTaskSessionPlan(previous?.sessionPlan,command.sessionPlan,previous?.activityLog??[],command.measurement,at);
+  const quranPlan=command.quranPlan===undefined?previous?.quranPlan:command.quranPlan;
+  const beveragePlan=command.beveragePlan===undefined?previous?.beveragePlan:command.beveragePlan;
+  const countdownPlan=command.countdownPlan===undefined?previous?.countdownPlan:command.countdownPlan;
+  const description=command.description??previous?.description;
+  const subcategory=command.subcategory??previous?.subcategory;
+  return {
+    id,revisionId:"",kind:command.kind,state:previous?.state??"Active",activityLog:previous?.activityLog??[],
+    title:command.title,category:command.category,importance:command.importance,weight:command.weight??previous?.weight??1,
+    scheduleKind:command.scheduleKind,weekdays:command.weekdays,startDate:command.startDate,endDate:command.endDate,
+    ...(previous?.displayOrder!==undefined?{displayOrder:previous.displayOrder}:{}),
+    ...(previous?.taskGeneralNote?{taskGeneralNote:previous.taskGeneralNote}:{}),
+    ...(previous?.reminderPlan?{reminderPlan:previous.reminderPlan}:{}),
+    ...(command.measurement?{measurement:command.measurement}:{}),...(command.timeOfDay?{timeOfDay:command.timeOfDay}:{}),
+    ...(sessionPlan?{sessionPlan}:{}),...(quranPlan?{quranPlan}:{}),...(beveragePlan?{beveragePlan}:{}),
+    ...(countdownPlan?{countdownPlan}:{}),...(description?{description}:{}),...(subcategory?{subcategory}:{}),
+  };
+}
 
 type PeriodInsight = Readonly<{
   windowDays: number;
@@ -2856,7 +2899,7 @@ function HistoricalEventsManager({events=[],busy,onCommand}:{events?:WorkspaceVi
 
 type ControlSection="tools"|"settings"|"Habit"|"Task"|"appearance"|"finance"|"categories"|"ordering"|"weights"|"statistics"|"location"|"account"|"reminders"|"historical-events";
 
-function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=false, initialSection="Habit", initialQuickCreateKind=null, onSectionChanged, workspace, executions, onCommand, onLogout, logoutPending, onReconnect, reconnecting, defaultStartDate, appearance, onAppearance, timeZone, timePreferences, onTimePreferences, onLocationCommit }: { busy: boolean; onLogout:()=>void; logoutPending:boolean; onReconnect:()=>void; reconnecting:boolean; orderingPending?:boolean; initialCountdownCreate?:boolean; initialSection?:ControlSection; initialQuickCreateKind?:"Habit"|"Task"|null; onSectionChanged?:(section:string)=>void; workspace: WorkspaceViewModel | null; executions: readonly ExecutionItem[]; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; defaultStartDate: string; appearance: NoorAppearance; onAppearance: (value: NoorAppearance) => void; timeZone:string;timePreferences:NoorR232Preferences;onTimePreferences:(value:NoorR232Preferences)=>void;onLocationCommit:(city:NoorR232City)=>Promise<boolean> }): ReactElement {
+function ControlCenter({pendingDefinitionIds=[], busy, orderingPending=false, initialCountdownCreate=false, initialSection="Habit", initialQuickCreateKind=null, onSectionChanged, workspace, executions, onCommand, onLogout, logoutPending, onReconnect, reconnecting, defaultStartDate, appearance, onAppearance, timeZone, timePreferences, onTimePreferences, onLocationCommit }: {pendingDefinitionIds?:readonly string[]; busy: boolean; onLogout:()=>void; logoutPending:boolean; onReconnect:()=>void; reconnecting:boolean; orderingPending?:boolean; initialCountdownCreate?:boolean; initialSection?:ControlSection; initialQuickCreateKind?:"Habit"|"Task"|null; onSectionChanged?:(section:string)=>void; workspace: WorkspaceViewModel | null; executions: readonly ExecutionItem[]; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; defaultStartDate: string; appearance: NoorAppearance; onAppearance: (value: NoorAppearance) => void; timeZone:string;timePreferences:NoorR232Preferences;onTimePreferences:(value:NoorR232Preferences)=>void;onLocationCommit:(city:NoorR232City)=>Promise<boolean> }): ReactElement {
   const [section,setSection] = useState<ControlSection>(initialCountdownCreate?"Task":initialQuickCreateKind??initialSection);
   useEffect(()=>{onSectionChanged?.(section);},[section]);
   const [query,setQuery] = useState("");
@@ -2931,6 +2974,8 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
   });
   const habitGroups=categoryOptions.map(category=>[category,matches.filter(item=>(item.category.trim()||"عام")===category)] as const).filter(([,items])=>items.length>0);
   const selected=matches.find(item=>item.id===selectedId) ?? null;
+  const persistedDefinitions=definitions.filter(item=>!item.id.startsWith("pending:"));
+  const selectedSaving=!!selected&&pendingDefinitionIds.includes(selected.id);
   const changeSection = (value: typeof section) => { setSection(value);setQuery("");setFilter("active");setCategoryFilter("all");setSelectedId(null);setCreating(false);setConfirmArchive(null); };
   const apply = async (command: NoorPersonalCommandInput): Promise<boolean> => { const ok=await onCommand(command);if(command.type==="create-definition"||command.type==="update-definition")setFormError(ok?null:"تعذر الحفظ. راجع البيانات وحاول مرة أخرى.");if(ok){if(command.type==="delete-definition"){setSelectedId(null);setDeleteId(null);}setConfirmArchive(null);if(command.type==="create-definition"||command.type==="update-definition"){setCreating(false);setEditing(undefined);};}return ok; };
   const sectionDetails:Record<ControlSection,{label:string;description:string}>={
@@ -2969,17 +3014,17 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
   );
   const overviewDetail=(target:ControlSection)=>target==="Habit"?`${definitions.filter(item=>item.kind==="Habit"&&item.state==="Active").length} عادة`:target==="Task"?`${definitions.filter(item=>item.kind==="Task"&&item.state==="Active").length} مهمة`:target==="categories"?`${workspace?.categories?.length??0} تصنيفًا`:"";
   // R135: preserve the existing per-definition edit and safety actions inside cards.
-  const renderControlRow=(item:DefinitionItem)=><div className="np-cc-expandable" key={item.id}><button aria-expanded={selected?.id===item.id} aria-controls={`np-detail-${item.id}`} className={`np-cc-row${selected?.id===item.id?" is-selected":""}`} onClick={()=>{setSelectedId(selectedId===item.id?null:item.id);setConfirmArchive(null);}} type="button"><span className="np-cc-row-icon">{icon(item.kind)}</span><span className="np-cc-row-copy"><strong>{item.title}</strong><span>{item.category} · {scheduleLabel(item)}{item.kind==="Task"&&item.measurement?" · المستهدف "+item.measurement.target+" "+item.measurement.unit:""}{item.kind==="Task"&&item.sessionPlan?" · جلسات "+item.sessionPlan.sessions.filter(s=>sessionFinishedR254(s,item.activityLog)).length+"/"+item.sessionPlan.sessions.length:""}</span></span><span className={`np-cc-status ${item.state.toLowerCase()}`}>{item.state==="Paused"?"متوقفة":item.state==="Archived"?"مؤرشفة":currentExecution(item.id)?.status==="Completed"?"مكتملة اليوم":"نشطة"}</span></button>{selected?.id===item.id?<div aria-label="تفاصيل العنصر" className="np-cc-inline-detail" id={`np-detail-${item.id}`}><p className="np-cc-kicker">{selected.kind==="Habit"?"تفاصيل العادة":"تفاصيل المهمة"}</p><h2>{selected.title}</h2><dl><dt>القسم</dt><dd>{selected.category}</dd><dt>الحالة</dt><dd>{selected.state==="Active"?"نشطة":selected.state==="Paused"?"متوقفة مؤقتًا":selected.state==="Stopped"?"متوقفة نهائيًا":"مؤرشفة"}</dd><dt>تاريخ البداية</dt><dd>{selected.startDate}</dd><dt>تاريخ النهاية</dt><dd>{selected.endDate??"غير محدد"}</dd><dt>الجدول</dt><dd>{scheduleLabel(selected)}</dd>{selected.timeOfDay?<><dt>موعد التنفيذ</dt><dd>{selected.timeOfDay}</dd></>:null}<dt>الأهمية</dt><dd>{({Essential:"أساسي",Important:"مهم",Supporting:"داعم",Optional:"اختياري"} as Record<string,string>)[selected.importance]??selected.importance}</dd>{selected.kind==="Task"?<><dt>الوزن في إنجاز اليوم</dt><dd>{selected.weight}</dd><dt>المستهدف</dt><dd>{selected.measurement?`${selected.measurement.target} ${selected.measurement.unit}`:"دون كمية محددة"}</dd>{selected.sessionPlan?<><dt>الجلسات المكتملة</dt><dd>{selected.sessionPlan.sessions.filter(s=>sessionFinishedR254(s,selected.activityLog)).length} من {selected.sessionPlan.sessions.length}</dd><dt>التقدم المسجل</dt><dd>{selected.activityLog.reduce((n,e)=>n+e.amount,0)} {selected.measurement?.unit??""}</dd></>:null}</>:null}</dl>{selected.kind==="Task"&&selected.sessionPlan?<TaskSessionListR254 plan={selected.sessionPlan} log={selected.activityLog} definitionId={selected.id} executionId={selected.state==="Active"&&["Planned","Pending","InProgress"].includes(currentExecution(selected.id)?.status??"")?currentExecution(selected.id)!.id:null} busy={busy} onCommand={onCommand} title={selected.title} unit={selected.measurement?.unit??""} revisionId={selected.revisionId} taskGeneralNote={selected.taskGeneralNote??""} todayDate={defaultStartDate}/>:null}<div className="np-cc-actions">
-        <button className="np-cc-button primary" disabled={busy||!selected.revisionId} type="button" onClick={()=>{setEditing(selected);setQuickCountdown(false);setFormError(null);setFormSession(v=>v+1);setCreating(true);}}>تعديل البيانات والجدول</button>
-        {selected.state!=="Archived"?<button className="np-cc-button" disabled={busy} onClick={()=>{void apply({type:"set-definition-state",definitionId:selected.id,state:selected.state==="Paused"?"Active":"Paused"});}} type="button">{selected.state==="Paused"?"إعادة التشغيل":"إيقاف مؤقت"}</button>:null}
-        {selected.kind==="Task"&&selected.state!=="Archived"&&currentExecution(selected.id)?<button className="np-cc-button primary" disabled={busy||currentExecution(selected.id)?.status==="Suppressed"||
+  const renderControlRow=(item:DefinitionItem)=><div className="np-cc-expandable" key={item.id}><button aria-expanded={selected?.id===item.id} aria-controls={`np-detail-${item.id}`} className={`np-cc-row${selected?.id===item.id?" is-selected":""}`} disabled={!item.revisionId&&item.id.startsWith("pending:")} onClick={()=>{setSelectedId(selectedId===item.id?null:item.id);setConfirmArchive(null);}} type="button"><span className="np-cc-row-icon">{icon(item.kind)}</span><span className="np-cc-row-copy"><strong>{item.title}</strong><span>{item.category} · {scheduleLabel(item)}{item.kind==="Task"&&item.measurement?" · المستهدف "+item.measurement.target+" "+item.measurement.unit:""}{item.kind==="Task"&&item.sessionPlan?" · جلسات "+item.sessionPlan.sessions.filter(s=>sessionFinishedR254(s,item.activityLog)).length+"/"+item.sessionPlan.sessions.length:""}</span></span><span className={`np-cc-status ${item.state.toLowerCase()}`}>{item.state==="Paused"?"متوقفة":item.state==="Archived"?"مؤرشفة":currentExecution(item.id)?.status==="Completed"?"مكتملة اليوم":"نشطة"}</span></button>{selected?.id===item.id?<div aria-label="تفاصيل العنصر" className="np-cc-inline-detail" id={`np-detail-${item.id}`}><p className="np-cc-kicker">{selected.kind==="Habit"?"تفاصيل العادة":"تفاصيل المهمة"}</p><h2>{selected.title}</h2><dl><dt>القسم</dt><dd>{selected.category}</dd><dt>الحالة</dt><dd>{selected.state==="Active"?"نشطة":selected.state==="Paused"?"متوقفة مؤقتًا":selected.state==="Stopped"?"متوقفة نهائيًا":"مؤرشفة"}</dd><dt>تاريخ البداية</dt><dd>{selected.startDate}</dd><dt>تاريخ النهاية</dt><dd>{selected.endDate??"غير محدد"}</dd><dt>الجدول</dt><dd>{scheduleLabel(selected)}</dd>{selected.timeOfDay?<><dt>موعد التنفيذ</dt><dd>{selected.timeOfDay}</dd></>:null}<dt>الأهمية</dt><dd>{({Essential:"أساسي",Important:"مهم",Supporting:"داعم",Optional:"اختياري"} as Record<string,string>)[selected.importance]??selected.importance}</dd>{selected.kind==="Task"?<><dt>الوزن في إنجاز اليوم</dt><dd>{selected.weight}</dd><dt>المستهدف</dt><dd>{selected.measurement?`${selected.measurement.target} ${selected.measurement.unit}`:"دون كمية محددة"}</dd>{selected.sessionPlan?<><dt>الجلسات المكتملة</dt><dd>{selected.sessionPlan.sessions.filter(s=>sessionFinishedR254(s,selected.activityLog)).length} من {selected.sessionPlan.sessions.length}</dd><dt>التقدم المسجل</dt><dd>{selected.activityLog.reduce((n,e)=>n+e.amount,0)} {selected.measurement?.unit??""}</dd></>:null}</>:null}</dl>{selected.kind==="Task"&&selected.sessionPlan?<TaskSessionListR254 plan={selected.sessionPlan} log={selected.activityLog} definitionId={selected.id} executionId={selected.state==="Active"&&["Planned","Pending","InProgress"].includes(currentExecution(selected.id)?.status??"")?currentExecution(selected.id)!.id:null} busy={busy} onCommand={onCommand} title={selected.title} unit={selected.measurement?.unit??""} revisionId={selected.revisionId} taskGeneralNote={selected.taskGeneralNote??""} todayDate={defaultStartDate}/>:null}<div className="np-cc-actions">
+        <button className="np-cc-button primary" disabled={busy||selectedSaving||!selected.revisionId} type="button" onClick={()=>{setEditing(selected);setQuickCountdown(false);setFormError(null);setFormSession(v=>v+1);setCreating(true);}}>تعديل البيانات والجدول</button>
+        {selected.state!=="Archived"?<button className="np-cc-button" disabled={busy||selectedSaving} onClick={()=>{void apply({type:"set-definition-state",definitionId:selected.id,state:selected.state==="Paused"?"Active":"Paused"});}} type="button">{selected.state==="Paused"?"إعادة التشغيل":"إيقاف مؤقت"}</button>:null}
+        {selected.kind==="Task"&&selected.state!=="Archived"&&currentExecution(selected.id)?<button className="np-cc-button primary" disabled={busy||selectedSaving||currentExecution(selected.id)?.status==="Suppressed"||
            (!!selected.sessionPlan&&currentExecution(selected.id)?.status!=="Completed"&&
              (selected.sessionPlan.sessions.length===0||
               selected.sessionPlan.sessions.some(s=>!sessionFinishedR254(s,selected.activityLog))||
               !!selected.measurement&&selected.activityLog.reduce((n,e)=>n+e.amount,0)<selected.measurement.target))}
          onClick={()=>{const item=currentExecution(selected.id);if(item)void apply({type:"set-execution-completed",executionId:item.id,completed:item.status!=="Completed"});}} type="button">{currentExecution(selected.id)?.status==="Completed"?"إعادة فتح المهمة":"إنهاء مهمة اليوم"}</button>:selected.kind==="Task"&&selected.state!=="Archived"?<p className="np-cc-help">يظهر زر الإنجاز عندما يكون للمهمة تنفيذ مجدول اليوم.</p>:null}
-        {selected.state!=="Archived"?<button className="np-cc-button danger" disabled={busy} onClick={()=>setConfirmArchive(selected.id)} type="button">أرشفة {selected.kind==="Habit"?"العادة":"المهمة"}</button>:<p className="np-cc-help">العنصر مؤرشف، وسجله محفوظ.</p>}
-        <button className="np-cc-button danger" disabled={busy} onClick={()=>{setDeleteId(selected.id);}} type="button">حذف نهائي من قاعدة البيانات</button>
+        {selected.state!=="Archived"?<button className="np-cc-button danger" disabled={busy||selectedSaving} onClick={()=>setConfirmArchive(selected.id)} type="button">أرشفة {selected.kind==="Habit"?"العادة":"المهمة"}</button>:<p className="np-cc-help">العنصر مؤرشف، وسجله محفوظ.</p>}
+        <button className="np-cc-button danger" disabled={busy||selectedSaving} onClick={()=>{setDeleteId(selected.id);}} type="button">حذف نهائي من قاعدة البيانات</button>
 
         {confirmArchive===selected.id?<div className="np-cc-confirm" role="alert"><p>أرشفة هذا العنصر؟ سيُحفظ تاريخه.</p><button className="np-cc-button danger" disabled={busy} onClick={()=>{void apply({type:"archive-definition",definitionId:selected.id});}} type="button">تأكيد الأرشفة</button><button className="np-cc-button" disabled={busy} onClick={()=>setConfirmArchive(null)} type="button">إلغاء</button></div>:null}
       </div></div>:null}</div>;
@@ -2990,7 +3035,7 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
       <nav aria-label={settingsRealm?"أقسام الإعدادات":"أقسام الأدوات"} className={`np-cc-nav np-r356-control-nav ${settingsRealm?"np-r357-settings-nav":"np-r357-tools-nav"}`}><button aria-current={section===(settingsRealm?"settings":"tools")?"page":undefined} className={`np-cc-nav-item np-r356-nav-home${section===(settingsRealm?"settings":"tools")?" is-selected":""}`} onClick={()=>changeSection(settingsRealm?"settings":"tools")} type="button">{icon(settingsRealm?"settings":"tools")}<span>{settingsRealm?"الإعدادات":"كل الأدوات"}</span></button>{navigationGroups.map(([group,items])=><section className="np-r356-nav-group" aria-label={group} key={group}><p>{group}</p>{items.map(([id,label])=><button aria-current={section===id?"page":undefined} className={`np-cc-nav-item${section===id?" is-selected":""}`} key={id} onClick={event=>{changeSection(id);event.currentTarget.scrollIntoView?.({block:"nearest",inline:"center"});}} type="button">{icon(id)}<span>{label}</span>{(id==="Habit"||id==="Task")?<small>{definitions.filter(d=>d.kind===id&&d.state==="Active").length}</small>:null}</button>)}</section>)}</nav>
       <main className="np-cc-main">
         {section==="tools"||section==="settings"?<section className={`np-r356-overview ${section==="settings"?"np-r357-settings-overview":"np-r357-tools-overview"}`} aria-label={sectionDetails[section].label}><div className="np-cc-title"><div><h2>{sectionDetails[section].label}</h2></div></div><div className="np-r356-overview-grid">{overviewCards.map(target=>{const detail=overviewDetail(target);return <button className="np-r356-overview-card" key={target} type="button" onClick={()=>changeSection(target)}><span className="np-r356-overview-icon">{icon(target)}</span><span className="np-r356-overview-copy"><strong>{sectionDetails[target].label}</strong>{detail?<small>{detail}</small>:null}</span><NoorR323Icon name="arrow"/></button>;})}</div></section>:
-        section==="statistics"?<StatisticsCenter workspace={workspace}/>:section==="reminders"?<NoorReminderSettingsR314 definitions={workspace?.definitions??[]} busy={busy} onCommand={onCommand}/>:section==="historical-events"?<HistoricalEventsManager events={workspace?.historicalEvents} busy={busy} onCommand={onCommand}/>:section==="weights"?<NoorHabitWeightManagerR251 definitions={workspace?.definitions??[]} executions={executions} busy={busy||!workspace} onCommand={onCommand} prayerPolicy={workspace?.prayerScorePolicyR334??null}/>:section==="ordering"?<DisplayOrderManager workspace={workspace} busy={busy&&!orderingPending} onCommand={onCommand}/>:section==="categories"?<CategoryManager categories={workspace?.categories??COMMON_CATEGORIES} busy={busy} onCommand={onCommand}/>:section==="finance"?<FinanceCenter ledger={workspace?.finance ?? null} busy={busy} onCommand={onCommand} today={defaultStartDate}/>:section==="location"?<NoorR232ControlLocation serverZone={timeZone} preferences={timePreferences} onChange={onTimePreferences} onCommit={onLocationCommit}/>:section==="account"?<NoorAccountSettingsR312 profile={workspace?.profile??null} busy={busy} onCommand={onCommand} onReconnect={onReconnect} reconnecting={reconnecting} onLogout={onLogout} logoutPending={logoutPending}/>:section==="appearance"?<><div className="np-cc-title"><div><h2>مظهر نور</h2></div></div><div aria-label="اختيار المظهر" className="np-cc-themes">{NOOR_APPEARANCES.map(([id,title])=><button aria-pressed={appearance===id} className={`np-cc-theme ${id}`} key={id} onClick={()=>onAppearance(id)} type="button"><span aria-hidden="true" className="np-cc-theme-preview"><i/><i/><i/></span><strong>{title}</strong>{appearance===id?<small>الحالي</small>:null}</button>)}</div></>:<>
+        section==="statistics"?<StatisticsCenter workspace={workspace}/>:section==="reminders"?<NoorReminderSettingsR314 definitions={persistedDefinitions} busy={busy} onCommand={onCommand}/>:section==="historical-events"?<HistoricalEventsManager events={workspace?.historicalEvents} busy={busy} onCommand={onCommand}/>:section==="weights"?<NoorHabitWeightManagerR251 definitions={persistedDefinitions} executions={executions} busy={busy||!workspace} onCommand={onCommand} prayerPolicy={workspace?.prayerScorePolicyR334??null}/>:section==="ordering"?<DisplayOrderManager workspace={workspace} busy={busy&&!orderingPending} onCommand={onCommand}/>:section==="categories"?<CategoryManager categories={workspace?.categories??COMMON_CATEGORIES} busy={busy} onCommand={onCommand}/>:section==="finance"?<FinanceCenter ledger={workspace?.finance ?? null} busy={busy} onCommand={onCommand} today={defaultStartDate}/>:section==="location"?<NoorR232ControlLocation serverZone={timeZone} preferences={timePreferences} onChange={onTimePreferences} onCommit={onLocationCommit}/>:section==="account"?<NoorAccountSettingsR312 profile={workspace?.profile??null} busy={busy} onCommand={onCommand} onReconnect={onReconnect} reconnecting={reconnecting} onLogout={onLogout} logoutPending={logoutPending}/>:section==="appearance"?<><div className="np-cc-title"><div><h2>مظهر نور</h2></div></div><div aria-label="اختيار المظهر" className="np-cc-themes">{NOOR_APPEARANCES.map(([id,title])=><button aria-pressed={appearance===id} className={`np-cc-theme ${id}`} key={id} onClick={()=>onAppearance(id)} type="button"><span aria-hidden="true" className="np-cc-theme-preview"><i/><i/><i/></span><strong>{title}</strong>{appearance===id?<small>الحالي</small>:null}</button>)}</div></>:<>
           <div className="np-cc-title"><div><h2>{kind==="Habit"?"العادات":"المهام"}</h2></div><button className="np-cc-button primary" onClick={()=>{setEditing(undefined);setQuickCountdown(false);setFormError(null);setFormSession(value=>value+1);setCreating(true);}} type="button" aria-expanded={creating}>{kind==="Habit"?"+ إضافة عادة":"+ إضافة مهمة"}</button></div>
           <div className={`np-cc-tools${kind==="Habit"?" np-cc-tools-habit-cards-r135":""}`}><input aria-label="البحث في العناصر" className="np-input" onChange={event=>setQuery(event.target.value)} onInput={event=>setQuery(event.currentTarget.value)} placeholder="ابحث بالاسم أو القسم…" type="search" value={query}/><select aria-label="تصفية الحالة" className="np-select" onChange={event=>{setFilter(event.target.value);setConfirmArchive(null);}} value={filter}><option value="active">النشطة</option><option value="paused">المتوقفة</option><option value="all">الكل</option>{kind==="Task"?<><option value="completed">المكتملة اليوم</option><option value="unfinished">المهام غير المكتملة اليوم</option><option value="sessions">المهام ذات الجلسات</option></>:null}<option value="archived">المؤرشفة</option></select>{kind==="Habit"?<select data-testid="control-category-filter-r135" aria-label="اختيار تصنيف العادات في مركز التحكم" className="np-select" value={categoryFilter} onChange={event=>{setCategoryFilter(event.currentTarget.value);setSelectedId(null);setConfirmArchive(null);}}><option value="all">كل كروت التصنيفات</option>{categoryOptions.map(category=><option value={category} key={category}>{habitCardDisplayTitle(category)}</option>)}</select>:null}</div>
           <div className="np-cc-results" aria-live="polite">{matches.length} {kind==="Habit"?"عادة":"مهمة"}</div>
@@ -3015,7 +3060,7 @@ function ControlCenter({ busy, orderingPending=false, initialCountdownCreate=fal
 }
 
 const END_REASON_LABELS = {achieved:"تم الإنجاز",expired:"انتهى الوقت دون اكتمال",cancelled:"إلغاء المهمة"};
-function ActivityCard({item,definition,busy,pending=false,historicalDate=null,todayDate,onCommand,remainingMode=false,showSessions=false,onOpenSleep,prayerCompletion,onConfirmedCommand=onCommand}:{item:ExecutionItem;definition?:DefinitionItem|undefined;busy:boolean;pending?:boolean;historicalDate?:string|null;todayDate?:string|undefined;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>;remainingMode?:boolean;showSessions?:boolean;onOpenSleep?:(trigger:HTMLButtonElement)=>void;prayerCompletion?:{checked:boolean;disabled:boolean;open:()=>void}|undefined;onConfirmedCommand?:(command:NoorPersonalCommandInput)=>Promise<boolean>}):ReactElement {
+function ActivityCard({item,definition,busy,pending=false,historicalDate=null,todayDate,onCommand,remainingMode=false,showSessions=false,onOpenSleep,prayerCompletion}:{item:ExecutionItem;definition?:DefinitionItem|undefined;busy:boolean;pending?:boolean;historicalDate?:string|null;todayDate?:string|undefined;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>;remainingMode?:boolean;showSessions?:boolean;onOpenSleep?:(trigger:HTMLButtonElement)=>void;prayerCompletion?:{checked:boolean;disabled:boolean;open:()=>void}|undefined;}):ReactElement {
  const [mode,setMode]=useState<"note"|"finish"|"sessions"|"complete"|null>(null);
  const formId=useId();
  const viewport=useDialogViewport(mode!==null);
@@ -3065,7 +3110,7 @@ function ActivityCard({item,definition,busy,pending=false,historicalDate=null,to
   if(endReason==="achieved"&&(!sessionsDone||!parentTargetDone)){setError("أكمل جميع الجلسات قبل اختيار تم الإنجاز، أو اختر سبب إنهاء آخر.");return;}
   if(endReason==="achieved" && definition?.measurement && Math.round((total+amount)*1e6)/1e6<definition.measurement.target){setError("سجّل الكمية المتبقية أولًا، أو اختر سبب إنهاء آخر.");return;}
   setError("");
-  if(await (mode==="complete"?onConfirmedCommand:onCommand)({type:"record-activity",executionId:item.id,entryId,note,amount,endReason}))setMode(null);
+  if(await onCommand({type:"record-activity",executionId:item.id,entryId,note,amount,endReason}))setMode(null);
   else setError("تعذر تأكيد الحفظ. بياناتك ما زالت هنا؛ يمكنك إعادة المحاولة.");
  };
  return <div className={`np-item np-activity-item${task?" np-r332-task":" np-habit-row"}${completed?" is-completed":""}${showSessions?" np-task-detail-card":""}`} data-testid={`${remainingMode?"remaining-activity":"activity-card"}-${item.id}`} data-definition-id={definition?.id}>
@@ -3192,7 +3237,7 @@ function WeatherMetric({icon,label,value,rotation}: {
   </span>;
 }
 
-function Dashboard({ view:providedView, workspace, busy, actionError, onCommand, onConfirmedCommand, onOpenControl, onOpenAccount, onOpenSettings, onOpenReminders, onOpenPrayerWeights, onAddCountdown, onReconnect, reconnecting, connectionWarning, nowMs,pendingIds=[],lockedIds=[],onHistoryCommand,timePreferences,onTimePreferencesChange }: { view: TodayViewModel; onReconnect:()=>void; reconnecting:boolean; connectionWarning:boolean; workspace: WorkspaceViewModel | null; busy: boolean; actionError: string | null; onCommand: (command: NoorPersonalCommandInput) => Promise<boolean>; onConfirmedCommand: (command:NoorPersonalCommandInput)=>Promise<boolean>; onHistoryCommand: (command:NoorPersonalCommandInput)=>Promise<boolean>; onOpenControl: () => void; onOpenAccount: () => void; onOpenSettings: () => void; onOpenReminders: () => void; onOpenPrayerWeights: () => void; onAddCountdown: () => void; nowMs: number;pendingIds?:readonly string[];lockedIds?:readonly string[];timePreferences:NoorR232Preferences;onTimePreferencesChange:(value:NoorR232Preferences)=>void }): ReactElement {
+function Dashboard({ view:providedView, workspace, busy, actionError, onCommand, onOpenControl, onOpenAccount, onOpenSettings, onOpenReminders, onOpenPrayerWeights, onAddCountdown, onReconnect, reconnecting, connectionWarning, nowMs,pendingIds=[],lockedIds=[],onHistoryCommand,timePreferences,onTimePreferencesChange }: { view: TodayViewModel; onReconnect:()=>void; reconnecting:boolean; connectionWarning:boolean; workspace: WorkspaceViewModel | null; busy: boolean; actionError: string | null; onCommand: (command: NoorPersonalCommandInput,beforeSave?:()=>Promise<void>) => Promise<boolean>;  onHistoryCommand: (command:NoorPersonalCommandInput)=>Promise<boolean>; onOpenControl: () => void; onOpenAccount: () => void; onOpenSettings: () => void; onOpenReminders: () => void; onOpenPrayerWeights: () => void; onAddCountdown: () => void; nowMs: number;pendingIds?:readonly string[];lockedIds?:readonly string[];timePreferences:NoorR232Preferences;onTimePreferencesChange:(value:NoorR232Preferences)=>void }): ReactElement {
   // Today's execution projection is authoritative for recurrence and the personal-day boundary.
   const definitionsById = new Map((workspace?.definitions ?? []).map(definition => [definition.id, definition] as const));
   // NOOR_INPAGE_HISTORY_R110: the selected date drives the existing day grid.
@@ -3342,7 +3387,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     const prayer=view.prayerTimes.find(row=>row.key===key);
     return {
       checked:prayerRecords.some(row=>row.key===key),
-      disabled:!prayer||!(Date.parse(prayer.at)<=nowMs),
+      disabled:pendingIds.includes(item.id)||!prayer||!(Date.parse(prayer.at)<=nowMs),
       open:()=>{setShowRemaining(false);openPrayerEditor(key,prayer?.label??title,item.id);},
     };
   };
@@ -3381,7 +3426,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const renderSheetTask=(item:ExecutionItem,showSessions=false)=><ActivityCard
     key={item.id} item={item} definition={definitionsById.get(item.definitionId)}
     busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)}
-    onCommand={onCommand} onConfirmedCommand={onConfirmedCommand} todayDate={providedView.localDate??undefined} showSessions={showSessions}/>;
+    onCommand={onCommand} todayDate={providedView.localDate??undefined} showSessions={showSessions}/>;
   const weekRows=[...weightedHistory.filter(r=>r.date!==achievementDate),...weightedToday].filter(r=>visibleWeek.some(d=>!d.future&&d.date===r.date));
   const weekTotals=summarizeProgress(weekRows);
   const countScheduledSessions=(dates:ReadonlySet<string>)=>{
@@ -3721,7 +3766,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       <div className="np-day-ring" role="progressbar" aria-label="الإنجاز الموزون لليوم كاملًا" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionRate} aria-valuetext={displayedPrayer?`${completionRate}%، إنجاز موزون يشمل الصلوات`:totalToday?`${completionRate}%، ${completedToday} من ${totalToday} عناصر`:"لا توجد عناصر مستحقة اليوم"}>
         <svg viewBox="0 0 100 100" aria-hidden="true"><circle className="np-day-ring-track" cx="50" cy="50" r="42"/><circle className="np-day-ring-fill" cx="50" cy="50" r="42" strokeDasharray={263.894} strokeDashoffset={263.894*(1-completionRate/100)}/></svg><strong data-testid="today-completion-rate">{arabicNumber(completionRate)}%</strong>
       </div>
-      <div className="np-day-achievement-copy"><div className="np-day-achievement-text"><h2>{historyDate?`إنجاز يوم ${weekDateLabel(historyDate)}`:"إنجاز اليوم"} <small>موزون</small></h2><p>{!totalToday?"لا توجد عادات أو مهام مستحقة اليوم.":completedToday===totalToday?"اكتملت كل عادات ومهام اليوم. أحسنت الاستمرار.":`${arabicNumber(completedToday)} من ${arabicNumber(totalToday)} عادات ومهام مكتملة اليوم`}</p>{daySessions.scheduled>0?<p data-testid="daily-session-achievement">جلسات المهام: <bdi>{daySessions.completed} / {daySessions.scheduled}</bdi></p>:null}{displayedPrayer?<p data-testid="r334-daily-prayer-score">الصلوات المسجلة: {displayedPrayer.score.rows.filter(r=>r.recorded).length} / {displayedPrayer.score.rows.length} · نقاط {arabicNumber(displayedPrayer.score.earnedWeight)} / {arabicNumber(displayedPrayer.score.weight)}</p>:null}</div>{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 separateSleep sleepRequest={sleepRequest} onSleepSaved={async(request)=>{if(request.date!==achievementDate)return false;const item=sleepHabits.find(habit=>habit.id===request.executionId);return !!item&&(item.status==="Completed"||await onConfirmedCommand({type:"set-execution-completed",executionId:item.id,completed:true}));}} timeZone={view.timeZone} personalDate={view.localDate??undefined} /></>:null}</div>
+      <div className="np-day-achievement-copy"><div className="np-day-achievement-text"><h2>{historyDate?`إنجاز يوم ${weekDateLabel(historyDate)}`:"إنجاز اليوم"} <small>موزون</small></h2><p>{!totalToday?"لا توجد عادات أو مهام مستحقة اليوم.":completedToday===totalToday?"اكتملت كل عادات ومهام اليوم. أحسنت الاستمرار.":`${arabicNumber(completedToday)} من ${arabicNumber(totalToday)} عادات ومهام مكتملة اليوم`}</p>{daySessions.scheduled>0?<p data-testid="daily-session-achievement">جلسات المهام: <bdi>{daySessions.completed} / {daySessions.scheduled}</bdi></p>:null}{displayedPrayer?<p data-testid="r334-daily-prayer-score">الصلوات المسجلة: {displayedPrayer.score.rows.filter(r=>r.recorded).length} / {displayedPrayer.score.rows.length} · نقاط {arabicNumber(displayedPrayer.score.earnedWeight)} / {arabicNumber(displayedPrayer.score.weight)}</p>:null}</div>{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 separateSleep sleepRequest={sleepRequest} onSleepSaved={async(request,saveSignals)=>{if(request.date!==achievementDate)return false;const item=sleepHabits.find(habit=>habit.id===request.executionId);return !!item&&await onCommand({type:"set-execution-completed",executionId:item.id,completed:true},saveSignals);}} timeZone={view.timeZone} personalDate={view.localDate??undefined} /></>:null}</div>
       <div className="np-day-achievement-actions">
       {totalToday?<button type="button" className="np-day-remaining" data-testid="r286-remaining-trigger" ref={remainingTriggerRef} aria-haspopup="dialog" aria-expanded={showRemaining} onClick={()=>setShowRemaining(true)}><strong>{arabicNumber(Math.max(0,totalToday-completedToday))}</strong><span>{completedToday===totalToday?(displayedPrayer&&completionRate<100?"اكتملت المهام والعادات":"يوم مكتمل"):historyDate?"متبقية في اليوم":"متبقية اليوم"}</span></button>:null}
         <button type="button" className="np-yesterday-trigger" aria-haspopup="dialog" aria-expanded={showYesterday}
@@ -3739,7 +3784,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             const row=recoverable.find(r=>r.id===x.id&&r.date===historyDate);
             return <div key={x.id} className="np-r331-recovery-row" data-testid={`remaining-activity-${x.id}`}><div><strong>{x.title}</strong><small>{x.kind==="Habit"?"عادة":"مهمة"} · وزن {x.weight}</small></div>{row?<button type="button" disabled={busy} onClick={()=>{void recovery(row);}}>تم الآن</button>:<button type="button" onClick={()=>{setShowRemaining(false);setRecoveryWeek(Math.max(0,Math.floor((Date.parse(achievementDate+"T00:00:00Z")-Date.parse(historyDate+"T00:00:00Z")-86400000)/(7*86400000))));setRecoveryDate(historyDate);setSessionRecovery(null);setShowRecovery(true);}}>عرض التدارك</button>}</div>;
           }
-          return <ActivityCard key={x.id} item={x} definition={d} busy={busy||lockedIds.includes(x.id)} pending={pendingIds.includes(x.id)} onCommand={onCommand} onConfirmedCommand={onConfirmedCommand} onOpenSleep={sleepAction(x)} prayerCompletion={prayerHabitCompletion(x)} todayDate={view.localDate??undefined} remainingMode/>;
+          return <ActivityCard key={x.id} item={x} definition={d} busy={busy||lockedIds.includes(x.id)} pending={pendingIds.includes(x.id)} onCommand={onCommand} onOpenSleep={sleepAction(x)} prayerCompletion={prayerHabitCompletion(x)} todayDate={view.localDate??undefined} remainingMode/>;
         })}
         {recoverError&&historyDate?<p role="alert">{recoverError}</p>:null}
       </div>:<p role="status">اكتملت جميع المهام والعادات المستحقة لهذا اليوم.</p>}</section></div>,document.body):null}
@@ -3815,7 +3860,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
               })}
           </div>
         </section>
-        <section id="noor-r323-tasks" aria-label="مهام اليوم"><div className="np-section-heading"><h2>{historyDate?`مهام يوم ${weekDateLabel(historyDate)}`:"مهام اليوم"}</h2></div>{view.tasks.length===0?<p className="np-card np-empty">لا توجد مهام مجدولة لهذا اليوم.</p>:null}{[...taskCategories].map(([category,items])=><section key={category} className="np-card np-category np-tasks-card"><div className="np-category-head"><h3 className="np-category-title">{category}</h3><span className="np-category-count">{arabicNumber(completedCount(items))} من {arabicNumber(items.length)} مهام</span></div><div className="np-list">{historyDate?items.map(item=><ActivityCard key={item.id} item={item} definition={definitionsById.get(item.definitionId)} busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)} onCommand={historyDate?historicalCommand:onCommand} historicalDate={historyDate} todayDate={view.localDate??undefined}/>):items.map(item=><button key={item.id} type="button" className="np-compact-task np-today-task-button" aria-haspopup="dialog" onClick={()=>openTaskSheet(item)}><strong>{item.title}</strong><span dir="ltr">{taskProgress(item)}%</span></button>)}</div></section>)}</section>
+        <section id="noor-r323-tasks" aria-label="مهام اليوم"><div className="np-section-heading"><h2>{historyDate?`مهام يوم ${weekDateLabel(historyDate)}`:"مهام اليوم"}</h2></div>{view.tasks.length===0?<p className="np-card np-empty">لا توجد مهام مجدولة لهذا اليوم.</p>:null}{[...taskCategories].map(([category,items])=><section key={category} className="np-card np-category np-tasks-card"><div className="np-category-head"><h3 className="np-category-title">{category}</h3><span className="np-category-count">{arabicNumber(completedCount(items))} من {arabicNumber(items.length)} مهام</span></div><div className="np-list">{historyDate?items.map(item=><ActivityCard key={item.id} item={item} definition={definitionsById.get(item.definitionId)} busy={busy||lockedIds.includes(item.id)} pending={pendingIds.includes(item.id)} onCommand={historyDate?historicalCommand:onCommand} historicalDate={historyDate} todayDate={view.localDate??undefined}/>):items.map(item=><button key={item.id} type="button" className="np-compact-task np-today-task-button" disabled={item.id.startsWith("pending:")} aria-haspopup="dialog" onClick={()=>openTaskSheet(item)}><strong>{item.title}</strong><span dir="ltr">{taskProgress(item)}%</span></button>)}</div></section>)}</section>
       </div>
 
 
@@ -3858,14 +3903,14 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   const fastQueue=useRef<FastChange[]>([]),fastRunning=useRef(false),alive=useRef(true);
   const [fastChanges,setFastChanges]=useState<FastChange[]>([]),[failedChanges,setFailedChanges]=useState<FastChange[]>([]);
   useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
-  useEffect(()=>{if(!fastChanges.length&&!orderChanges.length)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[fastChanges.length,orderChanges.length]);
+  useEffect(()=>{if(!fastChanges.length&&!orderChanges.length&&!failedChanges.length)return;const warn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[fastChanges.length,orderChanges.length,failedChanges.length]);
   const [actionError,setActionError] = useState<string | null>(null);
   const [connectionWarning,setConnectionWarning]=useState(false);
   const [reconnecting,setReconnecting]=useState(false);
   const [logoutPending,setLogoutPending]=useState(false);
   const signOut=async()=>{
     if(logoutPending)return;
-    if(busy||fastChanges.length||orderChanges.length){
+    if(busy||commandInFlight.current||fastChanges.length||orderChanges.length||failedChanges.length){
       setActionError("توجد تغييرات قيد الحفظ. أكمل حفظها قبل تسجيل الخروج.");
       return;
     }
@@ -3989,8 +4034,72 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
 
   const baseView = useMemo(()=>result?.kind === "success" ? buildViewModel(result.today) : null,[result]);
   const baseWorkspace = useMemo(()=>workspaceResult?.kind === "success" ? buildWorkspaceViewModel(workspaceResult.workspace) : null,[workspaceResult]);
-  const view=useMemo(()=>{if(!baseView)return null;const update=(item:ExecutionItem)=>{let status=item.status;for(const c of fastChanges.filter(c=>c.executionId===item.id)){if(c.command.type==='set-execution-completed')status=c.command.completed?'Completed':'Pending';else if(c.command.type==='record-activity'&&c.command.endReason)status=c.command.endReason==='achieved'?'Completed':'Cancelled';else if(c.command.type==='record-activity'&&c.command.amount>0&&status!=='Completed')status='InProgress';}return {...item,status};};return {...baseView,tasks:baseView.tasks.map(update),habits:baseView.habits.map(update)};},[baseView,fastChanges]);
-  const activityWorkspace=useMemo(()=>baseWorkspace?{...baseWorkspace,definitions:baseWorkspace.definitions.map(d=>{const changes=fastChanges.filter(c=>c.definitionId===d.id);let activityLog=[...d.activityLog],state=d.state;for(const change of changes){if(change.command.type==='edit-activity-note'){const command=change.command;activityLog=activityLog.map(e=>e.id===command.entryId&&e.executionId===command.executionId?{...e,note:command.note??''}:e);}if(change.entry&&!activityLog.some(e=>e.id===change.entry!.id))activityLog.push(change.entry);if(change.entry?.endReason)state='Stopped';}return {...d,state,activityLog};})}:null,[baseWorkspace,fastChanges]);
+  const view=useMemo(()=>{
+    if(!baseView)return null;
+    const update=(item:ExecutionItem)=>{
+      let status=item.status;
+      let weight=item.weight;
+      for(const change of fastChanges){
+        const command=change.command;
+        if(change.definition?.id===item.definitionId)weight=change.definition.weight;
+        if(change.executionId!==item.id)continue;
+        if(command.type==="set-execution-completed")status=command.completed?"Completed":"Pending";
+        else if(command.type==="record-prayer-r331")status=command.mode!==null?"Completed":command.expectedRecordedAt?"Pending":status;
+        else if(command.type==="record-activity"&&command.endReason)status=command.endReason==="achieved"?"Completed":"Cancelled";
+        else if(command.type==="record-activity"&&command.amount>0&&status!=="Completed")status="InProgress";
+      }
+      return status===item.status&&weight===item.weight?item:{...item,status,weight};
+    };
+    const tasks=baseView.tasks.map(update),habits=baseView.habits.map(update);
+    const date=baseView.localDate;
+    if(date)for(const {command,definition,executionId} of fastChanges){
+      if(command.type!=="create-definition"||!definition||baseWorkspace?.definitions.some(item=>command.requestId&&item.id.startsWith("definition-request:")&&item.id.endsWith(`:${command.requestId}`))||definition.startDate>date||
+        definition.endDate&&definition.endDate<date||definition.scheduleKind==="OneTime"&&definition.startDate!==date||
+        definition.scheduleKind==="Weekdays"&&!definition.weekdays.includes(new Date(date+"T00:00:00Z").getUTCDay()))continue;
+      const items=definition.kind==="Habit"?habits:tasks;
+      items.push({id:executionId,definitionId:definition.id,title:definition.title,kind:definition.kind,
+        status:definition.kind==="Habit"?"Pending":"Planned",weight:definition.weight});
+    }
+    return {...baseView,tasks,habits};
+  },[baseView,baseWorkspace,fastChanges]);
+  const activityWorkspace=useMemo(()=>{
+    if(!baseWorkspace)return null;
+    let definitions=baseWorkspace.definitions;
+    let prayerHistoryR331=baseWorkspace.prayerHistoryR331;
+    let prayerAchievementR334=baseWorkspace.prayerAchievementR334;
+    for(const change of fastChanges){
+      const {command,entry,definition,prayerAt}=change;
+      if(definition){
+        if(command.type==="create-definition"){
+          if(!definitions.some(item=>item.id===definition.id||command.requestId&&item.id.endsWith(`:${command.requestId}`)&&item.id.startsWith("definition-request:")))definitions=[...definitions,definition];
+        }else definitions=definitions.map(item=>item.id===definition.id?{...definition,activityLog:item.activityLog}:item);
+      }else if(command.type==="record-prayer-r331"&&prayerAt){
+        const current=prayerHistoryR331.find(day=>day.date===command.localDate);
+        const records=(current?.records??[]).filter(row=>row.key!==command.key);
+        if(command.mode!==null&&command.timing!==null)records.push({key:command.key,mode:command.mode,timing:command.timing,recordedAt:prayerAt});
+        prayerHistoryR331=[...prayerHistoryR331.filter(day=>day.date!==command.localDate),{date:command.localDate,records}];
+        prayerAchievementR334=prayerAchievementR334?.map(day=>{
+          if(day.date!==command.localDate)return day;
+          const snapshot=baseWorkspace.prayerScorePolicyR334;
+          if(!snapshot||day.score.rows.some(row=>row.weight!==snapshot.weights[row.key]))return day;
+          const score=prayerDayScoreR334({date:day.date,currentDate:day.date,
+            dueKeys:day.score.rows.map(row=>row.key),records,snapshot});
+          return score?{...day,score}:day;
+        });
+      }else if(entry||command.type==="edit-activity-note"){
+        definitions=definitions.map(item=>{
+          if(item.id!==change.definitionId)return item;
+          if(command.type==="edit-activity-note")return {...item,activityLog:item.activityLog.map(e=>e.id===command.entryId&&e.executionId===command.executionId?{...e,note:command.note??""}:e)};
+          if(!entry||item.activityLog.some(e=>e.id===entry.id))return item;
+          const sessionPlan=item.sessionPlan&&isSessionSave(command)&&command.type==="complete-task-session"
+            ?{...item.sessionPlan,sessions:item.sessionPlan.sessions.map(session=>session.id===entry.taskSessionId?{...session,completedAt:entry.at}:session)}
+            :item.sessionPlan;
+          return {...item,state:entry.endReason?"Stopped":item.state,activityLog:[...item.activityLog,entry],...(sessionPlan?{sessionPlan}:{})};
+        });
+      }
+    }
+    return {...baseWorkspace,definitions,prayerHistoryR331,...(prayerAchievementR334?{prayerAchievementR334}:{})};
+  },[baseWorkspace,fastChanges]);
   const workspace=useMemo(()=>{
     if(!activityWorkspace)return null;
     let result=activityWorkspace;
@@ -4000,10 +4109,37 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     if(corrections.length)result={...result,statistics:{...result.statistics,rows:result.statistics.rows.map(row=>{
       let status=row.status;
       for(const change of corrections){const cmd=change.command;if(cmd.type==='correct-historical-execution'&&row.id===change.executionId&&row.date===cmd.localDate)status=cmd.completed?'Completed':'Missed';}
-      return status===row.status?row:{...row,status};
+      return status===row.status?row:{...row,status,credit:status==="Completed"?1:0};
     })}};
+    const date=view?.localDate;
+    if(view&&date&&fastChanges.length){
+      const affectedExecutions=new Set(fastChanges.filter(change=>!["correct-historical-execution","record-historical-progress"].includes(change.command.type)).map(change=>change.executionId));
+      const changedDefinitions=new Set(fastChanges.filter(change=>change.definition).map(change=>change.definitionId));
+      const currentRows=new Map(result.statistics.rows.filter(row=>row.date===date).map(row=>[row.id,row]));
+      const definitions=new Map(result.definitions.map(item=>[item.id,item]));
+      for(const item of [...view.tasks,...view.habits]){
+        if(!affectedExecutions.has(item.id)&&!changedDefinitions.has(item.definitionId))continue;
+        const definition=definitions.get(item.definitionId);
+        if(definition?.beveragePlan||["appointment","event"].includes(definition?.countdownPlan?.kind??"")||
+          item.status==="Suppressed"||definition?.sessionPlan&&item.status!=="Completed"&&
+          !definition.sessionPlan.sessions.some(session=>!session.scheduledDate||session.scheduledDate===date)){
+          currentRows.delete(item.id);
+          continue;
+        }
+        const prior=currentRows.get(item.id);
+        const log=definition?.activityLog.filter(entry=>entry.localDate===date)??[];
+        const credit=definition?.sessionPlan
+          ?Math.min(1,log.reduce((total,entry)=>total+(entry.sessionDayCredit??0),0))
+          :item.status==="Completed"?1:0;
+        currentRows.set(item.id,{...item,date,credit,amount:log.reduce((total,entry)=>total+entry.amount,0),
+          unit:prior?.unit??definition?.measurement?.unit??""});
+      }
+      result={...result,statistics:{...result.statistics,rows:[
+        ...result.statistics.rows.filter(row=>row.date!==date),...currentRows.values(),
+      ]}};
+    }
     return result;
-  },[activityWorkspace,orderChanges,fastChanges]);
+  },[activityWorkspace,orderChanges,fastChanges,view]);
 
 
   // A Personal Day may end independently of the next-prayer refresh.
@@ -4062,10 +4198,13 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       const returnedWorkspace=buildWorkspaceViewModel(reply.workspace);
       const returnedExecution=executionItems(reply.executions);
       if(returnedWorkspace && returnedExecution){
+        if(isDefinitionSave(command)&&reply.materializationRequired&&await refresh())return true;
         setWorkspaceResult({kind:"success",workspace:reply.workspace});
         const matchingDay=result?.kind==="success" && isRecord(result.today) && isRecord(result.today.personalDay) && result.today.personalDay.id===reply.personalDayId;
         if(matchingDay)setResult(previous=>previous?.kind==="success"&&isRecord(previous.today)?{kind:"success",today:{...previous.today,tasks:returnedExecution.filter(e=>e.kind==="Task"),habits:returnedExecution.filter(e=>e.kind==="Habit")}}:previous);
-        if(reply.materializationRequired || !matchingDay)refreshInBackground();
+        if(reply.materializationRequired || !matchingDay){
+          if(!isDefinitionSave(command)||!reply.materializationRequired)refreshInBackground();
+        }
       }else{
         // Compatibility with old 204 servers; new servers return the committed projection.
         await refresh(command.type==="set-account-location");
@@ -4091,8 +4230,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     }}finally{orderRunning.current=false;}
   };
   const controlCommand=async(command:NoorPersonalCommandInput):Promise<boolean>=>{
-    if(command.type==='update-definition')return runCommand(command,true);
-    if(command.type!=='reorder-display')return runCommand(command);
+    if(command.type!=='reorder-display')return fastCommand(command);
     const active=orderRunning.current?orderQueue.current[0]:undefined;
     const unsent=orderQueue.current.find(c=>c!==active&&c.scope===command.scope);
     if(unsent){orderQueue.current=orderQueue.current.map(c=>c===unsent?{...command,expected:unsent.expected}:c);}else orderQueue.current.push(command);
@@ -4125,7 +4263,13 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     if(fastRunning.current||commandInFlight.current||!alive.current)return;fastRunning.current=true;
     try{while(fastQueue.current.length&&alive.current){
       const change=fastQueue.current[0]!;let ok=false;
-      try{ok=await runCommand(change.command,true);}catch{ok=false;}
+      try{
+        if(change.beforeSave){
+          await change.beforeSave();
+          delete change.beforeSave;
+        }
+        ok=await runCommand(change.command,true);
+      }catch{ok=false;}
       fastQueue.current.shift();if(!alive.current)break;
       if(!ok&&change.command.type==='edit-activity-note'){const failed=change.command;fastQueue.current=fastQueue.current.filter(c=>c.command.type!=='edit-activity-note'||c.command.entryId!==failed.entryId);}
       if(!ok&&isFastCompletion(change.command)){
@@ -4134,13 +4278,63 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       }
       setFastChanges([...fastQueue.current]);
       const newerChoice=isFastCompletion(change.command)&&fastQueue.current.some(c=>c.executionId===change.executionId&&isFastCompletion(c.command));
-      if(ok&&isFastCompletion(change.command))setFailedChanges(previous=>previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)));
+      if(ok)setFailedChanges(previous=>previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)));
       if(!ok&&!newerChoice)setFailedChanges(previous=>[...previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)),change]);
     
     }}
     finally{fastRunning.current=false;}
   };
-  const fastCommand=async(command:NoorPersonalCommandInput):Promise<boolean>=>{
+  const queueChange=(change:FastChange):boolean=>{
+    if(fastQueue.current.some(item=>fastFailureKey(item)===fastFailureKey(change)))return false;
+    fastQueue.current.push(change);
+    setFailedChanges(previous=>previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)));
+    flushSync(()=>setFastChanges([...fastQueue.current]));
+    void drainFast();
+    return true;
+  };
+
+  const fastCommand=async(command:NoorPersonalCommandInput,beforeSave?:()=>Promise<void>):Promise<boolean>=>{
+    if(isDefinitionSave(command)){
+      if(!baseWorkspace)return false;
+      const previous=command.type==="update-definition"?baseWorkspace.definitions.find(item=>item.id===command.definitionId):undefined;
+      if(command.type==="update-definition"&&(!previous||previous.revisionId!==command.expectedRevisionId||
+        fastQueue.current.some(change=>change.definitionId===previous.id)))return false;
+      const savedCommand=command.type==="create-definition"&&!command.requestId
+        ?{...command,requestId:globalThis.crypto.randomUUID()}:command;
+      const definitionId=previous?.id??`pending:${savedCommand.type==="create-definition"?savedCommand.requestId:""}`;
+      try{
+        const definition=previewDefinition(command,definitionId,previous,new Date().toISOString());
+        return queueChange({command:savedCommand,executionId:previous?"":definitionId,definitionId,title:command.title,definition});
+      }catch{return false;}
+    }
+    if(command.type==="record-prayer-r331"){
+      const prayer=baseView?.prayerTimes.find(row=>row.key===command.key);
+      if(!prayer||baseView?.localDate!==command.localDate||!(Date.parse(prayer.at)<=Date.now())||
+        fastQueue.current.some(({command:c})=>c.type==="record-prayer-r331"&&c.localDate===command.localDate&&c.key===command.key))return false;
+      const previous=baseWorkspace?.prayerHistoryR331.find(day=>day.date===command.localDate)?.records.find(row=>row.key===command.key);
+      if((previous?.recordedAt??null)!==command.expectedRecordedAt)return false;
+      const execution=baseView.habits.find(item=>item.id===command.habitExecutionId);
+      if(command.habitExecutionId&&!execution)return false;
+      return queueChange({command,executionId:execution?.id??"",definitionId:execution?.definitionId??"",title:prayer.label,
+        prayerAt:previous?.mode===command.mode&&previous.timing===command.timing?previous.recordedAt:new Date().toISOString()});
+    }
+    if(isSessionSave(command)){
+      const execution=baseView?.tasks.find(item=>item.id===command.executionId);
+      const definition=activityWorkspace?.definitions.find(item=>item.id===execution?.definitionId);
+      const plan=definition?.sessionPlan;
+      const session=plan?.sessions.find(item=>item.id===command.taskSessionId);
+      const localDate=baseView?.localDate;
+      if(!execution||!definition||!plan||!session||!localDate||
+        session.scheduledDate&&session.scheduledDate!==localDate||
+        sessionFinishedR254(session,definition.activityLog)||
+        fastQueue.current.some(({command:c})=>isSessionSave(c)&&c.executionId===execution.id&&c.taskSessionId===session.id))return false;
+      const manual=command.type==="complete-task-session";
+      const amount=manual?0:command.amount;
+      const entry:ActivityEntry={id:command.entryId,executionId:execution.id,taskSessionId:session.id,localDate,
+        at:new Date().toISOString(),amount,note:manual?"":command.note,endReason:null,
+        sessionDayCredit:sessionEventCredit(definition.measurement,plan,session,amount,manual)};
+      return queueChange({command,executionId:execution.id,definitionId:definition.id,title:session.title,entry});
+    }
     if(command.type!=='set-execution-completed'&&command.type!=='record-activity'&&command.type!=='edit-activity-note'&&command.type!=='correct-historical-execution'&&command.type!=='record-historical-progress')return runCommand(command);
     const isHistory=command.type==='correct-historical-execution'||command.type==='record-historical-progress';
     if(isHistory&&(!validStatisticDate(command.localDate)||!baseView?.localDate||command.localDate>=baseView.localDate))return false;
@@ -4166,8 +4360,8 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         actualCommand={...command,expectedStatus};
       }
       fastQueue.current=fastQueue.current.filter(c=>c===active||c.executionId!==execution.id||!isFastCompletion(c.command));
-      if(command.completed!==effective){
-        const change:FastChange={command:actualCommand,executionId:command.executionId,definitionId:definition?.id??execution.definitionId,title:definition?.title??execution.title};
+      if(command.completed!==effective||beforeSave){
+        const change:FastChange={command:actualCommand,executionId:command.executionId,definitionId:definition?.id??execution.definitionId,title:definition?.title??execution.title,...(beforeSave?{beforeSave}:{})};
         fastQueue.current.push(change);
       }
       setFailedChanges(previous=>previous.filter(c=>c.executionId!==execution.id||!isFastCompletion(c.command)));
@@ -4192,8 +4386,8 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   } else {
     const defaultStartDate = civilLocalDate(nowMs, view.timeZone);
     content = controlOpen
-      ? <>{actionError ? <p className="np-action-error" role="alert">{actionError}</p> : null}<ControlCenter key={controlNavRevision} initialQuickCreateKind={quickCreateKind} onSectionChanged={(section)=>setNavSection(section==="settings"||section==="appearance"||section==="location"?"settings":section==="account"?"user":section==="reminders"?"bell":(controlCountdownCreate&&section==="Task")||quickCreateKind===section?"plus":"grid")} initialSection={controlInitialSection} initialCountdownCreate={controlCountdownCreate} orderingPending={orderChanges.length>0} appearance={appearance} onAppearance={chooseAppearance} timeZone={view.timeZone} timePreferences={timePreferences} onTimePreferences={chooseTimePreferences} onLocationCommit={commitAccountLocation} executions={[...view.tasks,...view.habits]} busy={busy} defaultStartDate={defaultStartDate} onLogout={()=>{void signOut();}} logoutPending={logoutPending} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} onCommand={controlCommand} workspace={workspace} /></>
-      : <Dashboard actionError={actionError} busy={busy&&!fastChanges.length&&!orderChanges.length} pendingIds={fastChanges.map(c=>c.executionId)} lockedIds={fastChanges.filter(c=>c.command.type==='record-activity'&&(c.command.amount>0||c.command.endReason!==null)||c.command.type==='record-historical-progress'&&c.command.amount>0).map(c=>c.executionId)} nowMs={nowMs} timePreferences={timePreferences} onTimePreferencesChange={chooseTimePreferences} onCommand={fastCommand} onConfirmedCommand={runCommand} onHistoryCommand={fastCommand} onOpenControl={() => {setControlInitialSection("tools");setControlCountdownCreate(false);setControlOpen(true);}} onOpenAccount={()=>{setControlInitialSection("account");setControlCountdownCreate(false);setNavSection("user");setControlNavRevision(r=>r+1);setControlOpen(true);}} onOpenSettings={()=>navigateR324("settings")} onOpenReminders={()=>navigateR324("bell")} onOpenPrayerWeights={()=>{setControlInitialSection("weights");setControlCountdownCreate(false);setControlNavRevision(r=>r+1);setNavSection("grid");setControlOpen(true);}} onAddCountdown={() => {setControlCountdownCreate(true);setControlOpen(true);setQuickCreateKind(null);setControlNavRevision(n=>n+1);setNavSection("plus");}} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} connectionWarning={connectionWarning} view={view} workspace={workspace} />;
+      ? <>{actionError ? <p className="np-action-error" role="alert">{actionError}</p> : null}<ControlCenter pendingDefinitionIds={fastChanges.filter(change=>change.definition).map(change=>change.definitionId)} key={controlNavRevision} initialQuickCreateKind={quickCreateKind} onSectionChanged={(section)=>setNavSection(section==="settings"||section==="appearance"||section==="location"?"settings":section==="account"?"user":section==="reminders"?"bell":(controlCountdownCreate&&section==="Task")||quickCreateKind===section?"plus":"grid")} initialSection={controlInitialSection} initialCountdownCreate={controlCountdownCreate} orderingPending={orderChanges.length>0} appearance={appearance} onAppearance={chooseAppearance} timeZone={view.timeZone} timePreferences={timePreferences} onTimePreferences={chooseTimePreferences} onLocationCommit={commitAccountLocation} executions={[...view.tasks,...view.habits]} busy={busy} defaultStartDate={defaultStartDate} onLogout={()=>{void signOut();}} logoutPending={logoutPending} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} onCommand={controlCommand} workspace={workspace} /></>
+      : <Dashboard actionError={actionError} busy={busy&&!fastChanges.length&&!orderChanges.length} pendingIds={fastChanges.map(c=>c.executionId)} lockedIds={fastChanges.filter(c=>c.command.type==="create-definition"||c.command.type==='record-activity'&&(c.command.amount>0||c.command.endReason!==null)||c.command.type==='record-historical-progress'&&c.command.amount>0).map(c=>c.executionId)} nowMs={nowMs} timePreferences={timePreferences} onTimePreferencesChange={chooseTimePreferences} onCommand={fastCommand} onHistoryCommand={fastCommand} onOpenControl={() => {setControlInitialSection("tools");setControlCountdownCreate(false);setControlOpen(true);}} onOpenAccount={()=>{setControlInitialSection("account");setControlCountdownCreate(false);setNavSection("user");setControlNavRevision(r=>r+1);setControlOpen(true);}} onOpenSettings={()=>navigateR324("settings")} onOpenReminders={()=>navigateR324("bell")} onOpenPrayerWeights={()=>{setControlInitialSection("weights");setControlCountdownCreate(false);setControlNavRevision(r=>r+1);setNavSection("grid");setControlOpen(true);}} onAddCountdown={() => {setControlCountdownCreate(true);setControlOpen(true);setQuickCreateKind(null);setControlNavRevision(n=>n+1);setNavSection("plus");}} onReconnect={()=>{void reconnect();}} reconnecting={reconnecting} connectionWarning={connectionWarning} view={view} workspace={workspace} />;
   }
 
   return <><style>{PAGE_STYLES+TASK_SESSION_STYLES_R254+`.np-page .np-cc-inline-detail .nts-list-body{max-height:none;overflow-y:visible}
@@ -4207,6 +4401,6 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   @keyframes np-r296-spin{to{transform:rotate(360deg)}}
   @media(prefers-reduced-motion:reduce){.np-page .np-refresh-spin-r296{animation:none}}
   @media(max-width:700px){.np-page .np-cc-header{flex-wrap:wrap}.np-page .np-cc-header .np-cc-header-logo{width:48px;height:48px;flex-basis:48px}.np-page .np-cc-header-actions{width:100%;justify-content:flex-start}.np-page .np-topbar .np-top-actions{gap:5px}.np-page .np-topbar .np-refresh-icon-r296{width:38px;height:38px}}
-  `}</style><section className={`np-page${!result ? " np-page-entry-loading" : result.kind === "success" ? " np-page-entry-ready" : ""}`} data-appearance={appearance} data-design-version="r62-visible-layout-fix" dir="rtl"><div className="np-wrap"><div className="np-save-notices" data-save-feedback="classic-achievement-r95">{orderError?<p className="np-failed-save" role="alert">{orderError}</p>:null}{failedChanges.map((change,i)=><div className="np-failed-save" role="alert" key={fastFailureKey(change)}><span>لم يتأكد الحفظ: {change.title}. تم إرجاع العرض لآخر بيانات مؤكدة.</span>{change.command.type==='edit-activity-note'?<p>{change.command.note??'حذف الملاحظة'}</p>:null}{change.command.type==='record-activity'||change.command.type==='record-historical-progress'?<p>{change.command.note}{change.command.amount>0?` · الكمية: ${change.command.amount}`:''}</p>:null}<button type="button" disabled={fastChanges.some(c=>c.executionId===change.executionId)} onClick={()=>{setFailedChanges(previous=>previous.filter((_,j)=>j!==i));void fastCommand(change.command);}}>إعادة المحاولة</button><button type="button" onClick={()=>setFailedChanges(previous=>previous.filter((_,j)=>j!==i))}>تجاهل التغيير غير المحفوظ</button></div>)}</div>{content}</div>{result?.kind==="success"&&view?<nav className="np-r323-bottom-nav np-r324-bottom-nav" data-testid="r324-persistent-navigation" aria-label="التنقل الرئيسي">{([["home","الرئيسية"],["habits","العادات"],["plus","إضافة سريعة"],["tasks","المهام"],["grid","الأدوات"]] as const).map(([target,label])=><button key={target} type="button" data-testid={`r324-nav-${target}`} aria-label={target==="grid"?"فتح مركز التحكم":undefined} aria-current={(controlOpen?(navSection):navSection==="habits"||navSection==="tasks"?navSection:"home")===target?"page":undefined} className={target==="plus"?"np-r323-nav-add":undefined} disabled={busy||logoutPending} onClick={()=>navigateR324(target)}><NoorR323Icon name={target==="habits"?"leaf":target==="tasks"?"check":target}/><span>{label}</span></button>)}</nav>:null}{quickAddOpen&&result?.kind==="success"?createPortal(<div className="np-r324-quick-backdrop" onClick={e=>{if(e.target===e.currentTarget)setQuickAddOpen(false);}}><section role="dialog" aria-modal="true" aria-label="إضافة سريعة" className="np-r324-quick-sheet" dir="rtl" onKeyDown={e=>{if(e.key==="Escape")setQuickAddOpen(false);}}><header><h2>إضافة سريعة</h2><button type="button" autoFocus aria-label="إغلاق الإضافة السريعة" onClick={()=>setQuickAddOpen(false)}>×</button></header>{(["Task","Habit","appointment"] as const).map(kind=><button type="button" key={kind} onClick={()=>{setQuickAddOpen(false);setControlInitialSection("Habit");setQuickCreateKind(kind==="appointment"?null:kind);setControlCountdownCreate(kind==="appointment");setControlNavRevision(n=>n+1);setControlOpen(true);setNavSection("plus");}}>{kind==="Task"?"إضافة مهمة":kind==="Habit"?"إضافة عادة":"إضافة موعد"} ←</button>)}</section></div>,document.body):null}</section></>;
+  `}</style><section className={`np-page${!result ? " np-page-entry-loading" : result.kind === "success" ? " np-page-entry-ready" : ""}`} data-appearance={appearance} data-design-version="r62-visible-layout-fix" dir="rtl"><div className="np-wrap"><div className="np-save-notices" data-save-feedback="classic-achievement-r95">{orderError?<p className="np-failed-save" role="alert">{orderError}</p>:null}{failedChanges.map((change,i)=><div className="np-failed-save" role="alert" key={fastFailureKey(change)}><span>لم يتأكد الحفظ: {change.title}. تم إرجاع العرض لآخر بيانات مؤكدة.</span>{change.command.type==='edit-activity-note'?<p>{change.command.note??'حذف الملاحظة'}</p>:null}{change.command.type==='record-activity'||change.command.type==='record-historical-progress'||change.command.type==='record-task-session-progress'?<p>{change.command.note}{change.command.amount>0?` · الكمية: ${change.command.amount}`:''}</p>:null}<button type="button" disabled={fastChanges.some(c=>fastFailureKey(c)===fastFailureKey(change))} onClick={()=>{setFailedChanges(previous=>previous.filter((_,j)=>j!==i));void fastCommand(change.command,change.beforeSave).then(ok=>{if(!ok)setFailedChanges(previous=>previous.some(item=>fastFailureKey(item)===fastFailureKey(change))?previous:[...previous,change]);});}}>إعادة المحاولة</button><button type="button" onClick={()=>setFailedChanges(previous=>previous.filter((_,j)=>j!==i))}>تجاهل التغيير غير المحفوظ</button></div>)}</div>{content}</div>{result?.kind==="success"&&view?<nav className="np-r323-bottom-nav np-r324-bottom-nav" data-testid="r324-persistent-navigation" aria-label="التنقل الرئيسي">{([["home","الرئيسية"],["habits","العادات"],["plus","إضافة سريعة"],["tasks","المهام"],["grid","الأدوات"]] as const).map(([target,label])=><button key={target} type="button" data-testid={`r324-nav-${target}`} aria-label={target==="grid"?"فتح مركز التحكم":undefined} aria-current={(controlOpen?(navSection):navSection==="habits"||navSection==="tasks"?navSection:"home")===target?"page":undefined} className={target==="plus"?"np-r323-nav-add":undefined} disabled={busy||logoutPending} onClick={()=>navigateR324(target)}><NoorR323Icon name={target==="habits"?"leaf":target==="tasks"?"check":target}/><span>{label}</span></button>)}</nav>:null}{quickAddOpen&&result?.kind==="success"?createPortal(<div className="np-r324-quick-backdrop" onClick={e=>{if(e.target===e.currentTarget)setQuickAddOpen(false);}}><section role="dialog" aria-modal="true" aria-label="إضافة سريعة" className="np-r324-quick-sheet" dir="rtl" onKeyDown={e=>{if(e.key==="Escape")setQuickAddOpen(false);}}><header><h2>إضافة سريعة</h2><button type="button" autoFocus aria-label="إغلاق الإضافة السريعة" onClick={()=>setQuickAddOpen(false)}>×</button></header>{(["Task","Habit","appointment"] as const).map(kind=><button type="button" key={kind} onClick={()=>{setQuickAddOpen(false);setControlInitialSection("Habit");setQuickCreateKind(kind==="appointment"?null:kind);setControlCountdownCreate(kind==="appointment");setControlNavRevision(n=>n+1);setControlOpen(true);setNavSection("plus");}}>{kind==="Task"?"إضافة مهمة":kind==="Habit"?"إضافة عادة":"إضافة موعد"} ←</button>)}</section></div>,document.body):null}</section></>;
 }
 
