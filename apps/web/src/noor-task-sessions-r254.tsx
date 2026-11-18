@@ -1,6 +1,7 @@
 import {useEffect,useRef,useState,type ReactElement} from "react";
 import type {NoorPersonalCommandInput,NoorTaskSessionDraft} from "./noor-personal-today-client.js";
 import {spreadTaskSessionsR288,weeklyTaskSessionDatesR298,type SessionCadenceR288} from "./noor-session-calendar-r288.js";
+import {validSessionDateR286} from "../../noor-personal/src/domain/task-sessions.js";
 
 export interface StoredTaskSessionR254 extends NoorTaskSessionDraft {
   order:number; note:string; revision:number; createdAt:string; updatedAt:string; completedAt:string|null;
@@ -51,6 +52,37 @@ function SessionDateFieldR293({value,onChange,suggestedDate,testId,busy}:{value:
 }
 function makeSession(i:number,target:number|null=null,start:number|null=null,end:number|null=null):NoorTaskSessionDraft{
   return {id:globalThis.crypto.randomUUID(),title:"الجلسة "+i,objective:"",target,rangeStart:start,rangeEnd:end,scheduledDate:null};
+}
+
+export function automaticTaskSessionSchedule({start,end,weekdays,total,unit}:{
+  start:string;end:string;weekdays:readonly number[];total:number;unit:string;
+}):{date:string;amount:number}[]{
+  if(!validSessionDateR286(start)||!validSessionDateR286(end)||end<start)throw Error("حدد فترة صحيحة للمهمة.");
+  if(!weekdays.length)throw Error("اختر يومًا واحدًا على الأقل.");
+  if(!unit.trim())throw Error("أدخل وحدة الإنجاز.");
+  const dates:string[]=[];
+  const endMs=Date.parse(end+"T00:00:00Z");
+  for(let date=new Date(start+"T00:00:00Z");date.getTime()<=endMs;date.setUTCDate(date.getUTCDate()+1)){
+    if(!weekdays.includes(date.getUTCDay()))continue;
+    dates.push(date.toISOString().slice(0,10));
+    if(dates.length>200)throw Error("الحد الأقصى 200 جلسة. قلّل المدة أو عدد الأيام.");
+  }
+  if(!dates.length)throw Error("لا توجد أيام مختارة داخل هذه الفترة.");
+  const pages=isWholePageUnitR254(unit);
+  if(pages&&!Number.isSafeInteger(total))throw Error("عدد الصفحات يجب أن يكون عددًا صحيحًا.");
+  if(!Number.isFinite(total)||total<=0||total>1e9)throw Error("أدخل كمية إجمالية صحيحة.");
+  const amounts=equalSessionTargetsR254(total,dates.length,pages);
+  return dates.map((date,index)=>({date,amount:amounts[index]!}));
+}
+
+export function createAutomaticTaskSessionDrafts(schedule:readonly {date:string;amount:number}[],unit:string):NoorTaskSessionDraft[]{
+  const pages=isWholePageUnitR254(unit);
+  let first=1;
+  return schedule.map(({date,amount},index)=>{
+    const draft=makeSession(index+1,amount,pages?first:null,pages?first+amount-1:null);
+    first+=amount;
+    return {...draft,scheduledDate:date};
+  });
 }
 export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistribution,sessions,setSessions,target,unit,busy,parentStartDate="",parentEndDate=null,parentScheduleKind="Daily",parentWeekdays=[]}:{enabled:boolean;setEnabled:(v:boolean)=>void;distribution:"equal"|"custom";setDistribution:(v:"equal"|"custom")=>void;sessions:readonly NoorTaskSessionDraft[];setSessions:(v:NoorTaskSessionDraft[])=>void;target:number|null;unit:string;busy:boolean;parentStartDate?:string;parentEndDate?:string|null;parentScheduleKind?:"OneTime"|"Daily"|"Weekdays";parentWeekdays?:readonly number[]}):ReactElement{
   const [count,setCount]=useState(sessions.length||5),[error,setError]=useState("");

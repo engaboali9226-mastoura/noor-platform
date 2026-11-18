@@ -113,7 +113,7 @@ test("R163 editing a saved habit keeps its current registered category",async()=
 test("R163 add-category UI creates a category before allowing it as a definition selection",async()=>{
   const t=mount();try{
     await act(async()=>t.root.render(createElement(DefinitionForm,t.props as any)));
-    await clickText(t,"التصنيف غير موجود؟");
+    await clickText(t,"+ تصنيف جديد");
     assert.ok(t.target.querySelector<HTMLInputElement>("#definition-new-category"));
     await changeInput(t,"#definition-new-category","النمو المهني");
     await clickText(t,"إضافة وتحديد التصنيف");
@@ -126,7 +126,7 @@ test("R163 add-category UI creates a category before allowing it as a definition
 test("R163 duplicate/invalid category suggestions do not create extra categories",async()=>{
   const t=mount();try{
     await act(async()=>t.root.render(createElement(DefinitionForm,t.props as any)));
-    await clickText(t,"التصنيف غير موجود؟");
+    await clickText(t,"+ تصنيف جديد");
     await clickText(t,"إضافة وتحديد التصنيف");
     assert.equal(t.commands.length,0);
     assert.ok(t.target.querySelector('[role="alert"]'));
@@ -139,7 +139,7 @@ test("R163 duplicate/invalid category suggestions do not create extra categories
 test("R163 failed category registration preserves text and visibly reports failure",async()=>{
   const t=mount();t.props.onCommand=async (command:unknown)=>{t.commands.push(command);return false;};try{
     await act(async()=>t.root.render(createElement(DefinitionForm,t.props as any)));
-    await clickText(t,"التصنيف غير موجود؟");
+    await clickText(t,"+ تصنيف جديد");
     await changeInput(t,"#definition-new-category","عناية منزلية");
     await clickText(t,"إضافة وتحديد التصنيف");
     assert.equal(t.commands.length,1);
