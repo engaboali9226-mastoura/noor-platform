@@ -14,14 +14,14 @@ test("R233 manual IANA zone previews the chosen local clock without changing Noo
   onChange:()=>{},
  }));
  const riyadh=make(null),cairo=make("Africa/Cairo");
- assert.match(riyadh,/المنطقة الزمنية المعتمدة للحسابات/u);
+ assert.match(riyadh,/توقيت الحساب/u);
  assert.match(riyadh,/value="Asia\/Riyadh"/u);
  assert.match(cairo,/aria-label="منطقة زمنية للعرض"/u);
  assert.match(cairo,/value="Africa\/Cairo"/u);
  assert.match(cairo,/معاينة الساعة في المنطقة الزمنية المختارة/u);
- assert.match(cairo,/مواقيت الصلاة واليوم الشخصي لا يتغيران/u);
- assert.match(cairo,/GPS/u);
- assert.match(cairo,/البحث عن المدينة والمنطقة الزمنية/u);
+ assert.match(cairo,/الموقع الحالي/u);
+ assert.match(cairo,/aria-label="البحث عن المدينة"/u);
+ assert.doesNotMatch(cairo,/تنبيه:|خدمة Open-Meteo|مواقيت الصلاة واليوم الشخصي لا يتغيران/u);
  assert.doesNotMatch(cairo,/SUPABASE_SERVICE_ROLE_KEY|sessionStorage|localStorage/u);
 });
 test("R233 preference remains session-only and cannot override trusted prayer schedule",()=>{
