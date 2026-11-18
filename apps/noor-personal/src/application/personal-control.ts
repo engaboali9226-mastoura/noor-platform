@@ -1,6 +1,7 @@
 import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, completedShareR331, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
+import { validPersonalAvatar } from "../domain/personal-records.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
 import { prepareTaskSessionPlan, sessionProgress, sessionStatus, sessionQuantity, sessionDayCredit, sessionEventCredit, isPageUnit, validSessionDateR286, assertTaskSessionDatesMatchParentR286, sessionScheduledOnDateR286, type TaskSessionPlanDraft } from "../domain/task-sessions.js";
 import { applyFinanceOperation, emptyFinanceLedger, parseFinanceOperation, type FinanceOperation, type FinanceLedger } from "../domain/model.js";
@@ -239,10 +240,7 @@ function isoInstant(value: unknown): string | null {
 }
 
 function optionalAvatarUrl(value: unknown): string | null | undefined {
-    if (value === null) return null;
-    if (typeof value !== "string" || value.length === 0 || value.length > 2048) return undefined;
-    if (value.startsWith("/")) return value;
-    try { return new URL(value).protocol === "https:" ? value : undefined; } catch { return undefined; }
+    return validPersonalAvatar(value) ? value : undefined;
 }
 
 function historicalDateFields(value: Record<string, unknown>): {calendar:"gregorian"|"hijri";year:number|null;month:number;day:number} | null {
