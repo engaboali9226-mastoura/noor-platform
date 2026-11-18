@@ -287,7 +287,12 @@ function OneSessionR254({session,log,definitionId,executionId,busy,onCommand,rea
     finally{release();}
   };
   return <details className="nts-session" data-testid={"session-detail-"+s.id}>
-    <summary><span><strong>{s.order}. {s.title}</strong>{s.objective?<small>{s.objective}</small>:null}{s.scheduledDate?<small data-testid={"r286-session-scheduled-"+s.id}>مجدولة: {s.scheduledDate}{scheduledForAnotherDay&&!done?" · لا تُسجَّل إلا في موعدها":""}</small>:null}</span><span>{done?"مكتملة":progress>0?"قيد التنفيذ":"لم تبدأ"}{s.target!==null?" · "+progress+" / "+s.target:""}</span>
+    <summary><span className="nts-session-heading"><strong>{s.order}. {s.title}</strong>
+      <span className="nts-session-due" data-testid={"r286-session-scheduled-"+s.id}>
+        {s.scheduledDate?<>الاستحقاق <time dateTime={s.scheduledDate} dir="ltr">{s.scheduledDate}</time></>:<>الاستحقاق غير محدد</>}
+      </span>
+      {s.objective?<small>{s.objective}</small>:null}
+    </span><span>{done?"مكتملة":progress>0?"قيد التنفيذ":"لم تبدأ"}{s.target!==null?" · "+progress+" / "+s.target:""}</span>
       <label className="nts-check-session" onClick={event=>event.stopPropagation()}>
         <input type="checkbox" checked={done} disabled={busy||saving||done||!executionId||scheduledForAnotherDay}
           data-testid={"r285-session-complete-"+s.id}
@@ -375,9 +380,11 @@ function TaskGeneralNoteR254({definitionId,revisionId,storedNote,busy,onCommand}
 
 export function TaskSessionListR254({plan,log,definitionId,executionId,busy,onCommand,title,revisionId,taskGeneralNote="",unit="",todayDate,expanded=false}:{plan:StoredTaskSessionPlanR254;log:readonly SessionEntryR254[];definitionId:string;executionId:string|null;busy:boolean;onCommand:(c:NoorPersonalCommandInput)=>Promise<boolean>;title:string;revisionId?:string;taskGeneralNote?:string;unit?:string;todayDate?:string;expanded?:boolean}):ReactElement{
   const count=plan.sessions.filter(s=>sessionFinishedR254(s,log)).length;
+  const hasUnscheduled=plan.sessions.some(s=>!s.scheduledDate);
   return <details className="nts-list" data-testid="task-sessions-r254" open={expanded||undefined}>
     <summary>الجلسات: {count} / {plan.sessions.length} مكتملة <small>{plan.sessions.some(s=>s.target!==null)?'حدد تم للجلسة المكتملة أو سجل مقدارًا جزئيًا؛ كل تقدم يدخل في إنجاز تاريخ تسجيله، ويُعرض تاريخ الإتمام المحفوظ.':'اضغط تم بعد تنفيذ كل جلسة؛ تُحتسب مرة واحدة من وزن المهمة.'}</small></summary>
     <div className="nts-list-body">
+      {hasUnscheduled?<p className="nts-scheduled-info">لتحديد استحقاق الجلسات، افتح «الأدوات ← المهام ← تعديل البيانات والجدول».</p>:null}
       {plan.sessions.length?plan.sessions.map(s=><OneSessionR254 key={s.id} session={s} log={log} definitionId={definitionId} executionId={executionId} busy={busy} onCommand={onCommand} reading={/قراء|كتاب|reading|book/i.test(title)} pageUnit={isWholePageUnitR254(unit)} unit={unit} todayDate={todayDate}/>):<p>يمكنك إضافة جلسات لاحقًا من تعديل المهمة.</p>}
       <details className="nts-summary"><summary>{expanded?"ملاحظات المهمة":"الملاحظات والإنجازات"}</summary>
         {revisionId?<TaskGeneralNoteR254 definitionId={definitionId} revisionId={revisionId} storedNote={taskGeneralNote} busy={busy} onCommand={onCommand}/>:null}
