@@ -4113,11 +4113,11 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     if(corrections.length)result={...result,statistics:{...result.statistics,rows:result.statistics.rows.map(row=>{
       let status=row.status;
       for(const change of corrections){
-        const command=change.command;
+        const cmd=change.command;
         if(row.id!==change.executionId)continue;
-        if(command.type==="correct-historical-execution"&&row.date===command.localDate)status=command.completed?"Completed":"Missed";
-        if(command.type==="record-prayer-r331"&&row.date===command.localDate)
-          status=command.mode!==null?"Completed":command.expectedRecordedAt?"Missed":status;
+        if(cmd.type==="correct-historical-execution"&&row.date===cmd.localDate)status=cmd.completed?"Completed":"Missed";
+        if(cmd.type==="record-prayer-r331"&&row.date===cmd.localDate)
+          status=cmd.mode!==null?"Completed":cmd.expectedRecordedAt?"Missed":status;
       }
       return status===row.status?row:{...row,status,credit:status==="Completed"?1:0};
     })}};
