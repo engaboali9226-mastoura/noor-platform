@@ -34,8 +34,8 @@ export type NoorPersonalCommandInput =
   | Readonly<{type:"observe-notification";id:string;kind:"reminder"|"appointment";title:string;targetId:string;scheduledFor:string}>
   | Readonly<{type:"mark-notification-read";notificationId:string;expectedReadAt:string|null}>
   | import("../../noor-personal/src/domain/completion-r331.js").PrayerScoreApprovalR334
-  | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:string;taskSessionId:string;entryId:string;amount:number;note:string}>
-  | Readonly<{type:"recover-historical-execution";executionId:string;localDate:string;expectedStatus:"Missed"|"Pending"|"Planned"|"InProgress"}>
+  | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:string;performedOn?:string;taskSessionId:string;entryId:string;amount:number;note:string}>
+  | Readonly<{type:"recover-historical-execution";executionId:string;localDate:string;performedOn?:string;expectedStatus:"Missed"|"Pending"|"Planned"|"InProgress"}>
   | Readonly<{type:"record-prayer-r331";localDate:string;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null;habitExecutionId?:string}>
   | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;
       plan:import("../../noor-personal/src/domain/reminder-plan-r314.js").NoorReminderPlanR314|null}>

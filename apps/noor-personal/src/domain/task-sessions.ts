@@ -173,9 +173,14 @@ export function sessionEventCredit(
     amount: number,
     manualCompletion: boolean,
 ): number {
-    if (measurement) return manualCompletion ? 0 : Math.min(1, amount / measurement.target);
     const count = plan.sessions.length;
     if (!count) return 0;
+    if (measurement) {
+        // A mixed plan reserves one share for each session with no quantity.
+        // Its quantified sessions still split the remaining weight by units.
+        const quantified = plan.sessions.filter(item=>item.target!==null).length;
+        return manualCompletion ? 1 / count : Math.min(1, amount / measurement.target) * quantified / count;
+    }
     if (manualCompletion) return 1 / count;
     if (session.target === null) return 0;
     return Math.min(1, amount / session.target) / count;

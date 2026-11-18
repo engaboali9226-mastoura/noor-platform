@@ -207,6 +207,7 @@ export interface TargetLevels {
 
 export interface ActivityEntry {
     readonly performedOnR331?: LocalDate;
+    readonly achievementDateR367?: LocalDate;
     readonly id: string;
     readonly executionId: string;
     readonly localDate: LocalDate;
@@ -284,6 +285,7 @@ export interface EligibilitySnapshot {
 
 export interface DailyExecutionInstance {
     readonly recoveredOnR331?: LocalDate;
+    readonly completionDateR367?: LocalDate;
     readonly id: string;
     readonly userId: string;
     readonly personalDayId: string;
