@@ -121,12 +121,12 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
  return <>
  <section className="np-card np-r322-timer-hub np-r323-rhythm" data-testid="r322-premium-timer-hub" dir="rtl" aria-label="إيقاع اليوم والمؤقت النشط">
    <div className="np-r322-timer-head"><span className="np-r322-timer-icon" aria-hidden="true"><NoorR323Icon name="sun"/></span>
-     <div><h2>إيقاع اليوم</h2><p>المؤقت النشط الآن</p></div>
+     <div><h2>{currentTitle}</h2><p>المؤقت النشط الآن</p></div>
    </div>
    <button type="button" className={"np-r322-timer-feature "+(nightPreview?"is-night":"is-day")}
      onClick={()=>setDetailsOpen(true)} aria-haspopup="dialog" aria-expanded={detailsOpen}
      data-testid="r322-open-time-windows">
-    <span className="np-r323-timer-moon" aria-hidden="true">{nightPreview?"☾":"☀"}</span><span className="np-r322-active-title">مؤقت {currentTitle}</span>
+    <span className="np-r323-timer-moon" aria-hidden="true">{nightPreview?"☾":"☀"}</span>
     {currentTimer?<><strong className="np-r322-main-countdown" dir="ltr" role="timer">{currentTimer}</strong><span className="np-r323-time-units" dir="ltr"><span>ساعة</span><span>دقيقة</span><span>ثانية</span></span></>
      :<span className="np-r322-time-unavailable">لا توجد فترة نشطة الآن</span>}
     <span className="np-r322-feature-subtitle">{currentTimer?"متبقٍ حتى نهاية الفترة":"اضغط لعرض مواقيت اليوم"}</span>
