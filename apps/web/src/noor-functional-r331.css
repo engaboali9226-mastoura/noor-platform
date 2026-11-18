@@ -1048,6 +1048,22 @@ button[aria-label^="إغلاق"] {
 .np-sleep-habit-slot:not(:empty){margin-block:0 10px}
 .np-page .nts-session-heading .nts-session-due{display:flex;align-items:center;flex-wrap:wrap;gap:.45em;font-size:12px;font-weight:700;color:var(--text);line-height:1.5}
 .np-page .nts-session-due time{white-space:nowrap;font-variant-numeric:tabular-nums}
+.np-task-create-form>.np-task-form-details{order:1}
+.np-task-create-form>.np-action-error{order:2}
+.np-task-form-details{min-width:0;border:1px solid var(--border);border-radius:12px;padding:8px 12px}
+.np-task-form-details>summary,.np-task-plan-preview summary{cursor:pointer;font-weight:700;min-height:32px;padding-block:5px}
+.np-task-form-details[open]>summary{margin-block-end:8px}
+.np-task-plan-preview{border:1px solid var(--border);background:var(--panel-soft);border-radius:12px;padding:10px 12px}
+.np-task-plan-preview ol{display:flex;flex-wrap:wrap;gap:6px 18px;list-style:none;padding:0;margin:0}
+.np-task-plan-preview time{display:inline-block;font-variant-numeric:tabular-nums}
+.np-task-subcategory{color:var(--muted);overflow-wrap:anywhere}
+.np-detail-check{background:transparent;border:0;color:inherit}
+.np-detail-check>span{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--border-strong,#899da8);border-radius:7px;background:var(--panel,#f5f8f8);font-weight:800;line-height:1}
+.np-detail-check[aria-checked=true]>span{border-color:#287b65;background:#287b65;color:white}
+.np-detail-check:focus-visible{outline:2px solid #83b8d1;outline-offset:2px;border-radius:9px}
+.np-detail-check:disabled{opacity:.45;cursor:not-allowed}
+.np-prayer-check-mark{display:inline-block;margin-inline-end:3px;font-weight:800}
+.np-activity-dialog .np-session-editor-content{min-height:0;padding:0;background:transparent}
 .np-profile-photo fieldset{display:grid;gap:8px;border:0;padding:8px 0;margin:0}
 .np-profile-photo input[type=range]{padding:0;min-height:28px}
 #noor-r323-habits, #noor-r323-tasks { scroll-margin-top: 12px; }
