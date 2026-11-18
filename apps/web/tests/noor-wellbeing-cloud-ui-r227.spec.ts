@@ -54,18 +54,22 @@ test('R227 cloud personal-space reloads saved fields, awaits persistence, and ne
   const date=riyadhDate();
   let completedId:string|null=null;
   let canComplete=false;
+  let persist:(()=>Promise<void>)|undefined;
   await act(async()=>root.render(createElement(NoorWellbeingLabR165,{
    personalDate:date,trustedWellbeing:port,separateSleep:true,
    sleepRequest:{executionId:'sleep-habit',date,trigger:null},
-   onSleepSaved:async request=>{assert.equal(signals[0].sleepMinutes,450);if(!canComplete)return false;completedId=request.executionId;return true;},
+   onSleepSaved:async (request,save)=>{if(!canComplete)return false;completedId=request.executionId;persist=save;return true;},
   })));
   await submit();
   assert.equal(completedId,null);
-  assert.match(dom.window.document.querySelector('[role="alert"]')!.textContent!,/تعذّر تحديث إنجاز العادة/);
+  assert.match(dom.window.document.querySelector('[role="alert"]')!.textContent!,/تعذر بدء حفظ متابعة النوم/);
   canComplete=true;
   await submit();
   assert.equal(completedId,'sleep-habit');
+  assert.ok(persist);
   assert.equal(dom.window.document.querySelector('[role="dialog"][aria-label="متابعة النوم"]'),null);
+  await act(async()=>persist!());
+  assert.equal(signals[0].sleepMinutes,450);
  }finally{
   await act(async()=>root.unmount());dom.window.close();for(const[key,d]of previous){if(d)Object.defineProperty(globalThis,key,d);else Reflect.deleteProperty(globalThis,key);}
  }

@@ -60,6 +60,7 @@ export type NoorPersonalCommandInput =
   | Readonly<{ type: "delete-definition"; definitionId: string; confirm: true }>
   | Readonly<{
       type: "create-definition";
+      requestId?:string;
       weight?:number;
       timeOfDay?: string;
       quranPlan?: NoorQuranHabitPlanR289 | null;

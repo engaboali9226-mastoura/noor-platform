@@ -35,7 +35,8 @@ test('R142 finance presentation remains independent of previous habit/history wo
 });
 
 test('R142 definition editing is saved in background without global busy',()=>{
- assert.match(source,/if\(command\.type==='update-definition'\)return runCommand\(command,true\)/);
+ assert.match(source,/if\(isDefinitionSave\(command\)\)/);
+ assert.match(source,/runCommand\(change\.command,true\)/);
  assert.match(source,/if\(!background\)setBusy\(true\)/);
  assert.match(source,/definitionSaveLock=useRef\(false\)/);
  assert.match(source,/if\(busy\|\|definitionSaveLock\.current\)return/);

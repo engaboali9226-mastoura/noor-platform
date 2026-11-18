@@ -71,6 +71,7 @@ export type PersonalCommand =
     | Readonly<{ readonly type: "delete-definition"; readonly definitionId: string; readonly confirm: true }>
     | Readonly<{
         readonly type: "create-definition";
+        readonly requestId?: string;
         readonly weight?: number;
         readonly timeOfDay?: string;
         readonly quranPlan?: QuranHabitPlan | null;
@@ -510,7 +511,7 @@ export function parsePersonalCommand(
     }
     if(value.type==="update-definition"){
         const {definitionId,expectedRevisionId,...fields}=value;
-        if(!boundedIdentifier(definitionId)||!boundedIdentifier(expectedRevisionId))return null;
+        if(!boundedIdentifier(definitionId)||!boundedIdentifier(expectedRevisionId)||Object.hasOwn(fields,"requestId"))return null;
         const parsed=parsePersonalCommand({...fields,type:"create-definition"});
         return parsed?.type==="create-definition"?{...parsed,type:"update-definition",definitionId,expectedRevisionId}:null;
     }
@@ -528,6 +529,7 @@ export function parsePersonalCommand(
                     "scheduleKind",
                     "weekdays",
                     "importance",
+                    ...(Object.hasOwn(value,"requestId")?["requestId"]:[]),
                     ...(Object.hasOwn(value,"weight")?["weight"]:[]),
                     ...(Object.hasOwn(value,"measurement") ? ["measurement"] : []),
                     ...(Object.hasOwn(value,"sessionPlan") ? ["sessionPlan"] : []),
@@ -539,6 +541,8 @@ export function parsePersonalCommand(
                     ...(Object.hasOwn(value,"subcategory") ? ["subcategory"] : []),
                 ],
             )
+            || (Object.hasOwn(value,"requestId")&&(typeof value.requestId!=="string"||
+                !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value.requestId)))
             || (
                 value.kind !== "Task"
                 && value.kind !== "Habit"
@@ -642,6 +646,7 @@ export function parsePersonalCommand(
         }
         return Object.freeze({
             type: "create-definition" as const,
+            ...(typeof value.requestId==="string"?{requestId:value.requestId}:{}),
             ...(typeof value.weight==="number"?{weight:value.weight}:{}),
             kind: value.kind,
             ...(measurement ? {measurement} : {}),
@@ -1429,19 +1434,14 @@ export class PersonalCommandService {
                     return;
                 }
                 if (command.type === "create-definition") {
+                    if(command.requestId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(command.requestId))
+                        throw new Error("INVALID_DEFINITION_REQUEST");
+                    const definitionId=command.requestId
+                        ? `definition-request:${encodeURIComponent(userId)}:${command.requestId}`
+                        : this.dependencies.idGenerator.next(command.kind==="Task"?"task-definition":"habit-definition");
+                    if(command.requestId&&transaction.findDefinitionById(userId,definitionId))return;
                     permittedWeight("",command.kind,command.weight??1);
-                    activePersonalDay(
-                        transaction,
-                        userId,
-                        now,
-                    );
-
-                    const definitionId =
-                        this.dependencies.idGenerator.next(
-                            command.kind === "Task"
-                                ? "task-definition"
-                                : "habit-definition",
-                        );
+                    activePersonalDay(transaction,userId,now);
 
                     const definition: ExecutionDefinition = {
                         id: definitionId,

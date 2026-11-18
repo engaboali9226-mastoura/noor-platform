@@ -105,13 +105,14 @@ test("sleep completion opens its editor and cancellation leaves the habit unchec
 test("prayer habit opens the prayer editor and saves against its own execution",async()=>{
  const t=installDom(),root=createRoot(t.container),commands:unknown[]=[];
  const fetcher=globalThis.fetch;
+ let resolveSave:(response:Response)=>void=()=>{};
  const habit={...workspace.workspace.definitions[1]!,title:"صلاة الفجر"};
  const input={...workspace,workspace:{...workspace.workspace,definitions:[workspace.workspace.definitions[0]!,habit]}};
  const initialResult={...today,today:{...today.today,islamicContext:{...today.today.islamicContext,prayerTimes:{...today.today.islamicContext.prayerTimes,fajr:new Date(Date.now()-60_000).toISOString()}}}};
  globalThis.fetch=async(url,options)=>{
   if(String(url).includes("/command")){
    commands.push(JSON.parse(String(options?.body)));
-   return new Response(null,{status:503});
+   return new Promise<Response>(resolve=>{resolveSave=resolve;});
   }
   return fetcher(url,options);
  };
@@ -126,7 +127,12 @@ test("prayer habit opens the prayer editor and saves against its own execution",
   const save=[...dialog.querySelectorAll<HTMLButtonElement>("button")].find(button=>button.textContent==="حفظ الأداء")!;
   await act(async()=>save.click());
   assert.equal((commands[0] as {habitExecutionId:string})?.habitExecutionId,"e2");
+  assert.equal(document.querySelector('.np-prayer-record-dialog'),null);
+  assert.equal(checkbox.getAttribute("aria-checked"),"true");
+  assert.match(t.container.querySelector(".np-day-achievement-copy")!.textContent!,/1 من 2/);
+  await act(async()=>resolveSave(new Response(null,{status:503})));
   assert.equal(checkbox.getAttribute("aria-checked"),"false");
+  assert.ok(t.container.querySelector(".np-failed-save"));
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
 
@@ -138,6 +144,14 @@ const workspace={kind:"success" as const,workspace:{definitions:[{id:"d1",kind:"
 test("R287 regression: Personal renders a task with scheduled reading sessions without crashing the entire app",async()=>{
  const t=installDom();
  const root=createRoot(t.container);
+ let resolveSave:(response:Response)=>void=()=>{};
+ let command:unknown;
+ const fetcher=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{
+  if(!String(url).includes("/command"))return fetcher(url,options);
+  command=JSON.parse(String(options?.body));
+  return new Promise<Response>(resolve=>{resolveSave=resolve;});
+ };
  const readingTask={
   ...workspace.workspace.definitions[0]!,
   title:"قراءة كتاب",revisionId:"revision-reading",measurement:{target:12,unit:"صفحة"},
@@ -163,6 +177,15 @@ test("R287 regression: Personal renders a task with scheduled reading sessions w
   const editor=t.dom.window.document.querySelector('[role="dialog"][aria-label="تسجيل قراءة كتاب"]');
   assert.ok(editor?.querySelector('[data-testid="r285-session-complete-reading-session-one"]'));
   assert.equal(completion.getAttribute("aria-checked"),"false");
+  const sessionCheckbox=editor!.querySelector<HTMLInputElement>('[data-testid="r285-session-complete-reading-session-one"]')!;
+  await act(async()=>sessionCheckbox.click());
+  assert.equal((command as {type:string}).type,"record-task-session-progress");
+  assert.equal(sessionCheckbox.checked,true);
+  assert.equal(t.container.querySelector(".np-today-task-button span")!.textContent,"100%");
+  await act(async()=>resolveSave(new Response(null,{status:503})));
+  assert.equal(sessionCheckbox.checked,false);
+  assert.equal(t.container.querySelector(".np-today-task-button span")!.textContent,"0%");
+  assert.ok(t.container.querySelector(".np-failed-save"));
  } finally{
   await act(async()=>{root.unmount();});
   t.restore();t.dom.window.close();
@@ -398,6 +421,13 @@ test("R332 approved weekly card presents weighted ring, actual category counts, 
 
 test("habit creation keeps prayer weights separate from the habit draft",async()=>{
   const t=installDom(),root=createRoot(t.container);
+  const formData=globalThis.FormData;
+  Object.defineProperty(globalThis,"FormData",{configurable:true,writable:true,value:t.dom.window.FormData});
+  const requests:{body:{requestId:string};resolve:(response:Response)=>void}[]=[];
+  const fetcher=globalThis.fetch;
+  globalThis.fetch=async(url,options)=>String(url).includes("/command")
+    ?new Promise<Response>(resolve=>requests.push({body:JSON.parse(String(options?.body)),resolve}))
+    :fetcher(url,options);
   try{
     await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
     await act(async()=>t.container.querySelector<HTMLButtonElement>('button[aria-label="فتح مركز التحكم"]')!.click());await act(async()=>[...t.container.querySelectorAll<HTMLButtonElement>('.np-cc-nav-item')].find(b=>b.textContent?.includes('العادات'))!.click());
@@ -412,8 +442,20 @@ test("habit creation keeps prayer weights separate from the habit draft",async()
     assert.equal(weight.value,"");
     const savePrayer=prayerSettings.querySelector<HTMLButtonElement>("[data-testid=r334-policy-save]")!;
     assert.ok(savePrayer.disabled);
+    habitForm.querySelector<HTMLInputElement>("#definition-title")!.value="عادة حفظ فوري";
+    await act(async()=>habitForm.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
+    assert.ok(!document.querySelector(".np-cc-modal-backdrop:not([hidden])"),"The creation form should close before the server replies.");
+    assert.ok(requests[0]?.body.requestId);
+    assert.match(t.container.textContent??"",/عادة حفظ فوري/);
+    await act(async()=>requests[0]!.resolve(new Response(null,{status:503})));
+    assert.doesNotMatch(t.container.querySelector(".np-control")!.textContent??"",/عادة حفظ فوري/);
+    const retry=t.container.querySelector<HTMLButtonElement>(".np-failed-save button")!;
+    await act(async()=>retry.click());
+    assert.equal(requests[1]?.body.requestId,requests[0]!.body.requestId);
+    await act(async()=>requests[1]!.resolve(new Response(null,{status:503})));
   }finally{
     await act(async()=>root.unmount());
+    Object.defineProperty(globalThis,"FormData",{configurable:true,writable:true,value:formData});
     t.restore();
     t.dom.window.close();
   }

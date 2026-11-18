@@ -311,7 +311,7 @@ function OneSessionR254({session,log,definitionId,executionId,busy,onCommand,rea
     setSaveStatus("جارٍ الحفظ تلقائيًا…");
     try{
       if(await onCommand(command)){
-        setSaveStatus("تم حفظ إنجاز الجلسة في الخلفية.");
+        setSaveStatus("سُجّل إنجاز الجلسة.");
         completionEntryId.current=globalThis.crypto.randomUUID();
         if(remainingTarget!==null){setAmount("");setActivityNote("");}
       }else {setSaveStatus("");setError("لم يتأكد حفظ إتمام الجلسة؛ لا نعيد إنشاء النشاط حتى نتحقق من الخادم.");}
