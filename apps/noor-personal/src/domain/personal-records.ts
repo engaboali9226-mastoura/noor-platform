@@ -14,17 +14,24 @@ function localDate(value: unknown): value is string {
     return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
+export function validPersonalAvatar(value: unknown): value is string | null {
+    if (value === null) return true;
+    if (typeof value !== "string" || !value.length) return false;
+    if (value.startsWith("data:")) {
+        return value.length <= 32768 && /^data:image\/jpeg;base64,\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(value);
+    }
+    if (value.length > 2048) return false;
+    if (value.startsWith("/") && !value.startsWith("//")) return true;
+    try { return new URL(value).protocol === "https:"; } catch { return false; }
+}
+
 export function validPersonalProfile(value: unknown): value is PersonalProfile {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
     const row = value as Record<string, unknown>;
-    const avatar = row.avatarUrl;
-    const avatarOk = avatar === null || (typeof avatar === "string" && avatar.length <= 2048 && (avatar.startsWith("/") || (() => {
-        try { return new URL(avatar).protocol === "https:"; } catch { return false; }
-    })()));
     return Object.keys(row).sort().join(",") === "avatarUrl,birthDate,displayName,updatedAt,userId"
         && typeof row.userId === "string" && row.userId.length > 0 && row.userId.length <= 256
         && typeof row.displayName === "string" && row.displayName.trim().length > 0 && row.displayName.length <= 120
-        && avatarOk
+        && validPersonalAvatar(row.avatarUrl)
         && (row.birthDate === null || localDate(row.birthDate))
         && instant(row.updatedAt);
 }
