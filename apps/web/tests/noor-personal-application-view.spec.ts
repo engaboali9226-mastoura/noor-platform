@@ -102,6 +102,34 @@ test("sleep completion opens its editor and cancellation leaves the habit unchec
  }
 });
 
+test("prayer habit opens the prayer editor and saves against its own execution",async()=>{
+ const t=installDom(),root=createRoot(t.container),commands:unknown[]=[];
+ const fetcher=globalThis.fetch;
+ const habit={...workspace.workspace.definitions[1]!,title:"صلاة الفجر"};
+ const input={...workspace,workspace:{...workspace.workspace,definitions:[workspace.workspace.definitions[0]!,habit]}};
+ const initialResult={...today,today:{...today.today,islamicContext:{...today.today.islamicContext,prayerTimes:{...today.today.islamicContext.prayerTimes,fajr:new Date(Date.now()-60_000).toISOString()}}}};
+ globalThis.fetch=async(url,options)=>{
+  if(String(url).includes("/command")){
+   commands.push(JSON.parse(String(options?.body)));
+   return new Response(null,{status:503});
+  }
+  return fetcher(url,options);
+ };
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult,initialWorkspace:input})));
+  const checkbox=t.container.querySelector<HTMLButtonElement>('[role="checkbox"][aria-label="تسجيل أداء صلاة الفجر"]')!;
+  assert.ok(checkbox);
+  await act(async()=>checkbox.click());
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+  assert.equal(commands.length,0);
+  const dialog=document.querySelector('.np-prayer-record-dialog')!;
+  const save=[...dialog.querySelectorAll<HTMLButtonElement>("button")].find(button=>button.textContent==="حفظ الأداء")!;
+  await act(async()=>save.click());
+  assert.equal((commands[0] as {habitExecutionId:string})?.habitExecutionId,"e2");
+  assert.equal(checkbox.getAttribute("aria-checked"),"false");
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
 const futurePrayerAt=new Date(Date.now()+3_600_000).toISOString();
 const today={kind:"success" as const,today:{personalDay:{id:"day",userId:"user",state:"Open",boundary:{localDate:"2026-10-24",timeZone:"Asia/Riyadh"}},islamicContext:{hijriDate:{day:13,month:5,year:1448},prayerTimes:{fajr:"2026-10-25T01:37:00.000Z",nextFajr:"2026-10-26T01:38:00.000Z",sunrise:"2026-10-25T02:54:00.000Z",dhuhr:"2026-10-25T08:38:00.000Z",asr:"2026-10-25T11:52:00.000Z",maghrib:"2026-10-25T14:20:00.000Z",isha:"2026-10-25T15:50:00.000Z"}},nextPrayer:{name:"Fajr",at:futurePrayerAt,secondsRemaining:3600},tasks:[{id:"e1",definitionId:"d1",kind:"Task",title:"تمرين",status:"Planned"}],habits:[{id:"e2",definitionId:"d2",kind:"Habit",title:"المشي",status:"Pending"}],automationPending:0}};
 const workspace={kind:"success" as const,workspace:{definitions:[{id:"d1",kind:"Task",title:"تمرين",state:"Active",category:"الصحة والرياضة",schedule:{kind:"Weekdays",weekdays:[0,2,4]},effectiveFromDate:"2026-10-25",importance:"Important"},{id:"d2",kind:"Habit",title:"المشي",state:"Active",category:"الصحة والرياضة",schedule:{kind:"Daily"},effectiveFromDate:"2026-10-25",importance:"Supporting"}],insights:{currentStreakDays:2,bestStreakDays:4,periods:{week:{windowDays:7,scheduled:2,completed:0,completionRate:0,successfulDays:0},month:{windowDays:30,scheduled:2,completed:0,completionRate:0,successfulDays:0},quarter:{windowDays:90,scheduled:2,completed:0,completionRate:0,successfulDays:0},year:{windowDays:365,scheduled:2,completed:0,completionRate:0,successfulDays:0}}}}};
