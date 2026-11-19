@@ -44,7 +44,7 @@ test("R102 route and Personal use byte-identical loading-stage geometry", () => 
 
 test("R102 same shared logo, heading and detail appear in both phases", () => {
   for (const html of [route, personal]) {
-    assert.match(html, /src="\/brand\/icon-r352-192\.png"/u);
+    assert.match(html, /src="\/brand\/icon-r369-192\.png"/u);
     assert.match(html, /مرحبا بك في منصة نور/u);
     assert.match(html, /جارٍ تجهيز مساحتك الشخصية/u);
     assert.match(html, /aria-busy="true"/u);
