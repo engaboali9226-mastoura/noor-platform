@@ -150,7 +150,7 @@ export function NoorR232ControlLocation({serverZone,preferences,onChange,onCommi
    try{
      const success=await onCommit(selected);
      if(success){
-       setMessage("تم تأكيد حفظ موقع الحساب ومنطقته الزمنية. تُعرض المواقيت الجديدة بعد استرجاعها من الخادم؛ لا تعتمد على المواقيت السابقة عند تعذّر الاتصال.");
+       setMessage("تم تحديث موقع الحساب والمواقيت.");
      }else{
        const window=noorSharedCivilDateWindow(serverZone,selected.timeZone,Date.now());
        const hint=window.datesDiffer
@@ -199,7 +199,7 @@ export function NoorR232ControlLocation({serverZone,preferences,onChange,onCommi
      <label>نهاية الضحى قبل الظهر<select className="np-select" value={preferences.beforeDhuhr} onChange={e=>onChange({...preferences,beforeDhuhr:Number(e.target.value)})}>{[5,10,15,20].map(v=><option key={v} value={v}>{v} دقيقة</option>)}</select></label>
     </div>
    </section>
-   {selected?<div className="np-r358-location-save"><strong>{selected.name} · <span dir="ltr">{selected.timeZone}</span></strong><div><button type="button" className="np-cc-button primary" disabled={saving||!onCommit} onClick={()=>{void save();}}>{saving?"جارٍ الحفظ…":"حفظ الموقع"}</button><button type="button" className="np-cc-button" disabled={saving} onClick={()=>{onChange({...preferences,selectedCity:null,displayZone:null});setZoneInput("");}}>إلغاء</button></div></div>:null}
+   {selected?<div className="np-r358-location-save"><strong>{selected.name} · <span dir="ltr">{selected.timeZone}</span></strong><div><button type="button" className="np-cc-button primary" disabled={saving||!onCommit} onClick={()=>{void save();}}>{saving?"جارٍ الحفظ في الخلفية…":"حفظ الموقع"}</button><button type="button" className="np-cc-button" disabled={saving} onClick={()=>{onChange({...preferences,selectedCity:null,displayZone:null});setZoneInput("");}}>إلغاء</button></div></div>:null}
    {message?<p role="status" className="np-r358-location-status">{message}</p>:null}
  </section>;
 }
