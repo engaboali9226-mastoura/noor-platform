@@ -1305,3 +1305,165 @@ button[aria-label^="إغلاق"] {
   border:1px solid var(--ng-line);border-radius:10px;background:var(--ng-card);color:var(--ng-ink);
   font:inherit;cursor:pointer;
 }
+
+/* Keep the ledger semantic and horizontal at phone widths. */
+.np-page .nf-debt-register .nf-debt-scroll {
+  max-width:100%;
+  max-height:min(65dvh,620px);
+  overflow:auto;
+  overscroll-behavior:contain;
+  border:1px solid var(--ng-line);
+  border-radius:14px;
+  touch-action:pan-x pan-y;
+}
+.np-page .nf-debt-register .nf-ledger-table {
+  display:table;
+  width:100%;
+  min-width:980px;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.np-page .nf-debt-register .nf-ledger-table caption {
+  display:table-caption;
+  padding:10px 14px;
+  background:var(--ng-card);
+}
+.np-page .nf-debt-register .nf-ledger-table thead {
+  display:table-header-group;
+  position:static;
+  width:auto;
+  height:auto;
+  overflow:visible;
+  clip-path:none;
+}
+.np-page .nf-debt-register .nf-ledger-table tbody {display:table-row-group}
+.np-page .nf-debt-register .nf-ledger-table tr {
+  display:table-row;
+  overflow:visible;
+  background:none;
+  border:0;
+}
+.np-page .nf-debt-register .nf-ledger-table :is(th,td) {
+  display:table-cell;
+  padding:10px 12px;
+  border-bottom:1px solid var(--ng-line);
+  background:var(--ng-card);
+  color:var(--ng-ink);
+  vertical-align:middle;
+}
+.np-page .nf-debt-register .nf-ledger-table td::before {content:none}
+.np-page .nf-debt-register .nf-ledger-table thead th {
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:var(--ng-sub);
+  vertical-align:top;
+}
+.np-page .nf-debt-register .nf-ledger-table th:first-child {min-width:144px}
+.np-page .nf-debt-register .nf-ledger-table th :is(select,input) {
+  display:block;
+  margin-top:6px;
+  min-height:36px;
+  width:100%;
+  max-width:154px;
+  padding:4px 7px;
+  background:var(--ng-bg);
+  color:var(--ng-ink);
+  border:1px solid var(--ng-line);
+  border-radius:8px;
+  font-size:16px;
+}
+.np-page .nf-debt-register .nf-ledger-table td .nf-ledger-money {display:block;white-space:nowrap}
+.np-page .nf-debt-register .nf-ledger-table td .nf-button {white-space:nowrap}
+.nf-dialog .nf-button.primary.nf-danger {background:#963840;color:white;border-color:#963840}
+
+/* The rings retain their established dimensions and scoring. */
+.np-page[data-appearance] :is(.np-day-ring-track,.np-ring-track,.np-r332-ring-track,.np-week-circle-track) {
+  stroke:#fff;
+  opacity:1;
+}
+.np-page[data-appearance] :is(.np-day-ring-fill,.np-ring-value,.np-r332-ring-fill,.np-week-circle-fill) {
+  stroke:#26835b;
+  opacity:1;
+}
+.np-page .np-r332-week .is-future .np-week-day-circle {opacity:1}
+
+.noor-journal-icon {
+  display:inline-grid;
+  place-items:center;
+  flex:none;
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  color:var(--ng-accent);
+  background:var(--ng-sub);
+}
+.noor-journal-icon svg {width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.nr171-modal[data-journal-kind=ideas] .nr171-journal-title,
+.nw165-dialog[data-journal-layout=true] .nw165-head h2 {display:flex;align-items:center;gap:8px}
+.nr171-modal[data-journal-kind=ideas] .nr171-tabs,
+.nw165-dialog[data-journal-layout=true] .nw165-journal-tabs {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  flex:none;
+  gap:4px;
+  margin:10px 15px 0;
+  padding:4px;
+  border:0;
+  border-radius:12px;
+  background:var(--ng-sub);
+}
+.nw165-dialog[data-journal-layout=true] .nw165-journal-tabs {margin:0 0 14px}
+.nr171-modal[data-journal-kind=ideas] .nr171-tabs button,
+.nw165-dialog[data-journal-layout=true] .nw165-journal-tabs button {
+  min-width:0;
+  min-height:42px;
+  border:1px solid transparent;
+  border-radius:9px;
+  background:transparent;
+  color:var(--ng-ink);
+}
+.nr171-modal[data-journal-kind=ideas] .nr171-tabs button[aria-selected=true],
+.nw165-dialog[data-journal-layout=true] .nw165-journal-tabs button[aria-pressed=true] {
+  background:var(--ng-bg);
+  color:var(--ng-ink);
+  border-color:var(--ng-line);
+  font-weight:750;
+}
+.nr171-modal[data-journal-kind=ideas] .nr171-form textarea {min-height:clamp(148px,34dvh,285px);resize:vertical}
+.nw165-dialog[data-journal-layout=true] .nw165-tabs[hidden],
+.nw165-dialog[data-journal-layout=true] .nw165-journal-context {display:none}
+.nw165-dialog[data-journal-layout=true] .nw165-head .nw165-indicators-toggle {
+  margin-inline-start:auto;
+  width:auto;
+  min-height:36px;
+  padding:4px 8px;
+  font-size:12px;
+  background:transparent;
+}
+.nw165-dialog[data-journal-layout=true] .nw165-stack {gap:14px}
+.nw165-dialog[data-journal-layout=true] .nw165-journal-date {display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.nw165-dialog[data-journal-layout=true] .nw165-journal-date input {width:min(100%,184px)}
+.nw165-journal-ratings {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.nw165-journal-rating {border:0;padding:0;margin:0;min-width:0}
+.nw165-journal-rating legend {padding:0;margin-bottom:5px;font-weight:700}
+.nw165-journal-rating div {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px}
+.nw165-dialog[data-journal-layout=true] .nw165-journal-rating button {
+  min-width:0;
+  min-height:36px;
+  padding:3px 1px;
+  border-radius:7px;
+  border:1px solid var(--ng-line);
+  color:var(--ng-ink);
+  background:var(--ng-bg);
+}
+.nw165-dialog[data-journal-layout=true] .nw165-journal-rating button[aria-pressed=true] {
+  border-color:var(--ng-accent);
+  background:var(--ng-sub);
+  font-weight:800;
+}
+.nw165-dialog[data-journal-layout=true] .nw165-feelings button {min-height:40px;border-radius:15px}
+.nw165-dialog[data-journal-layout=true] .nw165-stack textarea {min-height:105px;resize:vertical}
+.nw165-journal-extras {padding:10px 12px;border:1px solid var(--ng-line);border-radius:10px;background:var(--ng-sub)}
+.nw165-journal-extras summary {cursor:pointer;font-weight:650}
+.nw165-journal-extras label {margin-top:10px}
