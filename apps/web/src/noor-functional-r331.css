@@ -1251,22 +1251,24 @@ button[aria-label^="إغلاق"] {
 .nw165-journal-tabs{display:flex;gap:8px;margin-block:9px}
 .nw165-journal-tabs button{flex:1}
 
-/* Match the desktop reading order below the masthead at narrower widths. */
+/* Give the mobile greeting its own row so the clock cannot squeeze the name. */
 @media(max-width:560px){
  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
-   grid-template-areas:"brand brand brand" "greeting clock status" "calendar calendar calendar"!important;
-   grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
-   align-items:center;gap:6px!important;
+   grid-template-areas:"brand brand" "greeting greeting" "clock status" "calendar calendar"!important;
+   grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+   align-items:center;gap:8px!important;
  }
  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-r323-greeting{
-   justify-self:start!important;font-size:clamp(13px,4.1vw,21px)!important;white-space:normal;
+   justify-self:stretch!important;font-size:clamp(16px,5.25vw,22px)!important;white-space:nowrap;
  }
- .np-r339-header .np-r323-greeting>.np-greeting-text{overflow-wrap:anywhere}
  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-clock{
-   font-size:clamp(20px,5.25vw,32px)!important;white-space:nowrap;
+   justify-self:start!important;font-size:clamp(20px,6vw,32px)!important;white-space:nowrap;
+ }
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-status{
+   justify-self:end!important;
  }
  .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-calendar{
-   grid-row:3!important;
+   grid-row:4!important;
  }
  .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-location{
    min-width:0;font-size:clamp(9px,2.8vw,13px)!important;
