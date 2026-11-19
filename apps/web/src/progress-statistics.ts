@@ -65,8 +65,9 @@ export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:
  for(const day of history)for(const prayer of day.records)record(day.date,prayer.key);
  for(const prayer of completedPrayerHabits)record(prayer.date,prayer.key);
  for(const day of prayerDays)for(const prayer of day.score.rows)if(prayer.recorded)record(day.date,prayer.key);
- // Past days each have five prayers. A verified current-day schedule adds only elapsed prayers.
- const due=dates.size*keys.size-(todayDue&&dates.has(todayDue.date)?keys.size-dueToday.size:0);
+ // The target counts five prayers per calendar day through today. The
+ // verified times above only determine which current-day records count.
+ const due=dates.size*keys.size;
  const recorded=[...recordedByDate.values()].reduce((sum,prayers)=>sum+prayers.size,0);
  const first=days[0]?.date;
  // Keep the existing Saturday–Friday date boundaries. Week label uses the ISO
