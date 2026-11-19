@@ -9,13 +9,12 @@ test("R297: beverage timing exposes explicit dawn, duha and after-Isha choices",
  for(const name of ["فجرًا","ضحى","ظهرًا","عصرًا","مساءً","بعد العشاء","تحديد الساعة يدويًا"])
   assert.ok(drinks.includes(name),name);
  assert.match(drinks,/ليست مواقيت الصلاة/);
- assert.match(drinks,/beverageTime:recordedTime/);
+ assert.match(drinks,/\{beverageTime\}/);
 });
 test("R297: first quick drink creates a protected habit instead of requiring full setup",()=>{
- assert.match(drinks,/setPendingFirstKind\(kind\)/);
  assert.match(drinks,/type:"create-definition",kind:"Habit"/);
- assert.match(drinks,/setQuickId\(matching.id\)/);
- assert.match(drinks,/جارٍ تأكيد الحفظ/);
+ assert.match(drinks,/setQuickId\(`first:\$\{kind\}`\)/);
+ assert.doesNotMatch(drinks,/جارٍ تأكيد الحفظ/);
 });
 test("R297: advisory uses restrained neutral design without old yellow-filled bar",()=>{
  assert.match(ui,/np-caffeine-yellow\{background:var\(--panel-soft\)/);
