@@ -28,8 +28,9 @@ import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays,
 import { loadCurrentWeather,type CurrentWeatherR338 } from "./public-weather-client.js";
 import type { UpcomingFridaySchedule } from "./noor-friday-story-r370.js";
 import { NoorR232TimeWindows } from "./noor-time-windows-r232.js";
+import {noorFridayDisplay} from "./noor-friday-visibility-r310.js";
 import {fridayVirtueR284} from "./noor-friday-virtues-r284.js";
-import { r232LocalWeekday, r283CarriedNightWindow, r232DailyWindows, r283FridayHoursAtDhuhr, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
+import { r232LocalWeekday, r283CarriedNightWindow, r232DailyWindows, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
 import { NoorHabitWeightManagerR251, NoorPrayerScoreApprovalR334, prayerHabitCandidateR334 } from "./noor-habit-weight-manager-r251.js";
 import { NoorR232ControlLocation } from "./noor-time-location-control-r232.js";
 import { readNoorR232Preferences,saveNoorR232Preferences,type NoorR232Preferences,type NoorR232City } from "./noor-time-display-preferences-r232.js";
@@ -3785,7 +3786,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   }).flat();
   const historicalPreview=historicalMatches[0];
   const filteredHistoricalEvents=historicalMatches.filter(row=>(historyEventPeriod==="week"||row.offset===0)&&(historyEventCalendar==="all"||row.event.calendar===historyEventCalendar));
-  const fridayHoursForPrayer=r283FridayHoursAtDhuhr({nowMs,timeZone:view.timeZone,prayers:view.prayerTimes,sunriseOffsetMinutes:timePreferences.afterSunrise});
+  const {hours:fridayHoursForPrayer}=noorFridayDisplay({nowMs,timeZone:view.timeZone,prayers:view.prayerTimes,upcomingFriday:view.upcomingFriday,sunriseOffsetMinutes:timePreferences.afterSunrise});
   const weatherState=weather?.weatherCode;
   const sunAt=Date.parse(view.prayerTimes.find(p=>p.key==="sunrise")?.at??"");
   const sunsetAt=Date.parse(view.prayerTimes.find(p=>p.key==="maghrib")?.at??"");
@@ -3956,7 +3957,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         {seconds>0?<><small>{countsToFajr?"المتبقي حتى الفجر":key==="last-third"?"المتبقي حتى بدايته":"المتبقي حتى منتصف الليل"}</small>
           <b role="timer" dir="ltr" data-testid={`night-countdown-${key}`}>{formatCountdown(seconds)}</b></>:<small>{key==="midnight"?"مضى منتصف الليل":"انتهى الثلث الأخير"}</small>}
       </div>;
-    })}</div><section className="np-r339-friday-times"><h3>ساعات الجمعة الخمس</h3><div className="np-r339-friday-grid">{([1,2,3,4,5] as const).map(n=>{const hour=fridayHoursForPrayer?.find(h=>h.number===n),virtue=fridayVirtueR284(n);return <div key={n}><span aria-hidden="true">{virtue.icon}</span><strong>{["الأولى","الثانية","الثالثة","الرابعة","الخامسة"][n-1]}</strong>{hour?<small>{formatTime(new Date(hour.startMs).toISOString(),view.timeZone)} — {formatTime(new Date(hour.endMs).toISOString(),view.timeZone)}</small>:<small>—</small>}</div>})}</div></section></div></div>
+    })}</div><section className="np-r339-friday-times"><h3>ساعات الجمعة الخمس</h3><div className="np-r339-friday-grid">{([1,2,3,4,5] as const).map(n=>{const hour=fridayHoursForPrayer?.find(h=>h.number===n),virtue=fridayVirtueR284(n);return <div key={n}><span aria-hidden="true">{virtue.icon}</span><strong>{["الأولى","الثانية","الثالثة","الرابعة","الخامسة"][n-1]}</strong>{hour?<small className="np-friday-prayer-range" dir="rtl"><span>من {formatTime(new Date(hour.startMs).toISOString(),view.timeZone)}</span><span>إلى {formatTime(new Date(hour.endMs).toISOString(),view.timeZone)}</span></small>:<small>—</small>}</div>})}</div></section></div></div>
     {prayerEditor?createPortal(<div className="np-r331-overlay" style={prayerDialog} onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)setPrayerEditor(null);}}><section className="np-r331-sheet np-prayer-record-dialog" role="dialog" aria-modal="true" aria-label={"تسجيل صلاة "+prayerEditor.label} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setPrayerEditor(null);}}><header><h2>صلاة {prayerEditor.label}{historyDate?<small> · {weekDateLabel(historyDate)}</small>:null}</h2><button type="button" disabled={busy} onClick={()=>setPrayerEditor(null)} aria-label="إغلاق تسجيل الصلاة">×</button></header><h3>الأداء ووقته</h3><div className="np-r331-options">{([["group","ontime","ج ق","جماعة في وقتها"],["group","late","ج م","جماعة بعد وقتها"],["individual","ontime","ف ق","فردي في وقتها"],["individual","late","ف م","فردي بعد وقتها"]] as const).map(([mode,timing,short,label])=><button type="button" key={short} aria-pressed={(mode==="group"?prayerEditor.mode==="group":prayerEditor.mode!=="group")&&prayerEditor.timing===timing} onClick={()=>setPrayerEditor({...prayerEditor,mode:mode==="group"?"group":prayerEditor.mode==="excused"?"excused":"unexcused",timing})}><strong>{short}</strong> · {label}</button>)}</div>{prayerEditor.mode!=="group"?<label><input type="checkbox" checked={prayerEditor.mode==="excused"} onChange={e=>setPrayerEditor({...prayerEditor,mode:e.currentTarget.checked?"excused":"unexcused"})}/> بعذر</label>:null}<p>{prayerDays.some(p=>p.date===displayedDate)?"يُحتسب الأداء وفق السياسة المعتمدة كمؤشر تنظيمي، وليس حكمًا شرعيًا.":"سجل مستقل عن أوزان المهام والعادات حتى اعتماد سياسة الصلوات."}</p>{prayerSaveError?<p role="alert">{prayerSaveError}</p>:null}<div className="np-r331-options"><button type="button" disabled={busy} onClick={()=>{void savePrayer()}}>حفظ الأداء</button>{prayerRecords.some(r=>r.key===prayerEditor.key)?<button type="button" disabled={busy} onClick={()=>{void savePrayer(true)}}>حذف التسجيل</button>:null}</div></section></div>,document.body):null}
 
 

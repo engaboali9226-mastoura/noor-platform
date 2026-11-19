@@ -71,6 +71,6 @@ test("R308: Friday still appears only on Friday; main rhythm and prayer source r
   nowMs:Date.parse("2026-11-07T06:00:00Z"),prayers,timeZone,preferences:NOOR_R232_DEFAULT,
  }));
  assert.doesNotMatch(saturday,/data-testid="friday-five-hours-r232"/);
- const source=readFileSync(new URL("../src/noor-time-windows-r232.tsx",import.meta.url),"utf8");
+ const source=readFileSync(new URL("../src/noor-friday-visibility-r310.ts",import.meta.url),"utf8");
  assert.match(source,/r283FridayHoursAtDhuhr/);
 });

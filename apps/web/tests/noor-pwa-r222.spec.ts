@@ -58,8 +58,15 @@ test("Noor serves its own waiting page during a cold start and preserves normal 
  network=Promise.resolve(render);
  const fallback=await navigate("/noor-personal");
  assert.equal(fallback?.status,503);
- assert.match(await fallback!.text(),/جارٍ تشغيل منصة نور/);
+ const waiting=await fallback!.text();
+ assert.match(waiting,/جارٍ تشغيل منصة نور/);
+ assert.match(waiting,/<h1 aria-label="NOOR Platform">/);
+ const logo=waiting.match(/<h1[^>]*><img src="data:image\/webp;base64,([^"]+)"/)?.[1];
+ assert.equal(logo,readFileSync(new URL("../public/brand/login-calligraphy.webp",import.meta.url)).toString("base64"));
+ assert.match(await (await navigate("/?utm_source=bookmark"))!.text(),/جارٍ تشغيل منصة نور/);
  assert.equal(await navigate("/?code=callback"),render);
+ assert.equal(await navigate("/?utm_source=mail&auth=recovery"),render);
+ assert.equal(await navigate("/?token_hash=callback"),render);
  assert.equal(navigate("/api/noor/personal/journal/status"),undefined);
  network=new Promise(()=>{});
  const slow=navigate("/");
