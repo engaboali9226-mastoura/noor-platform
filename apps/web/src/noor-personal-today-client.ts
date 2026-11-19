@@ -323,12 +323,13 @@ export async function sendNoorPersonalCommand(command:NoorPersonalCommandInput,f
 // NOOR_FINANCE_R68: amounts are integer halalas; transfers never count as spending.
 export type FinanceAccountKind = "cash" | "bank" | "savings" | "emergency";
 export interface FinanceAccount { readonly id:string; readonly name:string; readonly kind:FinanceAccountKind; readonly openingMinor:number; readonly date:string; }
-export interface FinancePerson {readonly id:string;readonly name:string;readonly note:string;}
+export interface FinancePerson {readonly id:string;readonly name:string;readonly note:string;readonly archived?:true;}
 export interface FinanceDebt {readonly personId?:string; readonly currency?:"SAR"|"EGP"; readonly id:string; readonly person:string; readonly direction:"receivable"|"payable"; readonly dueDate:string|null; readonly note:string; }
 export type FinanceEntryKind = "income"|"expense"|"transfer"|"repay"|"lend"|"borrow"|"opening-receivable"|"opening-payable";
 export interface FinanceEntry { readonly id:string; readonly kind:FinanceEntryKind; readonly amountMinor:number; readonly date:string; readonly accountId:string|null; readonly targetAccountId:string|null; readonly debtId:string|null; readonly category:string; readonly note:string; readonly createdAt:string; readonly corrections?:readonly {readonly at:string;readonly amountMinor:number;readonly date:string;readonly note:string;readonly reason:string;readonly dueDate?:string|null;readonly debtNote?:string}[]; readonly voidedAt?:string; readonly voidReason?:string; }
 export interface FinanceLedger {readonly people?:readonly FinancePerson[]; readonly userId:string; readonly currency:"SAR"; readonly accounts:readonly FinanceAccount[]; readonly debts:readonly FinanceDebt[]; readonly entries:readonly FinanceEntry[]; readonly requests:readonly {readonly id:string;readonly body:string}[]; }
 export type FinanceOperation =
+ | Readonly<{action:"delete-person"|"archive-person"|"restore-person";id:string;personId:string|null;expectedName:string}>
  | Readonly<{action:"create-person";id:string;name:string;note:string}>
  | Readonly<{action:"edit-debt";id:string;debtId:string;expected:string;amountMinor:number;date:string;dueDate:string|null;note:string;reason:string}>
  | Readonly<{action:"edit-payment";id:string;entryId:string;expected:string;amountMinor:number;date:string;note:string;reason:string}>

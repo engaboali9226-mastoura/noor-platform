@@ -53,3 +53,31 @@ test('r84 category and definition order survive fresh persistence and category r
  let s=await a.openOperation('u');const expected=buildPersonalWorkspace('u',s.snapshot).categories,order=[...expected].reverse();await execute({type:'reorder-display',scope:'categories',expected,order});s=await a.openOperation('u');const ids=buildPersonalWorkspace('u',s.snapshot).definitions.filter(d=>d.kind==='Habit').map(d=>d.id);await execute({type:'reorder-display',scope:'Habit',expected:ids,order:[...ids].reverse()});
  await execute({type:'manage-category',action:'rename',previousName:'العبادات',name:'عباداتي'});const fresh=new SupabasePostgresPersonalFoundationPersistence(f.client);await fresh.initialize();s=await fresh.openOperation('u');assert.deepEqual(buildPersonalWorkspace('u',s.snapshot).categories,order.map(c=>c==='العبادات'?'عباداتي':c));assert.deepEqual(buildPersonalWorkspace('u',s.snapshot).definitions.filter(d=>d.kind==='Habit').map(d=>d.id),[...ids].reverse());
 });
+
+test('finance removal deletes only unlinked profiles and preserves accounts when archiving',()=>{
+ const person={action:'create-person',id:'p1',name:'شخص اختبار',note:'خاص'};
+ const remove={action:'delete-person',id:'remove1',personId:person.id,expectedName:person.name};
+ const independent=ledger(person);
+ const deleted=applyFinanceOperation(independent,'u',remove,now);
+ assert.deepEqual(deleted.people,[]);
+ assert.equal(applyFinanceOperation(deleted,'u',remove,now),deleted);
+ const linked=ledger(person,debt('debt1','EGP',{personId:person.id,person:person.name}),pay('payment1','debt1'));
+ assert.throws(()=>applyFinanceOperation(linked,'u',remove,now),/FINANCE_PERSON_HAS_RECORDS/);
+ const archived=applyFinanceOperation(linked,'u',{...remove,action:'archive-person',id:'archive1'},now);
+ assert.equal(archived.people[0].archived,true);
+ assert.deepEqual(archived.entries,linked.entries);
+ assert.deepEqual(archived.debts,linked.debts);
+ assert.deepEqual(financeSummary(archived),financeSummary(linked));
+ assert.throws(()=>applyFinanceOperation(archived,'u',debt('new','EGP',{person:person.name}),now),/FINANCE_PERSON_ARCHIVED/);
+ const restored=applyFinanceOperation(archived,'u',{...remove,action:'restore-person',id:'restore1'},now);
+ assert.deepEqual(restored.people,linked.people);
+});
+
+test('finance can archive a legacy name and retain its exact debt history',()=>{
+ const original=ledger(debt('oldDebt'),pay('oldPayment','oldDebt'));
+ const changed=applyFinanceOperation(original,'u',{action:'archive-person',id:'newPerson',personId:null,expectedName:'جهة اختبار'},now);
+ assert.equal(changed.people[0].archived,true);
+ assert.equal(changed.debts[0].personId,'newPerson');
+ assert.deepEqual(changed.entries,original.entries);
+ assert.deepEqual(financeSummary(changed),financeSummary(original));
+});

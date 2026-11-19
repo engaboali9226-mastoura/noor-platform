@@ -2794,35 +2794,91 @@ function FinanceNote({note}:{note:string}):ReactElement|null {
 }
 
 function FinanceCorrections({entry}:{entry:FinanceLedger['entries'][number]|undefined}):ReactElement|null{return entry?.corrections?.length?<details><summary>سجل التصحيحات ({entry.corrections.length})</summary>{entry.corrections.map((c,i)=><p key={i}>القيمة السابقة: {(c.amountMinor/100).toFixed(2)} · {c.date}<br/>السبب: {c.reason}{c.note?<FinanceNote note={c.note}/>:null}</p>)}</details>:null;}
-function DebtRegister({ledger,today,busy,onRepay,onAddPerson,onAddDebt,onEditPerson,onEditDebt,onEditPayment}:{ledger:FinanceLedger;today:string;busy:boolean;onRepay:(id:string)=>void;onAddPerson:()=>void;onEditDebt:(id:string)=>void;onEditPayment:(id:string)=>void;onEditPerson:(person:{id:string|null;name:string;note:string})=>void;onAddDebt:(person:{id:string|null;name:string})=>void}):ReactElement{
- const [view,setView]=useState<'people'|'statistics'>('people'),[selected,setSelected]=useState<string|null>(null),[query,setQuery]=useState(''),[direction,setDirection]=useState('all'),[state,setState]=useState('all');const summary=financeSummary(ledger);
+function DebtRegister({ledger,today,busy,onRepay,onAddPerson,onAddDebt,onManagePerson,onEditPerson,onEditDebt,onEditPayment}:{ledger:FinanceLedger;today:string;busy:boolean;onRepay:(id:string)=>void;onAddPerson:()=>void;onManagePerson:(person:{id:string|null;name:string;archived?:true},hasRecords:boolean)=>void;onEditDebt:(id:string)=>void;onEditPayment:(id:string)=>void;onEditPerson:(person:{id:string|null;name:string;note:string})=>void;onAddDebt:(person:{id:string|null;name:string})=>void}):ReactElement{
+ const [view,setView]=useState<'people'|'statistics'|'archive'>('people'),[selected,setSelected]=useState<string|null>(null),[query,setQuery]=useState(''),[direction,setDirection]=useState('all'),[state,setState]=useState('all');const summary=financeSummary(ledger);
  const [personPaymentStatus,setPersonPaymentStatus]=useState("all");
  const [expanded,setExpanded]=useState(false);
  const [personFilter,setPersonFilter]=useState("all");
  const [ageFilter,setAgeFilter]=useState("all");
- const profiles=new Map<string,{id:string|null;key:string;name:string;note:string}>();for(const p of ledger.people??[])profiles.set('person:'+p.id,{...p,key:'person:'+p.id});
+ const [currencyFilter,setCurrencyFilter]=useState("all");
+ const profiles=new Map<string,{id:string|null;key:string;name:string;note:string;archived?:true}>();for(const p of ledger.people??[])profiles.set('person:'+p.id,{...p,key:'person:'+p.id});
  const personKey=(debt:FinanceLedger['debts'][number])=>{const p=ledger.people?.find(p=>debt.personId?p.id===debt.personId:p.name===debt.person);return p?'person:'+p.id:'legacy:'+debt.person;};
  for(const d of ledger.debts){const key=personKey(d);if(!profiles.has(key))profiles.set(key,{key,id:null,name:d.person,note:''});}
- const person=selected?profiles.get(selected):undefined;
+ const profile=selected?profiles.get(selected):undefined;
+ const person=profile&&!!profile.archived===(view==='archive')?profile:undefined;
  const allRows=ledger.debts.map(debt=>{const origin=ledger.entries.find(e=>e.debtId===debt.id&&e.kind!=='repay'&&!e.voidedAt);const payments=ledger.entries.filter(e=>e.debtId===debt.id&&e.kind==='repay'&&!e.voidedAt).slice().sort((a,b)=>a.date.localeCompare(b.date)||a.createdAt.localeCompare(b.createdAt));const paid=payments.reduce((n,e)=>n+e.amountMinor,0),remaining=summary.outstanding[debt.id]??0;const status=!origin?'cancelled':remaining===0?'paid':debt.dueDate&&debt.dueDate<today?'overdue':paid?'partial':'open';const end=payments.at(-1)?.date??today;const period=origin?debtElapsedPeriod(origin.date,end):null;return {debt,origin,payments,paid,remaining,status,end,period};});
- const rows=allRows.filter(r=>(view==='statistics'?(personFilter==='all'||personKey(r.debt)===personFilter):personKey(r.debt)===person?.key)&&(direction==='all'||r.debt.direction===direction)&&(state==='all'||r.status===state)&&(ageFilter==='all'||(r.period!==null&&(r.period.totalMonths<6?'short':r.period.totalMonths<9?'medium':'long')===ageFilter))&&(!query||`${r.debt.person} ${r.debt.note}`.includes(query.trim())));
+ const matchingProfiles=[...profiles.values()].filter(profile=>!!profile.archived===(view==='archive'));
+ const shownKeys=new Set((person?[person]:matchingProfiles.filter(profile=>personFilter==='all'||profile.key===personFilter)).map(profile=>profile.key));
+ const rows=allRows.filter(r=>shownKeys.has(personKey(r.debt))&&(currencyFilter==='all'||(r.debt.currency??'SAR')===currencyFilter)&&(direction==='all'||r.debt.direction===direction)&&(state==='all'||r.status===state)&&(ageFilter==='all'||(r.period!==null&&(r.period.totalMonths<6?'short':r.period.totalMonths<9?'medium':'long')===ageFilter))&&(!query||`${r.debt.person} ${r.debt.note}`.includes(query.trim())));
  const labels:Record<string,string>={paid:'تم السداد',partial:'سداد جزئي',overdue:'متأخر عن الاستحقاق',open:'لم يُسدّد',cancelled:'ملغى'};
  const showPeople=view==='people'&&!person;
- return <section className={`nf-debt-register${expanded?" nf-ledger-expanded":""}`} data-testid="debt-register-r77" data-layout="people-r78" data-person-edit-version="NOOR_PERSON_EDIT_R79" data-ledger-design="NOOR_LEDGER_DESIGN_R80"><nav className="nf-tabs" aria-label="عرض الديون"><button type="button" className={view==='people'?'is-active':''} onClick={()=>{setView('people');setQuery('');}}>الأشخاص</button><button type="button" className={view==='statistics'?'is-active':''} onClick={()=>{setView('statistics');setQuery('');}}>الإحصائيات</button><button type="button" aria-pressed={expanded} onClick={()=>{if(!expanded&&showPeople){setView("statistics");setQuery("");}setExpanded(!expanded);}}>{expanded?"إنهاء العرض الكامل":"عرض الجدول بصفحة كاملة"}</button></nav>
- {showPeople?<><div className="nf-list-heading"><h3>الأشخاص</h3><button className="nf-button primary" type="button" disabled={busy} onClick={onAddPerson}>+ إضافة شخص</button></div><div className="nf-person-filters-r130"><input aria-label="البحث عن شخص" placeholder="ابحث بالاسم" value={query} onChange={e=>setQuery(e.currentTarget.value)}/><label>حالة السداد<select data-testid="people-payment-filter-r130" aria-label="فلتر الأشخاص حسب حالة السداد" value={personPaymentStatus} onChange={e=>setPersonPaymentStatus(e.currentTarget.value)}><option value="all">كل الحالات</option>{Object.entries(labels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label></div><div className="nf-person-grid">{[...profiles.values()].filter(p=>(!query||p.name.includes(query.trim()))&&(personPaymentStatus==="all"||allRows.some(r=>personKey(r.debt)===p.key&&r.status===personPaymentStatus))).map(p=>{const debts=allRows.filter(r=>personKey(r.debt)===p.key);return <article className="nf-person-card" key={p.key}><button className="nf-person" type="button" onClick={()=>{setSelected(p.key);setQuery('');setDirection('all');setState('all');}}><strong>{p.name}</strong><span>{debts.length} مبالغ مسجلة · {debts.filter(r=>r.status==='paid').length} مسددة</span>{(['SAR','EGP'] as const).map(currency=>{const group=debts.filter(r=>(r.debt.currency??'SAR')===currency);return group.length?<small className="nf-person-balances" key={currency}><span>مدين <strong><FinanceAmount value={group.filter(r=>r.debt.direction==='receivable').reduce((n,r)=>n+r.remaining,0)} currency={currency}/></strong></span><span>دائن <strong><FinanceAmount value={group.filter(r=>r.debt.direction==='payable').reduce((n,r)=>n+r.remaining,0)} currency={currency}/></strong></span></small>:null;})}<span className="nf-person-open">فتح ملف الشخص ←</span></button><div className="nf-person-card-actions"><button className="nf-button" type="button" aria-label={`تعديل بيانات ${p.name}`} disabled={busy} onClick={()=>onEditPerson(p)}><svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="m15 5 4 4M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15l-1 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>الاسم والملاحظات</button><button className="nf-button" type="button" onClick={()=>{setSelected(p.key);setQuery('');setDirection('all');setState('all');}}>تعديل المبالغ</button></div></article>;})}</div>{!profiles.size?<p className="nf-empty">أضف الشخص أولًا، ثم سجل المبالغ ودفعات السداد داخل ملفه.</p>:null}</>:<>
- <div className="nf-list-heading"><div><h3>{person?person.name:'إحصائيات جميع الأشخاص'}</h3>{person?.note?<FinanceNote note={person.note}/>:null}</div><div>{person?<><button className="nf-button" type="button" onClick={()=>{setSelected(null);setQuery('');}}>العودة للأشخاص</button><button className="nf-button" type="button" disabled={busy} onClick={()=>onEditPerson(person)}>تعديل الشخص</button><button className="nf-button primary" type="button" disabled={busy} onClick={()=>onAddDebt(person)}>+ إضافة مبلغ لهذا الشخص</button></>:null}</div></div>
- <div className="nf-debt-filters"><input aria-label="بحث في الديون" placeholder="بحث في الملاحظات" value={query} onChange={e=>setQuery(e.currentTarget.value)}/><select aria-label="صفة الطرف" value={direction} onChange={e=>setDirection(e.currentTarget.value)}><option value="all">الكل: الدائن والمدين</option><option value="receivable">مدين — مستحق لك</option><option value="payable">دائن — مستحق عليك</option></select><select aria-label="حالة السداد" value={state} onChange={e=>setState(e.currentTarget.value)}><option value="all">كل الحالات</option>{Object.entries(labels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select>{view==='statistics'?<select aria-label="الشخص في جدول الديون" value={personFilter} onChange={e=>setPersonFilter(e.currentTarget.value)}><option value="all">كل الأشخاص</option>{[...profiles.values()].map(p=><option key={p.key} value={p.key}>{p.name}</option>)}</select>:null}<select aria-label="مدة الدين" value={ageFilter} onChange={e=>setAgeFilter(e.currentTarget.value)}><option value="all">كل المدد</option><option value="short">أقل من 6 أشهر</option><option value="medium">من 6 إلى أقل من 9 أشهر</option><option value="long">9 أشهر فأكثر</option></select></div>
+ const noDebtFilters=direction==='all'&&state==='all'&&ageFilter==='all'&&currencyFilter==='all'&&!query.trim();
+ const grouped=new Map<string,typeof rows>();
+ rows.forEach(row=>{
+  const key=personKey(row.debt),list=grouped.get(key);
+  if(list)list.push(row);else grouped.set(key,[row]);
+ });
+ if(!person&&noDebtFilters)for(const key of shownKeys)if(!grouped.has(key))grouped.set(key,[]);
+ const openPerson=(key:string)=>{
+  setSelected(key);setQuery('');setDirection('all');setState('all');setAgeFilter('all');setCurrencyFilter('all');
+ };
+ const changeView=(next:typeof view)=>{
+  setView(next);setSelected(null);setPersonFilter('all');
+  setQuery('');setDirection('all');setState('all');setAgeFilter('all');setCurrencyFilter('all');
+ };
+ const ageOptions=<><option value="all">كل المدد</option><option value="short">أقل من 6 أشهر</option><option value="medium">6 إلى أقل من 9 أشهر</option><option value="long">9 أشهر فأكثر</option></>;
+ const renderAmounts=(list:typeof rows,read:(row:(typeof rows)[number])=>number)=>
+  (['SAR','EGP'] as const).flatMap(currency=>{
+   const selected=list.filter(row=>(row.debt.currency??'SAR')===currency);
+   return selected.length?[<strong className="nf-ledger-money" key={currency}><FinanceAmount value={selected.reduce((sum,item)=>sum+read(item),0)} currency={currency}/></strong>]:[];
+  });
+
+ return <section className={`nf-debt-register${expanded?" nf-ledger-expanded":""}`} data-testid="debt-register-r77" data-layout="people-r78" data-person-edit-version="NOOR_PERSON_EDIT_R79" data-ledger-design="NOOR_LEDGER_DESIGN_R80"><nav className="nf-tabs" aria-label="عرض الديون"><button type="button" className={view==='people'?'is-active':''} onClick={()=>changeView('people')}>الأشخاص</button><button type="button" className={view==='statistics'?'is-active':''} onClick={()=>changeView('statistics')}>الإحصائيات</button><button type="button" className={view==='archive'?'is-active':''} onClick={()=>changeView('archive')}>الأرشيف</button><button type="button" aria-pressed={expanded} onClick={()=>{if(!expanded&&showPeople)changeView("statistics");setExpanded(!expanded);}}>{expanded?"إنهاء العرض الكامل":"عرض الجدول بصفحة كاملة"}</button></nav>
+ {showPeople?<><div className="nf-list-heading"><h3>الأشخاص</h3><button className="nf-button primary" type="button" disabled={busy} onClick={onAddPerson}>+ إضافة شخص</button></div><div className="nf-person-filters-r130"><input aria-label="البحث عن شخص" placeholder="ابحث بالاسم" value={query} onChange={e=>setQuery(e.currentTarget.value)}/><label>حالة السداد<select data-testid="people-payment-filter-r130" aria-label="فلتر الأشخاص حسب حالة السداد" value={personPaymentStatus} onChange={e=>setPersonPaymentStatus(e.currentTarget.value)}><option value="all">كل الحالات</option>{Object.entries(labels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label></div><div className="nf-person-grid">{matchingProfiles.filter(p=>(!query||p.name.includes(query.trim()))&&(personPaymentStatus==="all"||allRows.some(r=>personKey(r.debt)===p.key&&r.status===personPaymentStatus))).map(p=>{const debts=allRows.filter(r=>personKey(r.debt)===p.key);return <article className="nf-person-card" key={p.key}><button className="nf-person" type="button" onClick={()=>openPerson(p.key)}><strong>{p.name}</strong><span>{debts.length} مبالغ مسجلة · {debts.filter(r=>r.status==='paid').length} مسددة</span>{(['SAR','EGP'] as const).map(currency=>{const group=debts.filter(r=>(r.debt.currency??'SAR')===currency);return group.length?<small className="nf-person-balances" key={currency}><span>مدين <strong><FinanceAmount value={group.filter(r=>r.debt.direction==='receivable').reduce((n,r)=>n+r.remaining,0)} currency={currency}/></strong></span><span>دائن <strong><FinanceAmount value={group.filter(r=>r.debt.direction==='payable').reduce((n,r)=>n+r.remaining,0)} currency={currency}/></strong></span></small>:null;})}<span className="nf-person-open">فتح ملف الشخص ←</span></button><div className="nf-person-card-actions"><button className="nf-button" type="button" aria-label={`تعديل بيانات ${p.name}`} disabled={busy} onClick={()=>onEditPerson(p)}><svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="m15 5 4 4M4 20l4-1 12-12a2.8 2.8 0 0 0-4-4L4 15l-1 6Z" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>الاسم والملاحظات</button><button className="nf-button" type="button" onClick={()=>openPerson(p.key)}>تعديل المبالغ</button></div></article>;})}</div>{!matchingProfiles.length?<p className="nf-empty">أضف الشخص أولًا، ثم سجل المبالغ ودفعات السداد داخل ملفه.</p>:null}</>:<>
+ <div className="nf-list-heading"><div><h3>{person?person.name:view==='archive'?'الأشخاص المؤرشفون':'إحصائيات جميع الأشخاص'}</h3>{person?.note?<FinanceNote note={person.note}/>:null}</div><div>{person?<><button className="nf-button" type="button" onClick={()=>{setSelected(null);setQuery('');}}>العودة للقائمة</button><button className="nf-button" type="button" disabled={busy} onClick={()=>onEditPerson(person)}>تعديل الشخص</button>{!person.archived?<button className="nf-button primary" type="button" disabled={busy} onClick={()=>onAddDebt(person)}>+ إضافة مبلغ لهذا الشخص</button>:null}<button className="nf-button" type="button" disabled={busy} onClick={()=>onManagePerson(person,allRows.some(r=>personKey(r.debt)===person.key))}>{person.archived?'استعادة الشخص':allRows.some(r=>personKey(r.debt)===person.key)?'أرشفة الشخص':'حذف الشخص'}</button></>:null}</div></div>
  <details className="nf-ledger-guide"><summary>كيف تُحسب المدة والألوان؟</summary><p className="nf-help">المدة من تاريخ الدين حتى آخر تاريخ سداد إن وجد، وإلا حتى اليوم. الدفعة الجزئية لا تُغلق المبلغ المتبقي. الألوان: أصفر أقل من 6 أشهر، برتقالي من 6 إلى 8، أحمر من 9 فأكثر، وأخضر للمسدد بالكامل.</p></details>
  <div className="nf-debt-totals">{(['SAR','EGP'] as const).filter(currency=>rows.some(r=>(r.debt.currency??'SAR')===currency)).flatMap(currency=>(['receivable','payable'] as const).map(dir=>{const group=rows.filter(r=>(r.debt.currency??'SAR')===currency&&r.debt.direction===dir);return <article key={currency+dir}><h3>{dir==='receivable'?'مدين':'دائن'} · {currency==='SAR'?'ريال سعودي':'جنيه مصري'}</h3><dl><dt>أصل الدين</dt><dd><FinanceAmount value={group.reduce((n,r)=>n+(r.origin?.amountMinor??0),0)} currency={currency}/></dd><dt>السداد</dt><dd><FinanceAmount value={group.reduce((n,r)=>n+r.paid,0)} currency={currency}/></dd><dt>المتبقي</dt><dd><FinanceAmount value={group.reduce((n,r)=>n+r.remaining,0)} currency={currency}/></dd></dl></article>;}))}</div>
- {rows.length===0?<p className="nf-empty">لا توجد مبالغ تطابق الاختيار.</p>:<div className="nf-debt-scroll" tabIndex={0} role="region" aria-label="جدول الشخص والديون والسداد"><table className="nf-debt-table nf-ledger-table"><caption>{person?'سجل '+person.name:'سجل جميع الأشخاص'}<span>{rows.length} مبالغ · إجماليات العملات منفصلة</span></caption><thead><tr>{['الشخص','الدين','السداد','المتبقي','المدة والحالة','الملاحظات','الإجراء'].map(x=><th scope="col" key={x}>{x}</th>)}</tr></thead><tbody>{rows.map(r=>{const age=r.status==='paid'?'paid':!r.origin?'cancelled':(r.period?.totalMonths??0)>=9?'red':(r.period?.totalMonths??0)>=6?'orange':'yellow';return <tr key={r.debt.id}>
- <td data-label="الشخص" className="nf-ledger-person"><strong>{r.debt.person}</strong><span className="nf-badge">{r.debt.direction==='receivable'?'مدين':'دائن'}</span></td>
+ <div className="nf-debt-scroll" tabIndex={0} role="region" aria-label="جدول الشخص والديون والسداد">
+ <table className="nf-debt-table nf-ledger-table">
+  <caption>{person?'سجل '+person.name:view==='archive'?'الأرشيف':'سجل جميع الأشخاص'}<span>{person?`${rows.length} مبالغ`:`${grouped.size} أشخاص`} · إجماليات العملات منفصلة</span></caption>
+  <thead><tr>
+   <th scope="col">الشخص{!person?<select aria-label="الشخص في جدول الديون" value={personFilter} onChange={e=>setPersonFilter(e.currentTarget.value)}><option value="all">كل الأشخاص</option>{matchingProfiles.map(profile=><option key={profile.key} value={profile.key}>{profile.name}</option>)}</select>:null}</th>
+   <th scope="col">الصفة<select aria-label="صفة الطرف" value={direction} onChange={e=>setDirection(e.currentTarget.value)}><option value="all">الكل</option><option value="receivable">مدين</option><option value="payable">دائن</option></select></th>
+   <th scope="col">أصل المبلغ<select aria-label="عملة المبلغ" value={currencyFilter} onChange={e=>setCurrencyFilter(e.currentTarget.value)}><option value="all">كل العملات</option><option value="SAR">ريال سعودي</option><option value="EGP">جنيه مصري</option></select></th>
+   <th scope="col">المسدّد</th>
+   <th scope="col">المتبقي<select aria-label="حالة السداد" value={state} onChange={e=>setState(e.currentTarget.value)}><option value="all">كل الحالات</option>{Object.entries(labels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></th>
+   <th scope="col">المدة<select aria-label="مدة الدين" value={ageFilter} onChange={e=>setAgeFilter(e.currentTarget.value)}>{ageOptions}</select></th>
+   <th scope="col">الملاحظات<input aria-label="بحث في الديون" placeholder="بحث" type="search" value={query} onChange={e=>setQuery(e.currentTarget.value)}/></th>
+   <th scope="col">الإجراء</th>
+  </tr></thead>
+  <tbody>
+  {(person?rows.length===0:grouped.size===0)?<tr><td colSpan={8}>لا توجد مبالغ تطابق الاختيار.</td></tr>:null}
+  {!person?[...grouped].map(([key,list])=>{
+   const profile=profiles.get(key)!;
+   const sides=[...new Set(list.map(item=>item.debt.direction==='receivable'?'مدين':'دائن'))];
+   const statuses=[...new Set(list.map(item=>labels[item.status]))];
+   const periods=list.flatMap(item=>item.period?[item.period.totalMonths]:[]);
+   const notes=list.some(item=>financeVisibleNote(item.debt.note));
+   return <tr key={key} data-testid="finance-person-row">
+    <th scope="row">{profile.name}</th>
+    <td>{sides.join(' / ')||'—'}</td>
+    <td>{renderAmounts(list,r=>r.origin?.amountMinor??0)}</td>
+    <td>{renderAmounts(list,r=>r.paid)}</td>
+    <td>{renderAmounts(list,r=>r.remaining)}{statuses.length?<small>{statuses.join(' · ')}</small>:null}</td>
+    <td>{periods.length?`${Math.min(...periods)===Math.max(...periods)?Math.max(...periods):`${Math.min(...periods)}–${Math.max(...periods)}`} شهر`:'—'}</td>
+    <td>{notes?'عرض في السجل':'—'}</td>
+    <td><button className="nf-button" type="button" onClick={()=>openPerson(key)}>فتح السجل</button></td>
+   </tr>;
+  }):rows.map(r=>{const age=r.status==='paid'?'paid':!r.origin?'cancelled':(r.period?.totalMonths??0)>=9?'red':(r.period?.totalMonths??0)>=6?'orange':'yellow';return <tr key={r.debt.id}>
+ <th scope="row">{r.debt.person}</th>
+ <td data-label="الصفة"><span className="nf-badge">{r.debt.direction==='receivable'?'مدين':'دائن'}</span></td>
  <td data-label="الدين"><strong className="nf-ledger-money"><FinanceAmount value={r.origin?.amountMinor??0} currency={r.debt.currency}/></strong><time className="nf-ledger-date" dateTime={r.origin?.date}>{r.origin?.date??'ملغى'}</time></td>
  <td data-label="السداد"><strong className="nf-ledger-money"><FinanceAmount value={r.paid} currency={r.debt.currency}/></strong>{r.payments.length?<><time className="nf-ledger-date" dateTime={r.end}>آخر دفعة: {r.end}</time><details className="nf-ledger-payments"><summary>دفعات السداد ({r.payments.length})</summary><ol>{r.payments.map(e=><li key={e.id}><div><strong><FinanceAmount value={e.amountMinor} currency={r.debt.currency}/></strong><time dateTime={e.date}>{e.date}</time></div>{e.note?<FinanceNote note={e.note}/>:null}<button className="nf-button" type="button" disabled={busy} onClick={()=>onEditPayment(e.id)}>تعديل الدفعة</button><FinanceCorrections entry={e}/></li>)}</ol></details></>:<small>لا توجد دفعات</small>}</td>
  <td data-label="المتبقي"><strong className="nf-ledger-money nf-ledger-remaining"><FinanceAmount value={r.remaining} currency={r.debt.currency}/></strong><span className={`nf-payment-state ${r.status}`}>{r.status==='paid'?'✓ ':''}{labels[r.status]}</span></td>
  <td data-label="المدة والحالة"><span className={`nf-ledger-age age-${age}`}>{r.origin?debtDuration(r.origin.date,r.end):'—'}</span><small>{r.status==='paid'?'تم السداد':!r.origin?'ملغى':`${r.period?.totalMonths??0} شهر منذ الدين`}</small></td>
  <td data-label="الملاحظات" className="nf-ledger-note"><FinanceNote note={r.debt.note}/>{r.debt.dueDate?<small>الاستحقاق: <time className="nf-ledger-date" dateTime={r.debt.dueDate}>{r.debt.dueDate}</time></small>:<small>بدون موعد استحقاق</small>}</td>
  <td data-label="الإجراء" className="nf-ledger-actions"><FinanceCorrections entry={r.origin}/><button className="nf-button" type="button" disabled={busy||!r.origin} onClick={()=>onEditDebt(r.debt.id)}>تعديل المبلغ</button><button className="nf-button" type="button" disabled={busy||!r.origin||r.remaining===0} onClick={()=>onRepay(r.debt.id)}>{r.debt.direction==='receivable'?'تسجيل تحصيل':'تسجيل سداد'}</button></td>
- </tr>;})}</tbody></table></div>}
+ </tr>;})}</tbody></table></div>
 
  </>}
  </section>;
@@ -2832,7 +2888,7 @@ function DebtRegister({ledger,today,busy,onRepay,onAddPerson,onAddDebt,onEditPer
 function FinanceCenter({ledger,busy,onCommand,today}:{ledger:FinanceLedger|null;busy:boolean;onCommand:(command:NoorPersonalCommandInput)=>Promise<boolean>;today:string}):ReactElement {
  const [tab,setTab]=useState<'overview'|'entries'|'accounts'|'debts'>('overview');
  const [month,setMonth]=useState(today.slice(0,7));const [query,setQuery]=useState('');const [accountFilter,setAccountFilter]=useState('');const [limit,setLimit]=useState(25);
- const [modal,setModal]=useState<{kind:'person'|'editPerson'|'editDebt'|'editPayment'|'account'|'income'|'expense'|'transfer'|'debt'|'repay'|'void';id:string;debtId?:string;entryId?:string;personId?:string;personName?:string;personNote?:string;expected?:string}|null>(null);
+ const [modal,setModal]=useState<{kind:'person'|'editPerson'|'delete-person'|'archive-person'|'restore-person'|'editDebt'|'editPayment'|'account'|'income'|'expense'|'transfer'|'debt'|'repay'|'void';id:string;debtId?:string;entryId?:string;personId?:string;personName?:string;personNote?:string;expected?:string}|null>(null);
  const [error,setError]=useState('');const [debtCurrency,setDebtCurrency]=useState<'SAR'|'EGP'>('SAR');const panel=useRef<HTMLDivElement>(null);
  const open=(kind:NonNullable<typeof modal>['kind'],extra:{debtId?:string;entryId?:string;personId?:string;personName?:string;personNote?:string;expected?:string}={})=>{setError('');setDebtCurrency('SAR');const entry=kind==='editDebt'?ledger?.entries.find(e=>e.debtId===extra.debtId&&e.kind!=='repay'&&!e.voidedAt):ledger?.entries.find(e=>e.id===extra.entryId);const debt=ledger?.debts.find(d=>d.id===extra.debtId);setModal({kind,id:globalThis.crypto.randomUUID(),...extra,...(entry&&(kind==='editDebt'||kind==='editPayment')?{expected:financeEditToken(entry,kind==='editDebt'?debt:undefined)}:{})});};
  const close=()=>{if(!busy)setModal(null);};
@@ -2856,6 +2912,11 @@ function FinanceCenter({ledger,busy,onCommand,today}:{ledger:FinanceLedger|null;
    const operation:FinanceOperation=modal.kind==='editDebt'?{...common,action:'edit-debt',debtId:modal.debtId!,expected:modal.expected??'',dueDate:text('dueDate')||null}:{...common,action:'edit-payment',entryId:modal.entryId!,expected:modal.expected??''};
    setError('');if(await onCommand({type:'finance',operation}))setModal(null);else setError('تعذر التصحيح. راجع المدفوع والرصيد والتاريخ، أو أعد فتح البيانات إذا تغيرت.');return;
   }
+  if(modal.kind==='delete-person'||modal.kind==='archive-person'||modal.kind==='restore-person'){
+   const ok=await onCommand({type:'finance',operation:{action:modal.kind,id:modal.id,personId:modal.personId??null,expectedName:modal.personName??''}});
+   if(ok)setModal(null);else setError('تعذر تعديل سجل الشخص. راجع أحدث البيانات وحاول مرة أخرى.');
+   return;
+  }
   if(modal.kind==='editPerson'){setError('');if(await onCommand({type:'finance',operation:{action:'edit-person',id:modal.id,personId:modal.personId??null,expectedName:modal.personName??'',expectedNote:modal.personNote??'',name:text('name'),note:text('note')}}))setModal(null);else setError('تعذر التعديل. قد يكون الاسم مستخدمًا أو تغيرت البيانات؛ أعد فتح الملف وحاول مجددًا.');return;}
   if(modal.kind==='person'){setError('');if(await onCommand({type:'finance',operation:{action:'create-person',id:modal.id,name:text('name'),note:text('note')}}))setModal(null);else setError('تعذر الحفظ. تحقق من الاسم؛ قد يكون الشخص مسجلًا بالفعل.');return;}
   const amount=parseMoneyInput(text('amount')||'0');if(amount===null || (modal.kind!=='account' && modal.kind!=='void' && amount===0)){setError('اكتب مبلغًا صحيحًا بحد أقصى منزلتين عشريتين.');return;}
@@ -2874,6 +2935,7 @@ function FinanceCenter({ledger,busy,onCommand,today}:{ledger:FinanceLedger|null;
   setError('');if(await onCommand({type:'finance',operation}))setModal(null);else setError('تعذر تأكيد الحفظ. راجع الرصيد والتاريخ، أو أعد المحاولة. مدخلاتك ما زالت محفوظة هنا.');
  };
  const accountOptions=ledger.accounts.map(a=><option key={a.id} value={a.id}>{a.name} — {moneyLabel(summary.balances[a.id]??0)}</option>);
+ const personAction=modal?.kind==='delete-person'||modal?.kind==='archive-person'||modal?.kind==='restore-person';
  const summaryCards=[['الرصيد في كل الحسابات',summary.totalMinor],['دخل الفترة',summary.incomeMinor],['مصروفات الفترة',summary.expenseMinor],['صافي دخل الفترة',summary.incomeMinor-summary.expenseMinor],['مدين',summary.receivableMinor],['دائن',summary.payableMinor],['الادخار',totalFor('savings')],['الطوارئ',totalFor('emergency')]] as const;
  return <section className="nf" data-testid="finance-center-r68"><header className="nf-heading"><div><h2>المالية</h2></div><button className="nf-button" disabled={busy} onClick={()=>open('account')} type="button">+ حساب أو صندوق</button></header>
   <nav className="nf-tabs" aria-label="أقسام المالية">{([['overview','نظرة عامة'],['entries','الحركات'],['accounts','الحسابات والصناديق'],['debts','الدائن والمدين']] as const).map(([id,label])=><button key={id} aria-current={tab===id?'page':undefined} className={tab===id?'is-active':''} onClick={()=>setTab(id)} type="button">{label}</button>)}</nav>
@@ -2881,13 +2943,13 @@ function FinanceCenter({ledger,busy,onCommand,today}:{ledger:FinanceLedger|null;
   {!ledger.accounts.length ? <div className="nf-empty"><h3>ابدأ بحسابك الأول</h3><p>أضف النقدي أو البنك، ثم أنشئ صندوق الادخار والطوارئ عند الحاجة. الرصيد الافتتاحي لا يُحتسب دخلًا.</p><button className="nf-button primary" onClick={()=>open('account')} type="button">إضافة حساب</button></div>:null}
   {tab==='overview'?<><div className="nf-metrics">{summaryCards.map(([label,value],i)=><article key={label} className={i===0?'nf-metric featured':'nf-metric'}><span>{label}</span><strong><FinanceAmount value={value}/></strong></article>)}</div><p className="nf-help">الأرصدة والديون والصناديق تُعرض حتى آخر حركة مسجلة. الدخل والمصروفات والصافي تخص الفترة المحددة. الصناديق جزء من إجمالي الرصيد؛ والتحويل والسداد لا يُحسبان دخلًا أو مصروفًا. أرقام النظرة العامة بالريال فقط؛ إجماليات الجنيه منفصلة في سجل الديون.</p></>:null}
   {tab==='accounts'?<div className="nf-account-grid">{ledger.accounts.map(a=><article className="nf-account" key={a.id}><span className="nf-badge">{FINANCE_ACCOUNT_LABELS[a.kind]}</span><h3>{a.name}</h3><strong><FinanceAmount value={summary.balances[a.id]??0}/></strong><p>افتتاحي: {moneyLabel(a.openingMinor)} · {a.date}</p><button className="nf-button" onClick={()=>{setAccountFilter(a.id);setTab('entries');}} type="button">عرض الحركات</button></article>)}</div>:null}
-  {tab==='debts'?<DebtRegister ledger={ledger} today={today} busy={busy} onRepay={id=>open('repay',{debtId:id})} onAddPerson={()=>open('person')} onEditDebt={id=>open('editDebt',{debtId:id})} onEditPayment={id=>open('editPayment',{entryId:id})} onEditPerson={person=>open('editPerson',{personName:person.name,personNote:person.note,...(person.id?{personId:person.id}:{})})} onAddDebt={person=>open('debt',{personName:person.name,...(person.id?{personId:person.id}:{})})}/>:null}
+  {tab==='debts'?<DebtRegister ledger={ledger} today={today} busy={busy} onRepay={id=>open('repay',{debtId:id})} onAddPerson={()=>open('person')} onManagePerson={(person,hasRecords)=>open(person.archived?'restore-person':hasRecords?'archive-person':'delete-person',{personName:person.name,...(person.id?{personId:person.id}:{})})} onEditDebt={id=>open('editDebt',{debtId:id})} onEditPayment={id=>open('editPayment',{entryId:id})} onEditPerson={person=>open('editPerson',{personName:person.name,personNote:person.note,...(person.id?{personId:person.id}:{})})} onAddDebt={person=>open('debt',{personName:person.name,...(person.id?{personId:person.id}:{})})}/>:null}
   {tab==='overview'||tab==='entries'?<section className="nf-transactions"><div className="nf-list-heading"><h3>{tab==='overview'?'آخر الحركات في الفترة':'سجل الحركات'}</h3><div><input aria-label="بحث في الحركات المالية" placeholder="بحث بالوصف أو الشخص" value={query} onChange={e=>setQuery(e.currentTarget.value)}/><select aria-label="تصفية الحساب المالي" value={accountFilter} onChange={e=>setAccountFilter(e.currentTarget.value)}><option value="">كل الحسابات</option>{ledger.accounts.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></div></div>
   {entries.length===0?<p className="nf-empty">لا توجد حركات تطابق الفترة والبحث.</p>:entries.slice(0,tab==='overview'?5:limit).map(e=><article className={`nf-entry${e.voidedAt?' is-void':''}`} key={e.id}><div><span className="nf-badge">{FINANCE_KIND_LABELS[e.kind]}</span><strong>{e.category}{e.debtId?` · ${debtName(e.debtId)}`:''}</strong><p>{e.date} · {accountName(e.accountId)}{e.targetAccountId?` ← ${accountName(e.targetAccountId)}`:''}</p>{e.note?<FinanceNote note={e.note}/>:null}{e.voidedAt?<p>ملغاة للتصحيح: {e.voidReason}</p>:null}</div><div className="nf-entry-amount"><strong><FinanceAmount value={e.amountMinor} currency={ledger.debts.find(d=>d.id===e.debtId)?.currency}/></strong>{!e.voidedAt?<button className="nf-link" disabled={busy} onClick={()=>open('void',{entryId:e.id})} type="button">إلغاء للتصحيح</button>:<span>ملغاة</span>}</div></article>)}
   {tab==='entries'&&entries.length>limit?<button className="nf-button" onClick={()=>setLimit(limit+25)} type="button">عرض المزيد</button>:null}</section>:null}
-  {modal?createPortal(<div className="nf-backdrop" onClick={e=>{if(e.target===e.currentTarget)close();}}><div role="dialog" aria-modal="true" aria-label="تسجيل حركة مالية" className="nf-dialog" ref={panel} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){const nodes=Array.from(panel.current?.querySelectorAll<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled)')??[]);if(!nodes.length){e.preventDefault();return;}if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0]?.focus();}}}}><h2>{({editDebt:'تعديل مبلغ الدين',editPayment:'تعديل دفعة السداد',editPerson:'تعديل الشخص',person:'إضافة شخص',account:'إضافة حساب أو صندوق',income:'تسجيل دخل',expense:'تسجيل مصروف',transfer:'تحويل بين الحسابات',debt:'تسجيل دين',repay:selectedDebt?.direction==='receivable'?'تحصيل من مدين':'سداد لدائن',void:'إلغاء حركة للتصحيح'})[modal.kind]}</h2>
+  {modal?createPortal(<div className="nf-backdrop" onClick={e=>{if(e.target===e.currentTarget)close();}}><div role="dialog" aria-modal="true" aria-label={personAction?'إدارة ملف الشخص':'تسجيل حركة مالية'} className="nf-dialog" ref={panel} onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){const nodes=Array.from(panel.current?.querySelectorAll<HTMLElement>('input:not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled)')??[]);if(!nodes.length){e.preventDefault();return;}if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1)?.focus();}else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0]?.focus();}}}}><h2>{modal.kind==='delete-person'?'حذف الشخص':modal.kind==='archive-person'?'أرشفة الشخص':modal.kind==='restore-person'?'استعادة الشخص':({editDebt:'تعديل مبلغ الدين',editPayment:'تعديل دفعة السداد',editPerson:'تعديل الشخص',person:'إضافة شخص',account:'إضافة حساب أو صندوق',income:'تسجيل دخل',expense:'تسجيل مصروف',transfer:'تحويل بين الحسابات',debt:'تسجيل دين',repay:selectedDebt?.direction==='receivable'?'تحصيل من مدين':'سداد لدائن',void:'إلغاء حركة للتصحيح'})[modal.kind]}</h2>
   <form onSubmit={e=>{void submit(e);}}><fieldset disabled={busy}>
-  {modal.kind==='editDebt'||modal.kind==='editPayment'?<><p className="nf-help">يُحفظ التصحيح في السجل. العملة والاتجاه والحساب تظل كما هي؛ الأرصدة تتحدث بقيمة التصحيح.</p><label>المبلغ<input name="amount" dir="ltr" inputMode="decimal" required defaultValue={editEntry?String(editEntry.amountMinor/100):''}/></label><GregorianDateInput id="edit-finance-date" name="date" label="التاريخ الميلادي" required defaultValue={editEntry?.date??today} max={today}/>{modal.kind==='editDebt'?<GregorianDateInput id="edit-finance-due" name="dueDate" label="الاستحقاق (اختياري)" defaultValue={selectedDebt?.dueDate??''}/>:null}<label>ملاحظة<textarea dir="rtl" name="note" maxLength={1000} defaultValue={modal.kind==='editDebt'?selectedDebt?.note:editEntry?.note}/></label><label>سبب التصحيح<textarea dir="rtl" name="reason" required maxLength={500}/></label></>:modal.kind==='person'||modal.kind==='editPerson'?<><label>اسم الشخص / الجهة<input name="name" required maxLength={100} defaultValue={modal.kind==='editPerson'?modal.personName:''}/></label><label>ملاحظات الشخص (اختياري)<textarea dir="rtl" name="note" maxLength={1000} rows={2} defaultValue={modal.kind==='editPerson'?modal.personNote:''}/></label><p className="nf-help">داخل ملف الشخص تستطيع إضافة عدة مبالغ ودفعات سداد، مع فصل العملات.</p></>:modal.kind==='void'?<><p>{selectedEntry?`${FINANCE_KIND_LABELS[selectedEntry.kind]} · ${moneyLabel(selectedEntry.amountMinor,ledger.debts.find(d=>d.id===selectedEntry.debtId)?.currency)}`:''}</p><p className="nf-help">سيُعكس أثر الحركة على الأرصدة، ويبقى أصلها وسبب الإلغاء في السجل. لا يمكن إلغاء أصل دين قبل إلغاء دفعاته، أو إلغاء حركة إذا تسبب ذلك في رصيد سالب.</p><label>سبب التصحيح<textarea dir="rtl" name="reason" required maxLength={500} rows={3}/></label></>:<>
+   {personAction?<p><strong>{modal.personName}</strong><br/>{modal.kind==='delete-person'?'سيُحذف ملف الشخص نهائيًا من سجل الأشخاص.':modal.kind==='archive-person'?'سيُخفى الشخص من القائمة النشطة. تبقى ديونه ودفعاته في السجل المالي، ويمكن استعادته.':'سيظهر الشخص مجددًا في القائمة النشطة.'}</p>:(modal.kind==='editDebt'||modal.kind==='editPayment'?<><p className="nf-help">يُحفظ التصحيح في السجل. العملة والاتجاه والحساب تظل كما هي؛ الأرصدة تتحدث بقيمة التصحيح.</p><label>المبلغ<input name="amount" dir="ltr" inputMode="decimal" required defaultValue={editEntry?String(editEntry.amountMinor/100):''}/></label><GregorianDateInput id="edit-finance-date" name="date" label="التاريخ الميلادي" required defaultValue={editEntry?.date??today} max={today}/>{modal.kind==='editDebt'?<GregorianDateInput id="edit-finance-due" name="dueDate" label="الاستحقاق (اختياري)" defaultValue={selectedDebt?.dueDate??''}/>:null}<label>ملاحظة<textarea dir="rtl" name="note" maxLength={1000} defaultValue={modal.kind==='editDebt'?selectedDebt?.note:editEntry?.note}/></label><label>سبب التصحيح<textarea dir="rtl" name="reason" required maxLength={500}/></label></>:modal.kind==='person'||modal.kind==='editPerson'?<><label>اسم الشخص / الجهة<input name="name" required maxLength={100} defaultValue={modal.kind==='editPerson'?modal.personName:''}/></label><label>ملاحظات الشخص (اختياري)<textarea dir="rtl" name="note" maxLength={1000} rows={2} defaultValue={modal.kind==='editPerson'?modal.personNote:''}/></label><p className="nf-help">داخل ملف الشخص تستطيع إضافة عدة مبالغ ودفعات سداد، مع فصل العملات.</p></>:modal.kind==='void'?<><p>{selectedEntry?`${FINANCE_KIND_LABELS[selectedEntry.kind]} · ${moneyLabel(selectedEntry.amountMinor,ledger.debts.find(d=>d.id===selectedEntry.debtId)?.currency)}`:''}</p><p className="nf-help">سيُعكس أثر الحركة على الأرصدة، ويبقى أصلها وسبب الإلغاء في السجل. لا يمكن إلغاء أصل دين قبل إلغاء دفعاته، أو إلغاء حركة إذا تسبب ذلك في رصيد سالب.</p><label>سبب التصحيح<textarea dir="rtl" name="reason" required maxLength={500} rows={3}/></label></>:<>
    {modal.kind==='account'?<><label>اسم الحساب<input name="name" required maxLength={60} placeholder="مثال: الحساب البنكي"/></label><label>النوع<select name="accountKind" defaultValue="cash">{Object.entries(FINANCE_ACCOUNT_LABELS).map(([id,label])=><option value={id} key={id}>{label}</option>)}</select></label></>:null}
    {modal.kind==='debt'?<><label>الاسم / الجهة<input name="person" required maxLength={100} defaultValue={modal.personName??''} readOnly={!!modal.personName}/></label><label>صفة الطرف<select name="direction" defaultValue="receivable"><option value="receivable">مدين — مستحق لك</option><option value="payable">دائن — مستحق عليك</option></select></label></>:null}
    {modal.kind==='repay'?<p>{selectedDebt?.person} · المتبقي {moneyLabel(summary.outstanding[modal.debtId!]??0,selectedDebt?.currency)}</p>:null}
@@ -2899,8 +2961,8 @@ function FinanceCenter({ledger,busy,onCommand,today}:{ledger:FinanceLedger|null;
    {modal.kind==='income'||modal.kind==='expense'?<label>الفئة<input name="category" list="nf-categories" required maxLength={60} defaultValue={modal.kind==='income'?'راتب':''}/><datalist id="nf-categories">{(modal.kind==='income'?['راتب','عمل حر','دخل آخر']:['طعام','سكن','مواصلات','صحة','تعليم','التزامات','مصروف آخر']).map(x=><option value={x} key={x}/>)}</datalist></label>:null}
    {modal.kind==='debt'?<GregorianDateInput id="finance-due-date" name="dueDate" label="تاريخ الاستحقاق الميلادي (اختياري)"/>:null}
    {modal.kind!=='account'?<label>ملاحظة (اختياري)<textarea dir="rtl" name="note" maxLength={1000} rows={2}/></label>:<p className="nf-help">الرصيد الافتتاحي يُستخدم لبدء المتابعة ولا يدخل ضمن الدخل.</p>}
-  </>}
-  <div className="nf-modal-actions"><button className="nf-button" onClick={close} type="button">إلغاء</button><button className="nf-button primary" type="submit">{busy?'جارٍ الحفظ…':modal.kind==='void'?'تأكيد الإلغاء':'حفظ'}</button></div></fieldset>{error?<p role="alert" className="nf-error">{error}</p>:null}</form></div></div>,document.body):null}
+  </>)}
+  <div className="nf-modal-actions"><button className="nf-button" onClick={close} type="button">إلغاء</button><button className={`nf-button primary${modal.kind==='delete-person'?' nf-danger':''}`} type="submit">{busy?'جارٍ الحفظ…':modal.kind==='void'?'تأكيد الإلغاء':modal.kind==='delete-person'?'تأكيد الحذف':modal.kind==='archive-person'?'تأكيد الأرشفة':modal.kind==='restore-person'?'تأكيد الاستعادة':'حفظ'}</button></div></fieldset>{error?<p role="alert" className="nf-error">{error}</p>:null}</form></div></div>,document.body):null}
  </section>;
 }
 
@@ -3903,7 +3965,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       definitions={workspace?.definitions??[]} todayDate={achievementDate} nowMs={nowMs} timeZone={providedView.timeZone}/>:null}
     <section className={`np-card np-day-achievement${totalToday>0&&completedToday===totalToday&&(!displayedPrayer||completionRate===100)?" is-complete":""}`} id="noor-r323-progress" data-testid="today-summary" data-today-design="whole-day-r93" data-week-achievement="r94" data-achievement-style="classic-r95" data-weighted-progress="r91" aria-label="إنجاز اليوم كاملًا">
       <div className="np-day-ring" role="progressbar" aria-label="الإنجاز الموزون لليوم كاملًا" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionRate} aria-valuetext={displayedPrayer?`${completionRate}%، إنجاز موزون يشمل الصلوات`:totalToday?`${completionRate}%، ${completedToday} من ${totalToday} عناصر`:"لا توجد عناصر مستحقة اليوم"}>
-        <svg viewBox="0 0 100 100" aria-hidden="true"><circle className="np-day-ring-track" cx="50" cy="50" r="42"/><circle className="np-day-ring-fill" cx="50" cy="50" r="42" strokeDasharray={263.894} strokeDashoffset={263.894*(1-completionRate/100)}/></svg><strong data-testid="today-completion-rate">{completionRate}%</strong>
+        <svg viewBox="0 0 100 100" aria-hidden="true"><circle className="np-day-ring-track" cx="50" cy="50" r="42"/>{completionRate>0?<circle className="np-day-ring-fill" cx="50" cy="50" r="42" strokeDasharray={263.894} strokeDashoffset={263.894*(1-completionRate/100)}/>:null}</svg><strong data-testid="today-completion-rate">{completionRate}%</strong>
       </div>
       <div className="np-day-achievement-copy"><div className="np-day-achievement-text"><h2>{historyDate?`إنجاز يوم ${weekDateLabel(historyDate)}`:"إنجاز اليوم"} <small>موزون</small></h2><p>{!totalToday?"لا توجد عادات أو مهام مستحقة اليوم.":completedToday===totalToday?"اكتملت كل عادات ومهام اليوم. أحسنت الاستمرار.":`${arabicNumber(completedToday)} من ${arabicNumber(totalToday)} عادات ومهام مكتملة اليوم`}</p>{recoveryPoints>0?<p data-testid="daily-recovery-points">تدارك الفائت: {Number(recoveryPoints.toFixed(3))} نقطة</p>:null}{daySessions.scheduled>0||sessionPoints>0?<p data-testid="daily-session-achievement">جلسات المهام: <bdi>{daySessions.completed} / {daySessions.scheduled}</bdi>{sessionPoints>0?<> · {Number(sessionPoints.toFixed(3))} نقطة</>:null}</p>:null}{displayedPrayer?<p data-testid="r334-daily-prayer-score">الصلوات المسجلة: {displayedPrayer.score.rows.filter(r=>r.recorded).length} / {displayedPrayer.score.rows.length} · نقاط {arabicNumber(displayedPrayer.score.earnedWeight)} / {arabicNumber(displayedPrayer.score.weight)}</p>:null}</div>{!historyDate?<><NoorThreeSpacesR171 personalDate={view.localDate??undefined} /><NoorWellbeingLabR165 separateSleep sleepRequest={sleepRequest} onSleepSaved={async(request,saveSignals)=>{if(request.date!==achievementDate)return false;const item=sleepHabits.find(habit=>habit.id===request.executionId);return !!item&&await onCommand({type:"set-execution-completed",executionId:item.id,completed:true},saveSignals);}} timeZone={view.timeZone} personalDate={view.localDate??undefined} /></>:null}</div>
       <div className="np-day-achievement-actions">
@@ -3952,7 +4014,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
               <div data-testid="r332-week-prayers"><button type="button" className="np-week-prayer-link" aria-label="فتح مواقيت الصلوات وتسجيل اليوم" onClick={openPrayerTimes}><NoorR323Icon name="mosque"/><span>الصلوات <small>{weekPrayerScore.rate===null?"المسجلة":`${weekPrayerScore.rate}% موزون`}</small></span><strong dir="ltr">{weeklyCard.prayers.recorded} / {weeklyCard.prayers.due===null?"—":weeklyCard.prayers.due}</strong></button></div>
             </div>
             <div className="np-r332-week-ring" role="img" aria-label={weekTotals.rate===null?"لا توجد استحقاقات موزونة":`الإنجاز الموزون للأسبوع ${weekTotals.rate}%`} data-testid="r332-week-weighted-ring">
-              <svg viewBox="0 0 132 132" aria-hidden="true"><circle className="np-r332-ring-track" cx="66" cy="66" r="54" fill="none" strokeWidth="13"/><circle className="np-r332-ring-fill" cx="66" cy="66" r="54" fill="none" strokeWidth="13" pathLength="100" strokeDasharray={`${weekTotals.rate??0} 100`} strokeLinecap="round" transform="rotate(-90 66 66)" /></svg>
+              <svg viewBox="0 0 132 132" aria-hidden="true"><circle className="np-r332-ring-track" cx="66" cy="66" r="54" fill="none" strokeWidth="13"/>{(weekTotals.rate??0)>0?<circle className="np-r332-ring-fill" cx="66" cy="66" r="54" fill="none" strokeWidth="13" pathLength="100" strokeDasharray={`${weekTotals.rate??0} 100`} strokeLinecap="round" transform="rotate(-90 66 66)" />:null}</svg>
               <div><strong>{weekTotals.rate===null?"—":`${weekTotals.rate}%`}</strong><small>موزون</small></div>
             </div>
           </div>
@@ -3990,7 +4052,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
                   <summary className="np-category-head" aria-label={`عرض أو إخفاء عادات ${displayCategory}، المنجز ${done} من ${due.length}`}>
                     <div className="np-category-heading"><NoorCategoryIcon category={category}/><h3 className="np-category-title">{displayCategory}</h3><span className="np-category-count">{arabicNumber(done)} من {arabicNumber(due.length)} مستحقة اليوم · {arabicNumber(items.length)} عادات</span></div>
                     <div aria-label={`إنجاز قسم ${displayCategory}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={rate} aria-valuetext={`${arabicNumber(done)} من ${arabicNumber(due.length)} مستحقة اليوم، ${arabicNumber(rate)}%`} className={`np-category-progress${rate === 100 ? " is-complete" : ""}`} role="progressbar">
-                      <svg aria-hidden="true" viewBox="0 0 60 60"><circle className="np-ring-track" cx="30" cy="30" r="24"/><circle className="np-ring-value" cx="30" cy="30" r="24" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - rate / 100)}/></svg>
+                      <svg aria-hidden="true" viewBox="0 0 60 60"><circle className="np-ring-track" cx="30" cy="30" r="24"/>{rate>0?<circle className="np-ring-value" cx="30" cy="30" r="24" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - rate / 100)}/>:null}</svg>
                       <span aria-hidden="true">{arabicNumber(rate)}<small>%</small></span>
                     </div>
                   </summary>
@@ -4086,7 +4148,12 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   };
   const [appearance,setAppearance] = useState<NoorAppearance>(readAppearance);
   const [timePreferences,setTimePreferences] = useState<NoorR232Preferences>(readNoorR232Preferences);
-  const chooseTimePreferences=(p:NoorR232Preferences)=>{setTimePreferences(p);saveNoorR232Preferences(p);};
+  const timePreferencesRef=useRef(timePreferences);
+  const chooseTimePreferences=(p:NoorR232Preferences)=>{
+    timePreferencesRef.current=p;
+    setTimePreferences(p);
+    saveNoorR232Preferences(p);
+  };
   const chooseAppearance = (value: NoorAppearance) => { setAppearance(value); saveAppearance(value); };
 
   const [nowMs,setNowMs] = useState(() => Date.now());
@@ -4099,13 +4166,19 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   const [syncing,setSyncing]=useState(false);
   const syncSequence=useRef(0);
   const resumeRefreshRef=useRef({lastAttemptAt:Date.now(),pending:false});
-  const refresh = async (strict=false) => {
+  const refresh = async (afterLocationChange?:NoorR232City) => {
     const epoch=++refreshEpoch.current;
     const today=await fetchNoorPersonalToday();
     if(epoch!==refreshEpoch.current)return;
-    setResult(previous=>today.kind==="unavailable" && previous?.kind==="success" && !strict?previous:today);
+    const refreshedView=today.kind==="success"?buildViewModel(today.today):null;
+    if(afterLocationChange&&(!refreshedView?.locationRevisionId||
+      refreshedView.timeZone!==afterLocationChange.timeZone||
+      refreshedView.location?.city!==`${afterLocationChange.name}، ${afterLocationChange.country}`)){
+      setConnectionWarning(true);
+      return false;
+    }
+    setResult(previous=>today.kind==="unavailable" && previous?.kind==="success"?previous:today);
     if(today.kind==="success" && isRecord(today.today)){
-      const refreshedView=buildViewModel(today.today);
       const refreshedWorkspace=buildWorkspaceViewModel(today.today.workspace);
       if(refreshedView&&refreshedWorkspace)materializedBeverages.current={view:refreshedView,workspace:refreshedWorkspace};
       if(refreshedWorkspace){
@@ -4356,6 +4429,11 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         return false;
       }
       ++refreshEpoch.current;
+      if(command.type==="set-account-location"){
+        const current=await refresh(command.city);
+        if(!current)setActionError("تم حفظ الموقع، وتعذّر تحديث المواقيت. أعد الاتصال لاسترجاعها.");
+        return current===true;
+      }
       const returnedWorkspace=buildWorkspaceViewModel(reply.workspace);
       const returnedExecution=executionItems(reply.executions);
       if(returnedWorkspace && returnedExecution){
@@ -4368,7 +4446,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         }
       }else{
         // Compatibility with old 204 servers; new servers return the committed projection.
-        await refresh(command.type==="set-account-location");
+        await refresh();
       }
       return true;
     } finally {
@@ -4411,11 +4489,10 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     const ok=await runCommand({
       type:"set-account-location",requestId:globalThis.crypto.randomUUID(),
       expectedRevisionId:token,city,
-    });
-    if(ok){
-      chooseTimePreferences({...timePreferences,selectedCity:null,displayZone:null});
-      // sendNoorPersonalCommandDetailed(204) already forced a strict,
-      // authenticated Today refresh before returning success.
+    },true);
+    const latest=timePreferencesRef.current;
+    if(ok&&latest.selectedCity===city){
+      chooseTimePreferences({...latest,selectedCity:null,displayZone:null});
     }
     return ok;
   };
