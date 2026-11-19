@@ -4,10 +4,10 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "node ../../tools/hosting/generate-transparent-noor-icons-r224.mjs && vite build",
+    "dev": "node ../../tools/hosting/generate-noor-brand-r369.mjs && vite",
+    "build": "node ../../tools/hosting/generate-transparent-noor-icons-r224.mjs && node ../../tools/hosting/generate-noor-brand-r369.mjs && vite build",
     "preview": "vite preview",
-    "test": "node --import tsx --test tests/*.spec.ts"
+    "test": "node ../../tools/hosting/generate-noor-brand-r369.mjs && node --import tsx --test tests/*.spec.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.3",
