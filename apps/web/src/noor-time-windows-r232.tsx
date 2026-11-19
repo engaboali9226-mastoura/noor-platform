@@ -7,6 +7,8 @@ import type {NoorR232Preferences} from "./noor-time-display-preferences-r232.js"
 import {fridayVirtueR284,NOOR_FRIDAY_VIRTUES_SOURCE_R284} from "./noor-friday-virtues-r284.js";
 import {noorFridayPresentationR310} from "./noor-friday-visibility-r310.js";
 
+import type {UpcomingFridaySchedule} from "./noor-friday-story-r370.js";
+
 type Prayer=Readonly<{key:string;at:string}>;
 function clock(ms:number,zone:string):string{
  return new Intl.DateTimeFormat("ar-SA-u-nu-latn",
@@ -70,7 +72,7 @@ function WindowCard({title,window:interval,nowMs,timeZone,unavailable,showTimer=
  </article>;
 }
 
-export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajrAt,precedingNight,onPreferencesChange,selectedFridayHour=null,onSelectFridayHour,fridaySelectionBusy=false}:{
+export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajrAt,precedingNight,onPreferencesChange,selectedFridayHour=null,onSelectFridayHour,fridaySelectionBusy=false,upcomingFriday,fridayCity}:{
  prayers:readonly Prayer[];nowMs:number;timeZone:string;
  preferences:NoorR232Preferences;nextFajrAt?:string|undefined;
  precedingNight?:R283PrecedingNight|null;
@@ -78,8 +80,11 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
  selectedFridayHour?:1|2|3|4|5|null;
  onSelectFridayHour?:(hour:1|2|3|4|5)=>void;
  fridaySelectionBusy?:boolean;
+ upcomingFriday?:UpcomingFridaySchedule|null;
+ fridayCity?:string;
 }):ReactElement {
  const [detailsOpen,setDetailsOpen]=useState(false);
+ const [exportState,setExportState]=useState<"idle"|"working"|"copied"|"saved"|"error">("idle");
  const viewport = useDashboardDialog(detailsOpen ? ".np-r322-modal[data-open=true] .np-r322-sheet" : null);
  useEffect(()=>{if(!detailsOpen)return;const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape")setDetailsOpen(false);};document.addEventListener("keydown",onKey);return ()=>document.removeEventListener("keydown",onKey);},[detailsOpen]);
  const windows=r232DailyWindows(prayers,nextFajrAt,
@@ -95,6 +100,34 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
  const fridayHours=friday?r283FridayHoursAtDhuhr({
    nowMs,timeZone,prayers,sunriseOffsetMinutes:preferences.afterSunrise,
   }):null;
+ const tomorrow = new Date(Date.parse(new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(nowMs)+"T00:00:00Z")+86400000);
+ const thursdayHours=thursdayReminder&&upcomingFriday&&upcomingFriday.localDate===tomorrow.toISOString().slice(0,10)
+   ?r283FridayHoursAtDhuhr({
+      nowMs:Date.parse(upcomingFriday.sunrise),timeZone,sunriseOffsetMinutes:preferences.afterSunrise,
+      prayers:[{key:"sunrise",at:upcomingFriday.sunrise},{key:"dhuhr",at:upcomingFriday.dhuhr}],
+    }):null;
+ const exportHours=fridayHours??thursdayHours;
+ const exportCity=thursdayHours?upcomingFriday?.city:fridayCity;
+ const exportStory=async(copy:boolean)=>{
+   if(!exportHours||exportState==="working")return;
+   setExportState("working");
+   try{
+     const blob=import("./noor-friday-story-r370.js").then(m=>m.renderFridayStory(exportHours,exportCity??"",timeZone));
+     void blob.catch(()=>{});
+     if(copy&&navigator.clipboard?.write&&typeof ClipboardItem!=="undefined"){
+       // Start the clipboard write in the gesture, before decoding the artwork.
+       await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);
+       setExportState("copied");
+       return;
+     }
+     const objectUrl=URL.createObjectURL(await blob);
+     const link=document.createElement("a");
+     link.href=objectUrl;link.download="noor-friday-hours.png";
+     document.body.append(link);link.click();link.remove();
+     setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+     setExportState("saved");
+   }catch{setExportState("error");}
+ };
  const trustedNight=activeNight??windows.islamicNight;
  const nightCountdown=trustedNight?r232Countdown(trustedNight,nowMs):null;
  const nextFajrMs=nextFajrAt?Date.parse(nextFajrAt):NaN;
@@ -134,11 +167,11 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
      :fallbackToFajr?<span className="np-r322-range">حتى الفجر المؤكد · لم تتوفر بداية الليل لحساب مدته</span>:null}
     </button><button type="button" className="np-r322-expand np-r323-expand" onClick={()=>setDetailsOpen(true)}>اضغط لعرض جميع المؤقتات ‹</button>
  </section>
-   {friday?<button type="button" className="np-card np-r322-friday-preview np-r323-friday" onClick={()=>setDetailsOpen(true)} aria-haspopup="dialog">
+   {friday?<button type="button" className="np-card np-r322-friday-preview np-r323-friday np-r370-friday-entry" onClick={()=>setDetailsOpen(true)} aria-haspopup="dialog">
      <span className="np-r323-mini-head"><span aria-hidden="true"><NoorR323Icon name="mosque"/></span><span>ساعات الجمعة الخمس<small>الساعة الحالية</small></span></span><span className="np-r323-friday-current">
      <strong>{currentFridayHour?"الساعة "+previewLabel(currentFridayHour.number):fridayHours&&fridayHours.every(h=>h.endMs<=nowMs)?"انتهت ساعات الجمعة":"عرض ساعات الجمعة"}</strong>
      <span dir="ltr">{currentFridayHour?remaining(currentFridayHour.endMs-nowMs):"التفاصيل"}</span></span><span className="np-r323-mini-link">اضغط لعرض بقية المؤقتات ‹</span>
-   </button>:thursdayReminder?<button className="np-r322-friday-preview" type="button" onClick={()=>setDetailsOpen(true)}>غدًا الجمعة · عرض ساعات التبكير ←</button>:null}
+   </button>:thursdayReminder?<button className="np-r322-friday-preview np-r370-friday-entry" type="button" onClick={()=>setDetailsOpen(true)}>ساعات الجمعة غدًا</button>:null}
  <div className="np-r322-modal" style={viewport} data-open={detailsOpen} role="presentation" aria-hidden={!detailsOpen} onMouseDown={event=>{if(event.target===event.currentTarget)setDetailsOpen(false);}}>
   <div role="dialog" aria-modal={detailsOpen} aria-label="إيقاع اليوم الكامل وساعات الجمعة" className="np-r322-sheet" dir="rtl">
    <span className="np-r323-sheet-handle" aria-hidden="true"/><header className="np-r322-sheet-head"><div><h2>إيقاع اليوم الكامل</h2><p>كل المواقيت والتفاصيل كما حُسبت من مصدر نور</p></div>
@@ -181,7 +214,18 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
       unavailable="لم تتوفر مواقيت الغد من مصدر نور المعتمد."/>
    <p className="np-r232-note np-r237-detail-note">بداية الضحى تقديرية بعد الشروق بـ{preferences.afterSunrise} دقيقة، والنهاية قبل الظهر بـ{preferences.beforeDhuhr} دقائق. يمكن تغيير الهامش من مركز التحكم.</p>
    {friday||thursdayReminder?<div className="np-r232-friday np-r235-friday-inline np-r237-friday-inline" data-friday-mode={fridayMode} data-testid="friday-five-hours-r232">
-    <h3>ساعات الجمعة الخمس</h3>
+    <header className="np-friday-story-header">
+      <h3>ساعات الجمعة الخمس</h3>
+      {exportHours?<div className="np-friday-story-actions">
+        <button type="button" disabled={exportState==="working"} onClick={()=>{void exportStory(true);}}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>نسخ الصورة
+        </button>
+        <button type="button" disabled={exportState==="working"} onClick={()=>{void exportStory(false);}}>حفظ الصورة</button>
+      </div>:null}
+    </header>
+    {exportState!=="idle"?<p role="status">{{
+      working:"جارٍ تجهيز الصورة",copied:"تم نسخ الصورة",saved:"تم تنزيل الصورة",error:"تعذّر تجهيز الصورة أو نسخها. جرّب حفظها من الزر الآخر.",
+    }[exportState]}</p>:null}
     <p className="np-r232-note">من ارتفاع الشمس إلى موعد الظهر المعتمد يوم الجمعة، موزعة على خمس فترات متساوية. فضائل التبكير بالترتيب الوارد في الحديث، وليست حسابًا رقميًا للأجر.</p>
     {thursdayReminder?<p className="np-r310-friday-caption" role="status">تذكير: غدًا الجمعة · استعد للتبكير</p>:null}
     {thursdayReminder?<>
@@ -193,6 +237,7 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
             <div className="np-r234-card-title">
               <h3 aria-label={`الساعة ${hourLabel}`}>{hourLabel}</h3>
               <p className="np-r284-friday-virtue" data-testid={`friday-virtue-${number}`}><span aria-hidden="true">{virtue.icon}</span><span>{virtue.description}</span></p>
+              {thursdayHours?<small>من {clock(thursdayHours[number-1]!.startMs,timeZone)} إلى {clock(thursdayHours[number-1]!.endMs,timeZone)}</small>:null}
             </div>
             <div className="np-r234-card-bottom"><div className="np-r247-timer" role="status" aria-label="تذكير ليوم الجمعة"><span className="np-r247-inactive">غدًا</span></div></div>
           </article>;
