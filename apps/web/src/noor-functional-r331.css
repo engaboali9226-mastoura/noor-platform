@@ -1213,7 +1213,7 @@ button[aria-label^="إغلاق"] {
 .np-page .np-r332-week button.np-week-day{
   grid-template-rows:auto auto auto auto!important;gap:2px;padding:3px 0;
 }
-.np-page .np-r332-week .np-week-day .np-week-day-circle{
+.np-page .np-r332-week button.np-week-day .np-week-value.np-week-day-circle{
   display:grid;place-items:center;width:min(100%,34px)!important;height:auto!important;
   min-height:0!important;aspect-ratio:1;overflow:visible;border-radius:50%!important;background:none!important;
 }
