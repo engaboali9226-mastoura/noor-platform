@@ -893,8 +893,8 @@ export class PersonalCommandService {
                     const parsed=parsePersonalCommand(command);
                     if(!parsed||parsed.type!=="set-personal-profile"||!transaction.getPersonalProfile||!transaction.savePersonalProfile)throw new Error("PROFILE_STORAGE_UNAVAILABLE");
                     const current=transaction.getPersonalProfile(userId);
-                    if((current?.updatedAt??null)!==parsed.expectedUpdatedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     if(current&&current.displayName===parsed.displayName&&current.avatarUrl===parsed.avatarUrl&&current.birthDate===parsed.birthDate)return;
+                    if((current?.updatedAt??null)!==parsed.expectedUpdatedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     transaction.savePersonalProfile(userId,{userId,displayName:parsed.displayName,avatarUrl:parsed.avatarUrl,birthDate:parsed.birthDate,updatedAt:now});
                     return;
                 }
@@ -966,10 +966,10 @@ export class PersonalCommandService {
                     if(!parsed||parsed.type!=="configure-reminder")throw new Error("REMINDER_COMMAND_INVALID");
                     const definition=transaction.findDefinitionById(userId,parsed.definitionId);
                     if(!definition)throw new PersonalControlError("DEFINITION_NOT_FOUND");
-                    if(definition.revisionId!==parsed.expectedRevisionId)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     if(definition.state==="Archived"||definition.state==="Stopped")throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     const original=JSON.stringify(definition.reminderPlan??null),next=JSON.stringify(parsed.plan);
                     if(original===next)return;
+                    if(definition.revisionId!==parsed.expectedRevisionId)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     const {reminderPlan:_previous,...preserved}=definition;
                     transaction.saveDefinition({...preserved,...(parsed.plan?{reminderPlan:parsed.plan}:{}),
                         revisionId:this.dependencies.idGenerator.next("definition-revision")});

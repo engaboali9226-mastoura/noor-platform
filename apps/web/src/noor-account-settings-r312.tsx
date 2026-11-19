@@ -86,7 +86,7 @@ export function NoorAccountSettingsR312({profile=null,busy:parentBusy=false,onCo
     try{
       const ok=await onCommand({type:"set-personal-profile",expectedUpdatedAt:profile?.updatedAt??null,displayName:name,avatarUrl:nextAvatar.trim()||null,birthDate:birth});
       if(ok){
-        setAvatarUrl(nextAvatar);setMessage(photoOnly?"تم حفظ الصورة الشخصية.":"تم حفظ ملفك الشخصي.");
+        setAvatarUrl(nextAvatar);setMessage(photoOnly?"أُرسلت الصورة للحفظ.":"أُرسل تغيير الملف الشخصي للحفظ.");
         setPhoto(null);setCropPreview("");
       }else setError("تعذّر الحفظ. أعد المحاولة بعد تحديث البيانات.");
     }catch{setError("تعذّر الاتصال لحفظ الملف الشخصي.");}

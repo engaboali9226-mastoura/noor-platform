@@ -1,3 +1,4 @@
+import {applyFinanceOperation} from "../../noor-personal/src/domain/model.js";
 import { prepareTaskSessionPlan, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate } from "../../noor-personal/src/domain/task-sessions.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {useDashboardDialog,useDialogViewport} from "./noor-dashboard-dialog.js";
@@ -68,7 +69,7 @@ export interface NoorPersonalApplicationViewProps {
   readonly initialWorkspace?: NoorPersonalWorkspaceResult;
 }
 
-type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'|'adjust-beverage-serving'}>;
+type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'|'adjust-beverage-serving'|'finance'|'set-personal-profile'|'configure-reminder'}>;
 type BeverageAdjustment=Extract<FastCommand,{type:"adjust-beverage-serving"}>;
 function matchesBeverageDefinition(id:string,reference:string):boolean{
   return id===reference||reference.startsWith("pending:")&&id.startsWith("definition-request:")&&id.endsWith(`:${reference.slice(8)}`);
@@ -87,6 +88,9 @@ function fastFailureKey(change:FastChange):string {
   if(isFastCompletion(command))return `completion:${change.executionId}`;
   if(command.type==="record-prayer-r331")return `prayer:${command.localDate}:${command.key}`;
   if(isDefinitionSave(command))return `definition:${change.definitionId}`;
+  if(command.type==="finance")return `finance:${command.operation.id}`;
+  if(command.type==="set-personal-profile")return "profile";
+  if(command.type==="configure-reminder")return `reminder:${command.definitionId}`;
   return `entry:${command.entryId}`;
 }
 type FastChange={
@@ -98,6 +102,7 @@ type FastChange={
   definition?:DefinitionItem;
   prayerAt?:string;
   beforeSave?:()=>Promise<void>;
+  submittedAt?:string;
 };
 type UnknownRecord = Record<string, unknown>;
 
@@ -2793,7 +2798,7 @@ function FinanceNote({note}:{note:string}):ReactElement|null {
   return visible?<details className="nf-note-disclosure-r140" data-testid="finance-note-disclosure-r141"><summary>الملاحظات</summary><p>{visible}</p></details>:null;
 }
 
-function FinanceCorrections({entry}:{entry:FinanceLedger['entries'][number]|undefined}):ReactElement|null{return entry?.corrections?.length?<details><summary>سجل التصحيحات ({entry.corrections.length})</summary>{entry.corrections.map((c,i)=><p key={i}>القيمة السابقة: {(c.amountMinor/100).toFixed(2)} · {c.date}<br/>السبب: {c.reason}{c.note?<FinanceNote note={c.note}/>:null}</p>)}</details>:null;}
+function FinanceCorrections({entry}:{entry:FinanceLedger['entries'][number]|undefined}):ReactElement|null{return entry?.corrections?.length?<details><summary>سجل التصحيحات ({entry.corrections.length})</summary>{entry.corrections.map((c,i)=><div key={i}>القيمة السابقة: {(c.amountMinor/100).toFixed(2)} · {c.date}<br/>السبب: {c.reason}{c.note?<FinanceNote note={c.note}/>:null}</div>)}</details>:null;}
 function DebtRegister({ledger,today,busy,onRepay,onAddPerson,onAddDebt,onManagePerson,onEditPerson,onEditDebt,onEditPayment}:{ledger:FinanceLedger;today:string;busy:boolean;onRepay:(id:string)=>void;onAddPerson:()=>void;onManagePerson:(person:{id:string|null;name:string;archived?:true},hasRecords:boolean)=>void;onEditDebt:(id:string)=>void;onEditPayment:(id:string)=>void;onEditPerson:(person:{id:string|null;name:string;note:string})=>void;onAddDebt:(person:{id:string|null;name:string})=>void}):ReactElement{
  const [view,setView]=useState<'people'|'statistics'|'archive'>('people'),[selected,setSelected]=useState<string|null>(null),[query,setQuery]=useState(''),[direction,setDirection]=useState('all'),[state,setState]=useState('all');const summary=financeSummary(ledger);
  const [personPaymentStatus,setPersonPaymentStatus]=useState("all");
@@ -4282,11 +4287,27 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   const activityWorkspace=useMemo(()=>{
     if(!baseWorkspace)return null;
     let definitions=baseWorkspace.definitions;
+    let finance=baseWorkspace.finance;
+    let profile=baseWorkspace.profile;
     let prayerHistoryR331=baseWorkspace.prayerHistoryR331;
     let prayerAchievementR334=baseWorkspace.prayerAchievementR334;
     for(const change of fastChanges){
       const {command,entry,definition,prayerAt}=change;
-      if(definition){
+      if(command.type==="finance"&&finance&&change.submittedAt&&baseView){
+        try{finance=applyFinanceOperation(finance,finance.userId,command.operation,change.submittedAt,baseView.timeZone);}
+        catch{/* The trusted state may have changed; the pending command is still guarded at commit. */}
+      }else if(command.type==="set-personal-profile"&&change.submittedAt){
+        const {displayName,avatarUrl,birthDate}=command;
+        if((profile?.updatedAt??null)===command.expectedUpdatedAt){
+          profile={displayName,avatarUrl,birthDate,updatedAt:profile?.updatedAt??change.submittedAt};
+        }
+      }else if(command.type==="configure-reminder"){
+        definitions=definitions.map(item=>{
+          if(item.id!==command.definitionId||item.revisionId!==command.expectedRevisionId)return item;
+          const {reminderPlan:_previous,...rest}=item;
+          return command.plan?{...rest,reminderPlan:command.plan}:rest;
+        });
+      }else if(definition){
         if(command.type==="create-definition"){
           if(!definitions.some(item=>item.id===definition.id||command.requestId&&item.id.endsWith(`:${command.requestId}`)&&item.id.startsWith("definition-request:")))definitions=[...definitions,definition];
         }else definitions=definitions.map(item=>item.id===definition.id?{...definition,activityLog:item.activityLog}:item);
@@ -4324,7 +4345,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         });
       }
     }
-    return {...baseWorkspace,definitions,prayerHistoryR331,...(prayerAchievementR334?{prayerAchievementR334}:{})};
+    return {...baseWorkspace,finance,...(profile===undefined?{}:{profile}),definitions,prayerHistoryR331,...(prayerAchievementR334?{prayerAchievementR334}:{})};
   },[baseWorkspace,baseView,fastChanges]);
   const workspace=useMemo(()=>{
     if(!activityWorkspace)return null;
@@ -4529,7 +4550,10 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       const dependent=!ok&&change.command.type==="adjust-beverage-serving"
         ?fastQueue.current.filter(item=>item.command.type==="adjust-beverage-serving"&&
           (matchesBeverageDefinition(item.definitionId,change.definitionId)||matchesBeverageDefinition(change.definitionId,item.definitionId)))
-        :[];
+        :!ok&&change.command.type==="finance"
+          ?fastQueue.current.filter(item=>item.command.type==="finance")
+          :[];
+      // Re-evaluate dependent debits or corrections after an earlier failure.
       // A correction after a failed cup could remove a different serving.
       if(dependent.length)fastQueue.current=fastQueue.current.filter(item=>!dependent.includes(item));
       setFastChanges([...fastQueue.current]);
@@ -4551,6 +4575,26 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
 
   const fastCommand=async(command:NoorPersonalCommandInput,beforeSave?:()=>Promise<void>):Promise<boolean>=>{
     if(command.type==="observe-notification"||command.type==="mark-notification-read")return runCommand(command,true);
+    if(command.type==="finance"){
+      const finance=activityWorkspace?.finance;
+      if(!finance||!baseView)return false;
+      const submittedAt=new Date().toISOString();
+      try{applyFinanceOperation(finance,finance.userId,command.operation,submittedAt,baseView.timeZone);}
+      catch{return false;}
+      return queueChange({command,definitionId:"",executionId:"",title:"الحركة المالية",submittedAt});
+    }
+    if(command.type==="set-personal-profile"){
+      if(!baseWorkspace||(baseWorkspace.profile?.updatedAt??null)!==command.expectedUpdatedAt||
+        !command.displayName.trim())return false;
+      return queueChange({command,definitionId:"",executionId:"",title:"الملف الشخصي",submittedAt:new Date().toISOString()});
+    }
+    if(command.type==="configure-reminder"){
+      const definition=baseWorkspace?.definitions.find(item=>item.id===command.definitionId);
+      const plan=command.plan===null?null:parseNoorReminderPlanR314(command.plan);
+      if(!definition||definition.revisionId!==command.expectedRevisionId||definition.state!=="Active"||
+        command.plan!==null&&!plan||fastQueue.current.some(change=>change.definitionId===definition.id))return false;
+      return queueChange({command:{...command,plan},definitionId:definition.id,executionId:"",title:`تذكير ${definition.title}`});
+    }
     if(isDefinitionSave(command)){
       if(!baseWorkspace)return false;
       const previous=command.type==="update-definition"?baseWorkspace.definitions.find(item=>item.id===command.definitionId):undefined;
