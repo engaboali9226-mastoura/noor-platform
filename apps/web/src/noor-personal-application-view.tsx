@@ -4014,7 +4014,7 @@ function PersonalEntryLoading(): ReactElement {
 }
 
 function StatePage({ title, copy, onRetry, retrying=false }: { title: string; copy: string; onRetry?:()=>void; retrying?:boolean }): ReactElement {
-  return <section className="np-card np-date-card"><NoorBrandHeader scope="personal" /><img alt="شعار نور" className="np-state-logo" src="/brand/personal-logo.webp" /><h1 className="np-control-title">{title}</h1><p className="np-control-subtitle">{copy}</p>{onRetry?<button type="button" className="np-cc-button np-reconnect-state-r296" data-testid="r296-reconnect-state" disabled={retrying} onClick={onRetry}>{retrying?"جارٍ الاتصال…":"إعادة الاتصال ↻"}</button>:null}</section>;
+  return <section className="np-card np-date-card"><NoorBrandHeader scope="personal" /><img alt="شعار نور" className="np-state-logo" src={NOOR_BRAND.personal.pickerLogo} /><h1 className="np-control-title">{title}</h1><p className="np-control-subtitle">{copy}</p>{onRetry?<button type="button" className="np-cc-button np-reconnect-state-r296" data-testid="r296-reconnect-state" disabled={retrying} onClick={onRetry}>{retrying?"جارٍ الاتصال…":"إعادة الاتصال ↻"}</button>:null}</section>;
 }
 
 export function NoorPersonalApplicationView({ initialResult, initialWorkspace }: NoorPersonalApplicationViewProps): ReactElement {
