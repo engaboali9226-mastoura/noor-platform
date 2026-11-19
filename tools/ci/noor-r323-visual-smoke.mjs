@@ -488,6 +488,19 @@ try{
   await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-habits,r324-nav-plus,r324-nav-tasks,r324-nav-grid'","Approved RTL navigation order");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
+  await run(`Object.defineProperty(navigator,"clipboard",{configurable:true,value:{async write(items){
+    const png=await items[0].getType("image/png");
+    const image=await createImageBitmap(png);
+    window.noorFridayExport=[png.type,image.width,image.height];
+    image.close();
+  }}}); document.querySelector(".np-r370-friday-entry").click(); void 0;`);
+  await expect(visible(".np-friday-story-actions"),"Friday image actions open from Noor board");
+  await run("document.querySelector('.np-friday-story-actions button').click()");
+  await expect("JSON.stringify(window.noorFridayExport)==='[\"image/png\",1080,1920]'","Friday copy produces a story-sized PNG");
+  await run("document.querySelector('[aria-label=\'إغلاق مؤقتات اليوم\']').click();window.scrollTo(0,document.body.scrollHeight)");
+  await expect(`scrollY>0&&getComputedStyle(document.querySelector(".np-page"),"::before").backgroundSize.split(",").at(-1).trim()==="cover"`,
+    "Landscape still covers the viewport at the bottom of Personal home");
+  await snap(screen.name+"-full-background-scrolled");
   await run("document.querySelector('.np-today-task-button')?.scrollIntoView({block:'center'})");
   await expect("!!document.querySelector('.np-today-task-button')","Compact task row is present");
   await snap(screen.name+"-compact-today-task");
@@ -708,14 +721,12 @@ try{
        const divider=document.querySelector(".np-header-date-divider");
        const backdrop=getComputedStyle(root,"::before");
        const image=backdrop.backgroundImage;
-       const fill=getComputedStyle(root,"::after");
        return !!document.querySelector("[data-testid=header-temperature]") &&
          !!document.querySelector("[data-testid=header-weather-details]") &&
          image.includes("personal-${daylight}-r340.webp") &&
          backdrop.position==="fixed" &&
-         fill.position==="fixed" && fill.backgroundImage.includes("personal-${daylight}-r340.webp") &&
-         fill.backgroundSize.split(",").at(-1).trim()==="cover" &&
-         backdrop.backgroundSize.split(",").at(-1).trim()==="contain" &&
+         backdrop.maskImage==="none" &&
+         backdrop.backgroundSize.split(",").at(-1).trim()==="cover" &&
          backdrop.backgroundRepeat.split(",").every(repeat=>repeat.trim()==="no-repeat") &&
          parseFloat(getComputedStyle(clock).fontSize)>=(innerWidth<=560?20:32) &&
          parseFloat(getComputedStyle(date).fontSize)<=16 &&
