@@ -453,7 +453,7 @@ try{
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
   await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return b.bottom<=k.top+1&&k.bottom<=a.top+1&&a.height<=200&&p.height<=34})()","Daily, weekly and drinks cards ordered without overlap");
   await expect("getComputedStyle(document.querySelector('.np-r323-header .np-brand'),'::before').display==='none'","No duplicated header art");
-  await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),ring=c?.querySelector('.np-r332-week-ring'),rows=c?.querySelectorAll('.np-r332-week-counts>div'),bars=c?.querySelectorAll('.np-week-day .np-week-value');if(!c||!ring||rows?.length!==3||bars?.length!==7)return false;const b=c.getBoundingClientRect(),r=ring.getBoundingClientRect();return r.width>=80&&r.height>=80&&b.left>=-1&&b.right<=innerWidth+1&&Array.from(bars).every(x=>{const d=x.getBoundingClientRect();return x.classList.contains('np-week-day-circle')&&Math.abs(d.width-d.height)<2&&d.height<=35&&Math.abs(d.top-bars[0].getBoundingClientRect().top)<2})})()","R332 approved weekly ring, three count rows and seven aligned daily circles fit screen");
+  await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),ring=c?.querySelector('.np-r332-week-ring'),rows=c?.querySelectorAll('.np-r332-week-counts>div'),bars=c?.querySelectorAll('.np-week-day .np-week-value');if(!c||!ring||rows?.length!==3||bars?.length!==7)return false;const b=c.getBoundingClientRect(),r=ring.getBoundingClientRect();return r.width>=80&&r.height>=80&&b.left>=-1&&b.right<=innerWidth+1&&Array.from(bars).every(x=>{const d=x.getBoundingClientRect();return x.classList.contains('np-week-day-circle')&&Math.abs(d.width-d.height)<2&&d.height<=41&&Math.abs(d.top-bars[0].getBoundingClientRect().top)<2})})()","R332 approved weekly ring, three count rows and seven aligned daily circles fit screen");
   await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),days=c?.querySelector('.np-week-days'),cells=days?.querySelectorAll('[data-week-date]');return !!days&&cells?.length===7&&getComputedStyle(days).direction==='rtl'&&cells[0].getBoundingClientRect().left>cells[6].getBoundingClientRect().left&&!c.querySelector('.np-r332-week-note')})()","R333 Saturday starts at the right and the weekly footer is absent");
   await expect(`(() => {
     const older=document.querySelector('[data-testid=week-history-previous]');
@@ -707,6 +707,30 @@ try{
        throw error;
      });
      await expect("document.documentElement.scrollWidth<=innerWidth+2","Weather dashboard fits width "+viewport.width);
+     if(daylight==="day"&&weather==="clear")await expect(`(() => {
+       const card=document.querySelector('[data-testid=r332-weekly-card]');
+       const buttons=[...card.querySelectorAll('.np-week-day')];
+       const rings=buttons.map(button=>button.querySelector('.np-week-day-circle'));
+       const ring=rings.find(el=>el.querySelector('strong').textContent);
+       const circle=ring.querySelector('circle');
+       const score=ring.querySelector('strong'),original=score.textContent;
+       score.textContent="100%";
+       const range=document.createRange();
+       range.selectNodeContents(score);
+       const label=range.getBoundingClientRect(),bounds=ring.getBoundingClientRect();
+       score.textContent=original;
+       const stroke=parseFloat(getComputedStyle(circle).strokeWidth);
+       const innerRadius=(17-stroke/2)*bounds.width/40;
+       const height=card.getBoundingClientRect().height;
+       const styled=[...buttons,...rings].map(el=>[el,el.style.cssText]);
+       buttons.forEach(el=>el.style.setProperty("padding","3px 0","important"));
+       rings.forEach(el=>el.style.setProperty("width","min(100%,34px)","important"));
+       const previousHeight=card.getBoundingClientRect().height;
+       styled.forEach(([el,style])=>el.style.cssText=style);
+       return stroke>=4.5&&bounds.width>34&&height<=previousHeight+1&&
+         Math.hypot(label.width,label.height)/2<=innerRadius+0.75&&
+         Math.abs(label.left+label.right-bounds.left-bounds.right)<=2;
+     })()`,"Bolder weekly circles contain 100% without growing the card at "+viewport.width);
      if(viewport.mobile)await expect(`(() => {
        const greeting=document.querySelector('.np-greeting-text'),name=greeting.querySelector('bdi');
        return name?.textContent==="عبد الرحمن محمد"&&greeting.scrollWidth<=greeting.clientWidth+1&&
