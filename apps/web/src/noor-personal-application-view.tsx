@@ -68,7 +68,11 @@ export interface NoorPersonalApplicationViewProps {
   readonly initialWorkspace?: NoorPersonalWorkspaceResult;
 }
 
-type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'}>;
+type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'|'adjust-beverage-serving'}>;
+type BeverageAdjustment=Extract<FastCommand,{type:"adjust-beverage-serving"}>;
+function matchesBeverageDefinition(id:string,reference:string):boolean{
+  return id===reference||reference.startsWith("pending:")&&id.startsWith("definition-request:")&&id.endsWith(`:${reference.slice(8)}`);
+}
 type DefinitionSave = Extract<FastCommand,{type:'create-definition'|'update-definition'}>;
 function isDefinitionSave(command:NoorPersonalCommandInput):command is DefinitionSave {
   return command.type==='create-definition'||command.type==='update-definition';
@@ -4088,6 +4092,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   const [nowMs,setNowMs] = useState(() => Date.now());
   const prayerRefreshRef = useRef({lastAttempt:0,pending:false,key:""});
 
+  const materializedBeverages=useRef<{view:TodayViewModel;workspace:WorkspaceViewModel}|null>(null);
   const refreshEpoch=useRef(0);
   const commandInFlight=useRef(false);
   const commandTail=useRef<Promise<void>|null>(null);
@@ -4099,9 +4104,14 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     const today=await fetchNoorPersonalToday();
     if(epoch!==refreshEpoch.current)return;
     setResult(previous=>today.kind==="unavailable" && previous?.kind==="success" && !strict?previous:today);
-    if(today.kind==="success" && isRecord(today.today) && buildWorkspaceViewModel(today.today.workspace)){
-      setWorkspaceResult({kind:"success",workspace:today.today.workspace});
-      setConnectionWarning(false);return true;
+    if(today.kind==="success" && isRecord(today.today)){
+      const refreshedView=buildViewModel(today.today);
+      const refreshedWorkspace=buildWorkspaceViewModel(today.today.workspace);
+      if(refreshedView&&refreshedWorkspace)materializedBeverages.current={view:refreshedView,workspace:refreshedWorkspace};
+      if(refreshedWorkspace){
+        setWorkspaceResult({kind:"success",workspace:today.today.workspace});
+        setConnectionWarning(false);return true;
+      }
     }
     const workspace=await fetchNoorPersonalWorkspace();
     if(epoch!==refreshEpoch.current)return false;
@@ -4220,6 +4230,15 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
             dueKeys:day.score.rows.map(row=>row.key),records,snapshot});
           return score?{...day,score}:day;
         });
+      }else if(command.type==="adjust-beverage-serving"&&entry){
+        definitions=definitions.map(item=>{
+          if(!matchesBeverageDefinition(item.id,change.definitionId)||item.activityLog.some(event=>event.id===entry.id))return item;
+          const executionId=baseView?.localDate===entry.localDate
+            ?baseView.habits.find(execution=>execution.definitionId===item.id)?.id
+            :undefined;
+          if(!executionId&&item.id!==change.definitionId)return item;
+          return {...item,activityLog:[...item.activityLog,{...entry,executionId:executionId??entry.executionId}]};
+        });
       }else if(entry||command.type==="edit-activity-note"){
         definitions=definitions.map(item=>{
           if(item.id!==change.definitionId)return item;
@@ -4233,7 +4252,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       }
     }
     return {...baseWorkspace,definitions,prayerHistoryR331,...(prayerAchievementR334?{prayerAchievementR334}:{})};
-  },[baseWorkspace,baseView?.localDate,fastChanges]);
+  },[baseWorkspace,baseView,fastChanges]);
   const workspace=useMemo(()=>{
     if(!activityWorkspace)return null;
     let result=activityWorkspace;
@@ -4401,6 +4420,15 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
     return ok;
   };
 
+  const confirmedBeverageCommand=(change:FastChange,command:BeverageAdjustment):BeverageAdjustment|null=>{
+    // The create command ahead of this cup refreshed Today and materialized the habit.
+    const snapshot=materializedBeverages.current;
+    if(!snapshot||snapshot.view.localDate!==change.entry?.localDate)return null;
+    const definition=snapshot.workspace.definitions.find(item=>item.beveragePlan&&matchesBeverageDefinition(item.id,change.definitionId));
+    const execution=snapshot.view.habits.find(item=>item.definitionId===definition?.id);
+    return execution?{...command,executionId:execution.id}:null;
+  };
+
   const drainFast=async()=>{
     if(fastRunning.current||commandInFlight.current||!alive.current)return;fastRunning.current=true;
     try{while(fastQueue.current.length&&alive.current){
@@ -4410,7 +4438,10 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
           await change.beforeSave();
           delete change.beforeSave;
         }
-        ok=await runCommand(change.command,true);
+        if(change.command.type==="adjust-beverage-serving"&&change.command.executionId.startsWith("pending:")){
+          const command=confirmedBeverageCommand(change,change.command);
+          if(command)ok=await runCommand(command,true);
+        }else ok=await runCommand(change.command,true);
       }catch{ok=false;}
       fastQueue.current.shift();if(!alive.current)break;
       if(!ok&&change.command.type==='edit-activity-note'){const failed=change.command;fastQueue.current=fastQueue.current.filter(c=>c.command.type!=='edit-activity-note'||c.command.entryId!==failed.entryId);}
@@ -4418,10 +4449,16 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         // Reject dependent status changes if the prerequisite server write failed.
         fastQueue.current=fastQueue.current.filter(c=>c.executionId!==change.executionId||!isFastCompletion(c.command));
       }
+      const dependent=!ok&&change.command.type==="adjust-beverage-serving"
+        ?fastQueue.current.filter(item=>item.command.type==="adjust-beverage-serving"&&
+          (matchesBeverageDefinition(item.definitionId,change.definitionId)||matchesBeverageDefinition(change.definitionId,item.definitionId)))
+        :[];
+      // A correction after a failed cup could remove a different serving.
+      if(dependent.length)fastQueue.current=fastQueue.current.filter(item=>!dependent.includes(item));
       setFastChanges([...fastQueue.current]);
       const newerChoice=isFastCompletion(change.command)&&fastQueue.current.some(c=>c.executionId===change.executionId&&isFastCompletion(c.command));
       if(ok)setFailedChanges(previous=>previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)));
-      if(!ok&&!newerChoice)setFailedChanges(previous=>[...previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)),change]);
+      if(!ok&&!newerChoice)setFailedChanges(previous=>[...previous.filter(c=>fastFailureKey(c)!==fastFailureKey(change)),change,...dependent]);
     
     }}
     finally{fastRunning.current=false;}
@@ -4449,6 +4486,18 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         const definition=previewDefinition(command,definitionId,previous,new Date().toISOString());
         return queueChange({command:savedCommand,executionId:previous?"":definitionId,definitionId,title:command.title,definition});
       }catch{return false;}
+    }
+    if(command.type==="adjust-beverage-serving"){
+      const localDate=view?.localDate;
+      const execution=view?.habits.find(item=>item.id===command.executionId);
+      const definition=execution&&activityWorkspace?.definitions.find(item=>item.id===execution.definitionId);
+      if(!localDate||!execution||!definition?.beveragePlan)return false;
+      const count=definition.activityLog.filter(event=>event.executionId===execution.id).reduce((total,event)=>total+event.amount,0);
+      if(count+command.delta<0||count+command.delta>60)return false;
+      const entry:ActivityEntry={id:command.entryId,executionId:execution.id,localDate,
+        at:new Date().toISOString(),amount:command.delta,note:"",endReason:null,
+        ...(command.beverageTime?{beverageTime:command.beverageTime}:{})};
+      return queueChange({command,executionId:execution.id,definitionId:definition.id,title:definition.title,entry});
     }
     if(command.type==="record-prayer-r331"){
       const currentDate=baseView?.localDate;
@@ -4549,7 +4598,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   @keyframes np-r296-spin{to{transform:rotate(360deg)}}
   @media(prefers-reduced-motion:reduce){.np-page .np-refresh-spin-r296{animation:none}}
   @media(max-width:700px){.np-page .np-cc-header{flex-wrap:wrap}.np-page .np-cc-header .np-cc-header-logo{width:48px;height:48px;flex-basis:48px}.np-page .np-cc-header-actions{width:100%;justify-content:flex-start}.np-page .np-topbar .np-top-actions{gap:5px}.np-page .np-topbar .np-refresh-icon-r296{width:38px;height:38px}}
-  `}</style><section className={`np-page${!result ? " np-page-entry-loading" : result.kind === "success" ? " np-page-entry-ready" : ""}`} data-appearance={appearance} data-design-version="r62-visible-layout-fix" dir="rtl"><div className="np-wrap"><div className="np-save-notices" data-save-feedback="classic-achievement-r95">{orderError?<p className="np-failed-save" role="alert">{orderError}</p>:null}{failedChanges.map((change,i)=><div className="np-failed-save" role="alert" key={fastFailureKey(change)}><span>لم يتأكد الحفظ: {change.title}. تم إرجاع العرض لآخر بيانات مؤكدة.</span>{change.command.type==='edit-activity-note'?<p>{change.command.note??'حذف الملاحظة'}</p>:null}{change.command.type==='record-activity'||change.command.type==='record-historical-progress'||change.command.type==='record-task-session-progress'?<p>{change.command.note}{change.command.amount>0?` · الكمية: ${change.command.amount}`:''}</p>:null}<button type="button" disabled={fastChanges.some(c=>fastFailureKey(c)===fastFailureKey(change))} onClick={()=>{setFailedChanges(previous=>previous.filter((_,j)=>j!==i));void fastCommand(change.command,change.beforeSave).then(ok=>{if(!ok)setFailedChanges(previous=>previous.some(item=>fastFailureKey(item)===fastFailureKey(change))?previous:[...previous,change]);});}}>إعادة المحاولة</button><button type="button" onClick={()=>setFailedChanges(previous=>previous.filter((_,j)=>j!==i))}>تجاهل التغيير غير المحفوظ</button></div>)}</div>{content}</div>{result?.kind==="success"&&view?<nav className="np-r323-bottom-nav np-r324-bottom-nav" data-testid="r324-persistent-navigation" aria-label="التنقل الرئيسي">{([["home","الرئيسية"],["habits","العادات"],["plus","إضافة سريعة"],["tasks","المهام"],["grid","الأدوات"]] as const).map(([target,label])=><button key={target} type="button" data-testid={`r324-nav-${target}`} aria-label={target==="grid"?"فتح مركز التحكم":undefined} aria-current={(quickAddOpen?"plus":controlOpen?(navSection):navSection==="habits"||navSection==="tasks"?navSection:"home")===target?"page":undefined} className={target==="plus"?"np-r323-nav-add":undefined} disabled={busy||logoutPending} onClick={()=>navigateR324(target)}><NoorR323Icon name={target==="habits"?"leaf":target==="tasks"?"check":target}/><span>{label}</span></button>)}</nav>:null}{quickAddOpen&&view?<QuickAddDialog busy={busy} appearance={appearance} categories={workspace?.categories??COMMON_CATEGORIES}
+  `}</style><section className={`np-page${!result ? " np-page-entry-loading" : result.kind === "success" ? " np-page-entry-ready" : ""}`} data-appearance={appearance} data-design-version="r62-visible-layout-fix" dir="rtl"><div className="np-wrap"><div className="np-save-notices" data-save-feedback="classic-achievement-r95">{orderError?<p className="np-failed-save" role="alert">{orderError}</p>:null}{failedChanges.map((change,i)=><div className="np-failed-save" role="alert" key={fastFailureKey(change)}><span>لم يتأكد الحفظ: {change.title}. تم إرجاع العرض لآخر بيانات مؤكدة.</span>{change.command.type==='edit-activity-note'?<p>{change.command.note??'حذف الملاحظة'}</p>:null}{change.command.type==='record-activity'||change.command.type==='record-historical-progress'||change.command.type==='record-task-session-progress'?<p>{change.command.note}{change.command.amount>0?` · الكمية: ${change.command.amount}`:''}</p>:null}<button type="button" disabled={fastChanges.some(c=>fastFailureKey(c)===fastFailureKey(change))} onClick={()=>{setFailedChanges(previous=>previous.filter((_,j)=>j!==i));void Promise.resolve(change.command.type==="adjust-beverage-serving"?queueChange(change):fastCommand(change.command,change.beforeSave)).then(ok=>{if(!ok)setFailedChanges(previous=>previous.some(item=>fastFailureKey(item)===fastFailureKey(change))?previous:[...previous,change]);});}}>إعادة المحاولة</button><button type="button" onClick={()=>setFailedChanges(previous=>previous.filter((_,j)=>j!==i))}>تجاهل التغيير غير المحفوظ</button></div>)}</div>{content}</div>{result?.kind==="success"&&view?<nav className="np-r323-bottom-nav np-r324-bottom-nav" data-testid="r324-persistent-navigation" aria-label="التنقل الرئيسي">{([["home","الرئيسية"],["habits","العادات"],["plus","إضافة سريعة"],["tasks","المهام"],["grid","الأدوات"]] as const).map(([target,label])=><button key={target} type="button" data-testid={`r324-nav-${target}`} aria-label={target==="grid"?"فتح مركز التحكم":undefined} aria-current={(quickAddOpen?"plus":controlOpen?(navSection):navSection==="habits"||navSection==="tasks"?navSection:"home")===target?"page":undefined} className={target==="plus"?"np-r323-nav-add":undefined} disabled={busy||logoutPending} onClick={()=>navigateR324(target)}><NoorR323Icon name={target==="habits"?"leaf":target==="tasks"?"check":target}/><span>{label}</span></button>)}</nav>:null}{quickAddOpen&&view?<QuickAddDialog busy={busy} appearance={appearance} categories={workspace?.categories??COMMON_CATEGORIES}
   date={civilLocalDate(nowMs,view.timeZone)} onSave={fastCommand} onClose={()=>setQuickAddOpen(false)}/>:null}</section></>;
 }
 
