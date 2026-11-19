@@ -35,7 +35,7 @@ test("R329 scope-specific headers and circular logos have accessible names",()=>
 });
 test("R329 authenticated selector uses shared sign-in branding and two distinct circular logos",()=>{
  const h=renderToStaticMarkup(createElement(PlatformShell,{state:{kind:"no-application-selected"},authenticationState:"authenticated",navigate:()=>{}}));
- for(const name of ["login-calligraphy.webp","noor-personal-picker.png","noor-work-picker.png"])assert.ok(h.includes("/brand/"+name),name);
+ for(const name of ["login-calligraphy.webp","noor-personal-picker-r369.png","noor-work-picker-r369.png"])assert.ok(h.includes("/brand/"+name),name);
 });
 test("R329 Work initial loading uses Work header",()=>{
  const h=renderToStaticMarkup(createElement(NoorWorkTeacherViewR264));assert.match(h,/src="\/brand\/work-header\.webp"/u);
@@ -43,6 +43,6 @@ test("R329 Work initial loading uses Work header",()=>{
 test("R329 Platform install icons are valid and standalone identity is unchanged",()=>{
  const m=JSON.parse(readFileSync(new URL("noor.webmanifest",pub),"utf8"));assert.equal(m.id,"/");assert.equal(m.scope,"/");assert.equal(m.start_url,"/");assert.equal(m.display,"standalone");
  for(const size of [192,512]){const x=m.icons.find((i:{sizes:string;purpose:string})=>i.sizes===size+"x"+size&&i.purpose==="any");assert.ok(x);const b=readFileSync(new URL(x.src.slice(1),pub));assert.equal(b.readUInt32BE(16),size);assert.equal(b.readUInt32BE(20),size);assert.equal(b[25],6,"PNG uses RGBA for transparent corners");}
- const b=readFileSync(new URL("brand/icon-r352-180.png",pub));assert.equal(b.readUInt32BE(16),180);assert.equal(b.readUInt32BE(20),180);
- assert.match(readFileSync(new URL("../index.html",import.meta.url),"utf8"),/href="\/brand\/icon-r352-180\.png"/u);
+ const b=readFileSync(new URL("brand/icon-r369-180.png",pub));assert.equal(b.readUInt32BE(16),180);assert.equal(b.readUInt32BE(20),180);
+ assert.match(readFileSync(new URL("../index.html",import.meta.url),"utf8"),/href="\/brand\/icon-r369-180\.png"/u);
 });
