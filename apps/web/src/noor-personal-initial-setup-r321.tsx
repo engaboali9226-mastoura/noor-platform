@@ -61,7 +61,7 @@ export function NoorPersonalInitialSetupR321({onConfigured}:{
  return <section className="np-r321-onboarding" data-testid="noor-first-login-r321" dir="rtl">
   <NoorBrandHeader scope="personal" />
   <header className="np-r321-header">
-   <img src="/brand/personal-logo.webp" alt="شعار منصة نور" width="68" height="68"/>
+   <img src="/brand/noor-personal-picker-r369.png" alt="شعار منصة نور" width="68" height="68"/>
    <div><small lang="en">WELCOME TO <NoorWordmark /></small><h1>أهلًا بك في نور</h1>
     <p>الإعداد مطلوب: يلزم استكمال إعداد الموقع وسياسة الصلاة قبل بدء يوم نور. خطوتان بسيطتان فقط.</p></div>
   </header>
