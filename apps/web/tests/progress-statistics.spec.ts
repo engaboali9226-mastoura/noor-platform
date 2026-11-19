@@ -53,5 +53,12 @@ test('weekly elapsed-prayer total reaches 35 and ignores duplicates or prayers b
  const days=Array.from({length:7},(_,i)=>({date:`2026-11-${14+i}`,future:false}));
  const history=days.map(({date})=>({date,records:[...keys,'fajr'].map(key=>({key}))}));
  assert.deepEqual(weeklyCardSummaryR332([],days,history).prayers,{recorded:35,due:35});
- assert.deepEqual(weeklyCardSummaryR332([],days,history,[],[],{date:'2026-11-20',keys:keys.slice(0,2)}).prayers,{recorded:32,due:32});
+ assert.deepEqual(weeklyCardSummaryR332([],days,history,[],[],{date:'2026-11-20',keys:keys.slice(0,2)}).prayers,{recorded:32,due:35});
+});
+
+test("weekly prayer display counts all five for today without marking later prayers recorded",()=>{
+ const keys=["fajr","dhuhr","asr","maghrib","isha"];
+ const days=Array.from({length:7},(_,i)=>({date:`2026-11-${14+i}`,future:i===6}));
+ const history=days.slice(0,6).map(day=>({date:day.date,records:keys.map(key=>({key}))}));
+ assert.deepEqual(weeklyCardSummaryR332([],days,history,[],[],{date:"2026-11-19",keys:["fajr"]}).prayers,{recorded:26,due:30});
 });

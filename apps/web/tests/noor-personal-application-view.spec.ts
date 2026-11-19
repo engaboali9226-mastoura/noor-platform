@@ -647,3 +647,64 @@ test("settings opens a compact Noor identity overview before individual settings
     t.dom.window.close();
   }
 });
+
+for(const first of [true,false])test(`beverage ${first?"first cup":"existing cup"} appears before the response and retries the same entry`,async()=>{
+  const t=installDom(),root=createRoot(t.container);
+  const requests:{body:{type:string;requestId?:string;executionId?:string;entryId?:string;beverageTime?:string};resolve:(response:Response)=>void}[]=[];
+  const day=today.today.personalDay.boundary.localDate;
+  let savedWorkspace=workspace.workspace;
+  const persistedExecution={id:"tea-execution",definitionId:"tea-definition",title:"شاي",kind:"Habit" as const,status:"Pending"};
+  const tea={...workspace.workspace.definitions[1]!,id:persistedExecution.definitionId,revisionId:"tea-revision",title:"شاي",
+    effectiveFromDate:day,schedule:{kind:"Daily"},beveragePlan:{targetServings:2,kind:"tea",sleepTime:"00:00"},activityLog:[]};
+  const json=(value:unknown)=>Response.json(value);
+  const fetcher=globalThis.fetch;
+  const todayWithTea=()=>({...today.today,habits:[...today.today.habits,{...persistedExecution,definitionId:savedWorkspace.definitions.at(-1)!.id}]});
+  globalThis.fetch=async(url,options)=>{
+    if(String(url).includes("/command"))return new Promise(resolve=>requests.push({body:JSON.parse(String(options?.body)),resolve}));
+    if(String(url).includes("/api/noor/personal/today"))return json({...todayWithTea(),workspace:savedWorkspace});
+    return fetcher(url,options);
+  };
+  if(!first)savedWorkspace={...savedWorkspace,definitions:[...savedWorkspace.definitions,tea]};
+  const click=async(text:string)=>act(async()=>{
+    const button=[...t.container.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.textContent?.trim()===text);
+    assert.ok(button,text);
+    assert.equal(button.disabled,false,text);
+    button.click();
+  });
+  const total=()=>t.container.querySelector(".np-caffeine-tally-r295>div:nth-child(2) strong")?.textContent;
+  try{
+    await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:first?today:{...today,today:todayWithTea()},initialWorkspace:{...workspace,workspace:savedWorkspace}})));
+    const achievement=t.container.querySelector('[data-testid="today-completion-rate"]')?.textContent;
+    await click("+ شاي");
+    await click("ضحى · 09:00");
+    await click("تأكيد تسجيل الكوب");
+    assert.equal(total(),"1");
+    assert.equal(t.container.querySelector('[data-testid="r295-time-picker"]'),null);
+    assert.equal(t.container.querySelector('[data-testid="today-completion-rate"]')?.textContent,achievement);
+    assert.equal(requests.length,1);
+    if(first){
+      const creation=requests[0]!;
+      assert.equal(creation.body.type,"create-definition");
+      savedWorkspace={...savedWorkspace,definitions:[...savedWorkspace.definitions,{...tea,id:`definition-request:user:${creation.body.requestId}`}]};
+      await act(async()=>creation.resolve(json({workspace:savedWorkspace,executions:[...today.today.tasks,...today.today.habits],personalDayId:"day",materializationRequired:true})));
+      assert.equal(total(),"1","materializing the first counter must preserve the pending cup");
+    }
+    const cup=requests.at(-1)!;
+    assert.equal(cup.body.type,"adjust-beverage-serving");
+    assert.equal(cup.body.executionId,persistedExecution.id);
+    assert.equal(cup.body.beverageTime,"09:00");
+    await act(async()=>cup.resolve(new Response(null,{status:503})));
+    assert.equal(total(),"0");
+    await click("إعادة المحاولة");
+    const retry=requests.at(-1)!;
+    assert.deepEqual(retry.body,cup.body);
+    assert.equal(total(),"1");
+    const log=[{id:retry.body.entryId!,executionId:persistedExecution.id,at:`${day}T06:00:00Z`,localDate:day,amount:1,note:"",endReason:null,beverageTime:"09:00"}];
+    savedWorkspace={...savedWorkspace,definitions:savedWorkspace.definitions.map(d=>d.id===savedWorkspace.definitions.at(-1)?.id?{...d,activityLog:log}:d)};
+    await act(async()=>retry.resolve(json({workspace:savedWorkspace,executions:[...today.today.tasks,...todayWithTea().habits],personalDayId:"day",materializationRequired:false})));
+    assert.equal(total(),"1","server acknowledgement must not count the same entry twice");
+    assert.equal(t.container.querySelector(".np-save-notices")?.textContent,"");
+  }finally{
+    await act(async()=>root.unmount());t.restore();t.dom.window.close();
+  }
+});
