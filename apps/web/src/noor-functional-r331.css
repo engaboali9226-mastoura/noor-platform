@@ -151,8 +151,7 @@
 .np-r332-week .np-week-heading h3 svg{width:21px;height:21px;color:var(--ng-accent)}
 .np-page .np-r332-week .np-week-navigation{display:flex;align-items:center;justify-content:center;width:auto!important;gap:5px;direction:rtl}
 .np-page .np-r332-week .np-week-navigation button{display:grid;place-items:center;border:1px solid var(--ng-line);border-radius:50%;width:32px;min-width:32px;height:32px;min-height:32px;background:var(--ng-card);color:var(--ng-ink);box-shadow:0 2px 7px #456c8a1b}
-.np-page .np-r332-week .np-week-navigation button:first-child{order:3}.np-page .np-r332-week .np-week-navigation button:last-child{order:1}
-.np-r332-week-range{display:grid;order:2;gap:2px;text-align:center;line-height:1.25;white-space:nowrap}
+.np-r332-week-range{display:grid;gap:2px;text-align:center;line-height:1.25;white-space:nowrap}
 .np-r332-week-range b{font-size:12px;color:var(--ng-ink)}.np-r332-week-range small{font-size:10px;color:var(--ng-muted)}
 .np-r332-week-overview{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(94px,1fr);gap:clamp(12px,3vw,36px);align-items:center}
 .np-r332-week-counts{display:grid;gap:6px;min-width:0}
