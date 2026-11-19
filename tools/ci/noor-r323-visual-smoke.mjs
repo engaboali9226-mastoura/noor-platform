@@ -47,8 +47,9 @@ try{
  'const appointments=[{id:"visual-appointment-1",kind:"Task",title:"اجتماع فريق العمل",state:"Active",category:"العمل",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-07",time:"15:00"}},{id:"visual-appointment-2",kind:"Task",title:"موعد طبي",state:"Active",category:"الصحة",schedule:{kind:"Daily"},effectiveFromDate:"2026-11-06",importance:"Important",countdownPlan:{kind:"appointment",date:"2026-11-08",time:"10:00"}}];',
  'const previewReading=fixtureParams.get("task-preview")==="1";',
  'const previewDefinitions=workspace.workspace.definitions.map(d=>previewReading&&d.id==="d1"?{...d,title:"أمة الدوبامين",revisionId:"preview-reading",measurement:{target:310,unit:"صفحة"},sessionPlan:{distribution:"custom",sessions:[{id:"preview-session",title:"الجلسة الحالية",objective:"قراءة 16 صفحة",target:16,rangeStart:129,rangeEnd:144,scheduledDate:"2026-11-06",order:1,note:"",revision:0,createdAt:"2026-11-06T00:00:00Z",updatedAt:"2026-11-06T00:00:00Z",completedAt:null}]},activityLog:[{id:"preview-progress",executionId:"e1",localDate:"2026-11-06",at:"2026-11-06T12:00:00Z",amount:128,note:"",endReason:null}]}:d);',
+ 'const finance={userId:"user",currency:"SAR",accounts:[],debts:[],entries:[],requests:[],people:Array.from({length:14},(_,i)=>({id:"person-"+i,name:"شخص "+(i+1),note:""}))};',
  'const adminService={signIn:async()=>setupFactor?"enroll-needed" as const:"challenge-needed" as const,enroll:async()=>({factorId:"fixture",qrSvg:`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>`,secret:"TEST-KEY"}),verify:async(code:string)=>code==="123456"?"aal2" as const:"invalid" as const,accessToken:async()=>null,signOut:async()=>{}};',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,tasks:today.today.tasks.map(task=>previewReading?{...task,title:"أمة الدوبامين"}:task),habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,profile:{...workspace.workspace.profile,displayName:"عبد الرحمن محمد",updatedAt:"2026-11-06T00:00:00Z"},definitions:[...previewDefinitions,...appointments]}} as any}/>);'
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,tasks:today.today.tasks.map(task=>previewReading?{...task,title:"أمة الدوبامين"}:task),habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,finance,profile:{...workspace.workspace.profile,displayName:"عبد الرحمن محمد",updatedAt:"2026-11-06T00:00:00Z"},definitions:[...previewDefinitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
  const worker=await readFile(resolve(web,"public/noor-service-worker.js"),"utf8");
@@ -576,6 +577,23 @@ try{
   await find(".np-cc-shell");
   await expect(visible("[data-testid=r324-persistent-navigation]"),"Navigation stays in control center");
   await snap(screen.name+"-tools");
+  if(screen.mobile){
+    await run(`Array.from(document.querySelectorAll('.np-cc-nav-item,.np-r356-overview-card')).find(b=>b.textContent.includes('المالية')).click()`);
+    await find('[data-testid=finance-center-r68]');
+    await run(`Array.from(document.querySelectorAll('.nf-tabs button')).find(b=>b.textContent==='الدائن والمدين').click()`);
+    await run(`Array.from(document.querySelectorAll('.nf-debt-register nav button')).find(b=>b.textContent==='عرض الجدول بصفحة كاملة').click()`);
+    await expect(`(() => {
+      const scroll=document.querySelector('.nf-debt-scroll'),head=scroll.querySelector('thead th');
+      if(scroll.scrollWidth<=scroll.clientWidth||scroll.scrollHeight<=scroll.clientHeight||getComputedStyle(head).position!=='sticky')return false;
+      scroll.scrollTop=180;
+      const rect=scroll.getBoundingClientRect(),row=scroll.querySelector('[data-testid=finance-person-row]');
+      return Math.abs(head.getBoundingClientRect().top-rect.top)<=2&&getComputedStyle(row).display==='table-row'&&
+        scroll.querySelectorAll('[data-testid=finance-person-row]').length===14&&head.querySelector('select')?.options.length===15&&
+        document.documentElement.scrollWidth<=innerWidth+2;
+    })()`,'Finance ledger scrolls horizontally with one row per person and sticky filters');
+    await snap(screen.name+"-finance-ledger");
+  }
+
   await run("document.querySelector('[data-testid=r324-nav-home]').click()");
   await find(".np-r340-settings");
   await run("document.querySelector('.np-r340-settings').click()");
