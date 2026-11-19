@@ -357,35 +357,29 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
 /* The weather illustration extends underneath the glass surfaces on Personal home. */
 .np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid) {
   isolation: isolate;
-  --noor-photo-height: min(100dvh, calc(100vw * 554 / 768));
   --noor-board-glass: linear-gradient(145deg, var(--ng-bg), color-mix(in srgb, var(--ng-bg) 78%, var(--ng-top)));
   --noor-tile-glass: linear-gradient(145deg, color-mix(in srgb, var(--ng-bg) 88%, white), var(--ng-bg));
   background: var(--noor-sky-fill, linear-gradient(154deg, #b5ccdf, #e0e9ef 52%, #9ebad0)) !important;
 }
 .np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid)::before {
-  opacity: 1 !important;
-  mask-image: none;
-  background-image: var(--noor-sky-tint, none), var(--noor-sky-image, none);
-  background-repeat: no-repeat;
-  background-position: center top;
-  background-size: cover, contain;
-}
-.np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid)::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
+  opacity: 1 !important;
   pointer-events: none;
-  background: var(--noor-sky-tint, none), var(--noor-sky-image, none) center / cover no-repeat;
-  filter: blur(22px);
-  transform: scale(1.08);
+  -webkit-mask-image: none;
+  mask-image: none;
+  background-image: var(--noor-sky-tint, none), var(--noor-sky-image, none);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
 }
 .np-page:has(.np-r339-header[data-daylight="day"]) {
   --noor-sky-image: url("/brand/personal-day-r340.webp");
   --noor-sky-tint: linear-gradient(180deg, #a8cef234 8%, #b5c9e446 36%, #c7d7e9d9 95%);
 }
 .np-page[data-appearance]:has(.np-r339-header[data-daylight="night"]):has(.np-r323-home-grid) {
-  --noor-photo-height: min(100dvh, calc(100vw * 1131 / 1391));
   --noor-sky-image: url("/brand/personal-night-r340.webp");
   --noor-sky-tint: linear-gradient(165deg, #11294cad, #24456b45 55%, #182b4abf);
   --noor-sky-fill: linear-gradient(165deg, #132846, #233e60 55%, #485f7b);
@@ -658,15 +652,7 @@ body:has(.np-r332-schedule-overlay[data-open=true]){overflow:hidden}
   .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-location {
     margin-top: 0 !important;
   }
-  .np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid)::before {
-    --noor-photo-fade: linear-gradient(#000 calc(var(--noor-photo-height) - 64px), transparent var(--noor-photo-height));
-    -webkit-mask-image: var(--noor-photo-fade);
-    mask-image: var(--noor-photo-fade);
-  }
-  .np-page[data-appearance]:has(.np-r339-header):has(.np-r323-home-grid)::after {
-    filter: blur(8px);
-    transform: scale(1.03);
-  }
+
 }
 .np-page .np-compact-task {
   color: inherit;
@@ -1299,4 +1285,17 @@ button[aria-label^="إغلاق"] {
   font-size:clamp(13px,2.6vw,22px)!important;font-variant-numeric:tabular-nums;
   padding:4px 7px;border-radius:8px;border:1px solid var(--ng-line);
   background:var(--ng-card);box-shadow:0 2px 8px #1b507340;line-height:1.2;
+}
+
+.np-page .np-r331-tile .np-r370-friday-entry.np-r322-friday-preview:not(.np-r322-modal *){
+  display:block!important;margin:3px auto 0!important;padding:3px 6px!important;
+  color:var(--ng-accent);font-size:clamp(9px,1.9vw,12px)!important;font-weight:750;
+}
+.np-r370-friday-entry .np-r323-friday-current>span{display:none}
+.np-friday-story-header,.np-friday-story-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.np-friday-story-header{justify-content:space-between}
+.np-friday-story-actions button{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 10px;min-height:36px;
+  border:1px solid var(--ng-line);border-radius:10px;background:var(--ng-card);color:var(--ng-ink);
+  font:inherit;cursor:pointer;
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { resolveNoorUpcomingFriday } from "../src/noor-upcoming-friday-r370.js";
 import {IntlTimeZoneAdapter} from "@noor/personal";
 import {resolveNoorPreviousNightR283} from "../src/noor-previous-night-projection-r283.js";
 
@@ -62,4 +63,24 @@ test("R283 rejects contradictory previous Isha and no guessed 24-hour Maghrib",a
  assert.equal(await resolveNoorPreviousNightR283({...fixture.input,
   prayerCalculator:{async calculate(){throw Error("unavailable");}},
  }),null);
+});
+
+test("Thursday prefetches Friday from the account's effective prayer calculator without guessing on failure",async()=>{
+ const calculations:string[]=[];
+ const sunrise="2026-11-06T03:30:00Z",dhuhr="2026-11-06T08:40:00Z";
+ const input={
+  userId:"user-1",now:"2026-11-05T08:00:00Z",
+  today:{personalDay:{boundary:{localDate:"2026-11-05",timeZone:"Asia/Riyadh"}},
+    islamicContext:{prayerTimes:{nextFajr:"2026-11-06T02:51:00Z"}}} as never,
+  timeZone:new IntlTimeZoneAdapter(),
+  locations:{async getEffective(){return {userId:"user-1",timeZone:"Asia/Riyadh",name:"الرياض"} as never;}},
+  prayerPolicies:{async getEffective(){return {userId:"user-1"} as never;}},
+  calculator:{async calculate(_l:unknown,_p:unknown,localDate:string){
+    calculations.push(localDate);return {localDate,sunrise,dhuhr} as never;
+  }},
+ };
+ assert.deepEqual(await resolveNoorUpcomingFriday(input),{localDate:"2026-11-06",sunrise,dhuhr,city:"الرياض"});
+ assert.deepEqual(calculations,["2026-11-06"]);
+ assert.equal(await resolveNoorUpcomingFriday({...input,now:"2026-11-05T21:00:00Z"}),null);
+ assert.equal(await resolveNoorUpcomingFriday({...input,calculator:{async calculate(){throw Error("fixture");}}}),null);
 });

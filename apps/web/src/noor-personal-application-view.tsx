@@ -25,6 +25,7 @@ import { parseNoorReminderPlanR314, type NoorReminderPlanR314 } from "../../noor
 import { NoorAccountSettingsR312 } from "./noor-account-settings-r312.js";
 import { parseStatisticRows, summarizeProgress, statisticPeriods, statisticDays, statisticEligible, statisticInsights, statisticCalendar, shiftStatisticMonth, wholeWeekAchievement, yesterdayAchievement, validStatisticDate, shiftStatisticDate, weeklyCardSummaryR332, parsePrayerStatisticDaysR334, weightedStatisticRowsR334, statisticEarnedShareR285, type PrayerStatisticDayR334, type WeightedStatisticRow, type StatisticRow } from "./progress-statistics.js";
 import { loadCurrentWeather,type CurrentWeatherR338 } from "./public-weather-client.js";
+import type { UpcomingFridaySchedule } from "./noor-friday-story-r370.js";
 import { NoorR232TimeWindows } from "./noor-time-windows-r232.js";
 import {fridayVirtueR284} from "./noor-friday-virtues-r284.js";
 import { r232LocalWeekday, r283CarriedNightWindow, r232DailyWindows, r283FridayHoursAtDhuhr, type R283PrecedingNight } from "./noor-islamic-daylight-r232.js";
@@ -201,6 +202,7 @@ type TodayViewModel = Readonly<{
   }>[];
   nextFajrAt: string | null;
   precedingNight?:R283PrecedingNight|null;
+  upcomingFriday:UpcomingFridaySchedule|null;
   location: HeaderLocation | null;
   locationRevisionId:string|null;
   tasks: readonly ExecutionItem[];
@@ -2326,6 +2328,14 @@ function buildViewModel(today: unknown): TodayViewModel | null {
       maghribAt:precedingMaghrib,ishaAt:precedingIsha,fajrAt:precedingFajr,
     })!==null
     ? {maghribAt:precedingMaghrib,ishaAt:precedingIsha,fajrAt:precedingFajr}:null;
+  const fridayRaw=isRecord(today.upcomingFriday)?today.upcomingFriday:null;
+  const upcomingFriday:UpcomingFridaySchedule|null=fridayRaw&&validStatisticDate(fridayRaw.localDate)&&
+    typeof fridayRaw.sunrise==="string"&&typeof fridayRaw.dhuhr==="string"&&
+    typeof fridayRaw.city==="string"&&fridayRaw.city.trim()&&
+    Number.isFinite(Date.parse(fridayRaw.sunrise))&&Number.isFinite(Date.parse(fridayRaw.dhuhr))&&
+    civilLocalDate(Date.parse(fridayRaw.sunrise),timeZone)===fridayRaw.localDate&&
+    civilLocalDate(Date.parse(fridayRaw.dhuhr),timeZone)===fridayRaw.localDate
+    ?{localDate:fridayRaw.localDate,sunrise:fridayRaw.sunrise,dhuhr:fridayRaw.dhuhr,city:fridayRaw.city.trim()}:null;
   let nextPrayer: TodayViewModel["nextPrayer"] = null;
   if (isRecord(today.nextPrayer)) {
     const name = stringValue(today.nextPrayer.name);
@@ -2340,6 +2350,7 @@ function buildViewModel(today: unknown): TodayViewModel | null {
     prayerTimes,
     nextFajrAt,
     precedingNight,
+    upcomingFriday,
     location,
     locationRevisionId,
     tasks,
@@ -3770,7 +3781,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       <div className="np-r331-board-grid">
       <button type="button" className="np-r331-tile np-r331-small np-r369-prayer-tile" onClick={openPrayerTimes}><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small className="np-r369-prayer-countdown" dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></button>
       <div className="np-r331-tile np-r331-tile-next"><UpcomingCountdownR301 definitions={workspace?.definitions??[]} nowMs={nowMs} timeZone={view.timeZone} onAdd={onAddCountdown} personalDefault religiousEvents={religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night})}/></div>
-      <div className="np-r331-tile np-r331-tile-time"><NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight}
+      <div className="np-r331-tile np-r331-tile-time"><NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight} upcomingFriday={view.upcomingFriday} fridayCity={location.city}
       selectedFridayHour={workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null}
       fridaySelectionBusy={busy}
       onSelectFridayHour={(hour)=>{

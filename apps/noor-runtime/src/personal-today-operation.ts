@@ -1,3 +1,4 @@
+import { resolveNoorUpcomingFriday } from "./noor-upcoming-friday-r370.js";
 import { resolveNoorPreviousNightR283 } from "./noor-previous-night-projection-r283.js";
 import {
   AuthorizationDeniedError,
@@ -337,17 +338,25 @@ implements PersonalTodayExecutor {
           timeZone:activeLocation.timeZone,
         } : null;
 
-      const precedingNight=sameRevision?await resolveNoorPreviousNightR283({
-        userId:userId.toString(),now:this.dependencies.ensureToday.clock.now(),
-        today,locations:scope.locations,prayerPolicies:scope.prayerPolicies,
-        timeZone:this.dependencies.ensureToday.timeZone,
-        prayerCalculator:this.dependencies.ensureToday.prayerCalculator,
-      }):null;
+      const [precedingNight, upcomingFriday] = sameRevision ? await Promise.all([
+        resolveNoorPreviousNightR283({
+          userId:userId.toString(),now:this.dependencies.ensureToday.clock.now(),
+          today,locations:scope.locations,prayerPolicies:scope.prayerPolicies,
+          timeZone:this.dependencies.ensureToday.timeZone,
+          prayerCalculator:this.dependencies.ensureToday.prayerCalculator,
+        }),
+        resolveNoorUpcomingFriday({
+          userId:userId.toString(),now:this.dependencies.ensureToday.clock.now(),
+          today,locations:scope.locations,prayerPolicies:scope.prayerPolicies,
+          timeZone:this.dependencies.ensureToday.timeZone,
+          calculator:this.dependencies.ensureToday.prayerCalculator,
+        }),
+      ]) : [null,null];
       return Object.freeze({
         status:
           200 as const,
         body:
-          {...today,location,...(precedingNight?{precedingNight}:{}),workspace:buildPersonalWorkspace(userId.toString(),scope.snapshot,this.dependencies.ensureToday.clock.now())},
+          {...today,location,...(precedingNight?{precedingNight}:{}),...(upcomingFriday?{upcomingFriday}:{}),workspace:buildPersonalWorkspace(userId.toString(),scope.snapshot,this.dependencies.ensureToday.clock.now())},
       });
     } catch (error) {
       if (

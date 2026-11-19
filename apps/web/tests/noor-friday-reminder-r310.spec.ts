@@ -82,3 +82,15 @@ test("R310: daily Duha, day and night panels stay visible throughout the week",(
   assert.equal(dom.querySelectorAll(".np-r248-reference-strip > .tone-night").length,1);
  }
 });
+
+test("Friday image uses verified Friday hours and unlocks at the exact Thursday Asr",()=>{
+ const upcomingFriday={localDate:"2026-11-06",sunrise:"2026-11-06T03:30:00Z",dhuhr:"2026-11-06T08:40:00Z",city:"الرياض"};
+ const story=(when:string,schedule=upcomingFriday)=>renderToStaticMarkup(createElement(NoorR232TimeWindows,{
+  nowMs:at(when),timeZone:zone,prayers:thursdayPrayers,preferences:NOOR_R232_DEFAULT,upcomingFriday:schedule,
+ }));
+ assert.doesNotMatch(story("2026-11-05T12:14:59Z"),/نسخ الصورة/);
+ assert.match(story("2026-11-05T12:15:00Z"),/نسخ الصورة/);
+ assert.match(story("2026-11-05T12:15:00Z"),/حفظ الصورة/);
+ assert.doesNotMatch(story("2026-11-05T12:15:00Z",{...upcomingFriday,localDate:"2026-10-30"}),/نسخ الصورة/);
+ assert.doesNotMatch(story("2026-11-05T12:15:00Z",{...upcomingFriday,sunrise:"2026-11-05T03:30:00Z"}),/نسخ الصورة/);
+});
