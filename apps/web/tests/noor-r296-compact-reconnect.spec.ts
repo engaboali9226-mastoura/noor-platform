@@ -60,7 +60,7 @@ test("R296: recover an asleep server from the current page without navigation or
  assert.doesNotMatch(src,/data-testid="r296-reconnect-button"/); // R331: remove header refresh only; retry remains available on failure
  assert.match(src,/data-testid="r296-reconnect-state"/);
  assert.match(src,/invalidateNoorPersonalReads\(\);\s*try\{const ok=await refresh\(\)/);
- assert.match(src,/setResult\(previous=>today.kind==="unavailable" && previous\?\.kind==="success" && !strict\?previous:today\)/);
+ assert.match(src,/setResult\(previous=>today.kind==="unavailable" && previous\?\.kind==="success"\?previous:today\)/);
  assert.match(src,/if\(commandInFlight.current\|\|fastQueue.current.length\|\|orderQueue.current.length/);
  assert.match(src,/connectionWarning \? <p className="np-reconnect-notice-r296"/);
  assert.match(src,/title="نور غير متصل" onRetry=/);
