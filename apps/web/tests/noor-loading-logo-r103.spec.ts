@@ -43,7 +43,7 @@ test("R103 logo is visibly larger and exactly aligned in both loading states", (
 
 test("R103 shared Noor image, accessibility and welcome copy are intact", () => {
   for (const html of [route, personal]) {
-    assert.match(html, /src="\/brand\/icon-r352-192\.png"/u);
+    assert.match(html, /src="\/brand\/icon-r369-192\.png"/u);
     assert.match(html, /alt="شعار نور"/u);
     assert.match(html, /مرحبا بك في منصة نور/u);
     assert.match(html, /جارٍ تجهيز مساحتك الشخصية/u);
