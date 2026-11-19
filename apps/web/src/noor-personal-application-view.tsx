@@ -3532,7 +3532,14 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     const key=prayerHabitMappings?.[row.definitionId]??prayerHabitCandidateR334(row.title);
     return key?[{date:row.date,key}]:[];
   });
-  const weeklyCard=weeklyCardSummaryR332(weekRows,visibleWeek,workspace?.prayerHistoryR331??[],prayerDays,completedPrayerHabits);
+  const todayPrayerSchedule=R331_PRAYERS.map(key=>({
+    key,at:Date.parse(providedView.prayerTimes.find(prayer=>prayer.key===key)?.at??""),
+  }));
+  const trustedPrayerKeys=prayerDays.find(day=>day.date===achievementDate)?.score.rows.map(row=>row.key);
+  const elapsedPrayerKeys=todayPrayerSchedule.every(prayer=>Number.isFinite(prayer.at)&&civilLocalDate(prayer.at,view.timeZone)===achievementDate)
+    ?todayPrayerSchedule.filter(prayer=>prayer.at<=nowMs).map(prayer=>prayer.key):trustedPrayerKeys;
+  const weeklyCard=weeklyCardSummaryR332(weekRows,visibleWeek,workspace?.prayerHistoryR331??[],prayerDays,completedPrayerHabits,
+    elapsedPrayerKeys?{date:achievementDate,keys:elapsedPrayerKeys}:undefined);
   const weekFormats=useMemo(()=>({date:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{day:"numeric",month:"numeric",timeZone:"UTC"}),weekday:new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn",{weekday:"long",timeZone:"UTC"})}),[]);
   const weekDateLabel=(date:string,weekday=false)=>(weekday?weekFormats.weekday:weekFormats.date).format(new Date(date+"T00:00:00Z"));
 
@@ -3761,7 +3768,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     <section className="np-r331-board np-card" data-testid="r331-announcement-board" data-board-date={achievementDate} aria-label="لوحة نور لليوم الحالي">
       <header><NoorR323Icon name="grid"/><h2>لوحة نور</h2>{historyDate?<small>اليوم الحالي · {weekDateLabel(achievementDate)}</small>:null}</header>
       <div className="np-r331-board-grid">
-      <button type="button" className="np-r331-tile np-r331-small" onClick={openPrayerTimes}><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></button>
+      <button type="button" className="np-r331-tile np-r331-small np-r369-prayer-tile" onClick={openPrayerTimes}><NoorR323Icon name="mosque"/><span>الصلاة القادمة</span><strong>{nextPrayer?eventTimes.find(p=>p.key===nextPrayer.key)?.label??"الفجر":"—"}</strong><small className="np-r369-prayer-countdown" dir="ltr">{nextPrayer?formatCountdown(countdown):"—"}</small></button>
       <div className="np-r331-tile np-r331-tile-next"><UpcomingCountdownR301 definitions={workspace?.definitions??[]} nowMs={nowMs} timeZone={view.timeZone} onAdd={onAddCountdown} personalDefault religiousEvents={religiousEventsR324({prayers:view.prayerTimes,nowMs,timeZone:view.timeZone,nextFajrAt:view.nextFajrAt,precedingNight:view.precedingNight,preferences:timePreferences,night})}/></div>
       <div className="np-r331-tile np-r331-tile-time"><NoorR232TimeWindows prayers={view.prayerTimes} nowMs={nowMs} timeZone={view.timeZone} preferences={timePreferences} onPreferencesChange={onTimePreferencesChange} nextFajrAt={view.nextFajrAt??undefined} precedingNight={view.precedingNight}
       selectedFridayHour={workspace?.fridayMosqueVisits.find(v=>v.localDate===civilLocalDate(nowMs,view.timeZone))?.hour??null}
@@ -3917,9 +3924,9 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     <section className="np-card np-week-achievement np-r332-week" aria-label="إنجاز أيام الأسبوع كاملًا" data-week-navigation="r109" data-testid="r332-weekly-card">
           <div className="np-week-heading"><h3><NoorR323Icon name="bars"/>إنجاز الأسبوع</h3>
             <div className="np-week-navigation" aria-label="التنقل بين الأسابيع">
-              <button type="button" data-testid="week-history-previous" disabled={!canGoOlder} aria-label="الأسبوع السابق" onClick={()=>setWeekShift(value=>value-1)}>‹</button>
+              <button type="button" data-testid="week-history-previous" disabled={!canGoOlder} aria-label="الأسبوع السابق" onClick={()=>setWeekShift(value=>value-1)}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
               {visibleWeek[0]&&visibleWeek[6]?<span className="np-r332-week-range"><b>الأسبوع {weeklyCard.weekNumber}</b><small>{weekDateLabel(visibleWeek[0].date)} — {weekDateLabel(visibleWeek[6].date)}</small></span>:null}
-              <button type="button" data-testid="week-history-next" disabled={weekShift===0} aria-label="الأسبوع التالي" onClick={()=>setWeekShift(value=>Math.min(0,value+1))}>›</button>
+              <button type="button" data-testid="week-history-next" disabled={weekShift===0} aria-label="الأسبوع التالي" onClick={()=>setWeekShift(value=>Math.min(0,value+1))}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m10 3-5 5 5 5"/></svg></button>
             </div>
           </div>
           <div className="np-r332-week-overview">
@@ -3938,7 +3945,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             <button type="button" className={`np-week-day${day.current?" is-today":""}${day.future?" is-future":""}${historyDate===day.date?" is-selected":""}`} data-week-selected={historyDate===day.date?"true":"false"} data-week-date={day.date} data-week-state={day.future?"future":day.current?"today":"past"} data-week-rate={day.rate??undefined}
               disabled={day.future} aria-label={`${weekDateLabel(day.date,true)} ${day.date}: ${day.future?"لم يأت بعد":day.rate===null?"لا استحقاقات مسجلة":`إنجاز ${day.rate}%`}. ${day.current?"عرض اليوم الحالي":"عرض عادات ومهام هذا اليوم في نفس الصفحة"}`}
               onClick={()=>{if(day.current){setHistoryDate(null);}else if(!day.future){setHistoryDate(day.date);}/* Preserve scroll position when changing personal days. */}}>
-              <div className="np-week-value"><span className="np-r331-week-bar" aria-hidden="true" style={{height:`${day.future?0:day.rate??0}%`}}/></div><span className="np-week-name">{weekDateLabel(day.date,true)}</span><strong className="np-r332-day-rate">{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
+              <span className="np-week-value np-week-day-circle" aria-hidden="true"><svg viewBox="0 0 40 40"><circle className="np-week-circle-track" cx="20" cy="20" r="17"/>{!day.future&&day.rate?<circle className="np-week-circle-fill" cx="20" cy="20" r="17" pathLength="100" strokeDasharray={`${day.rate} 100`} transform="rotate(-90 20 20)"/>:null}</svg><strong className="np-r332-day-rate">{day.future?null:day.rate===null?"—":`${arabicNumber(day.rate)}%`}</strong></span><span className="np-week-name">{weekDateLabel(day.date,true)}</span><time dateTime={day.date}>{weekDateLabel(day.date)}</time><small>{day.current?"اليوم":""}</small>
             </button>
           </div>)}</div>
         </section>
@@ -4007,7 +4014,7 @@ function PersonalEntryLoading(): ReactElement {
 }
 
 function StatePage({ title, copy, onRetry, retrying=false }: { title: string; copy: string; onRetry?:()=>void; retrying?:boolean }): ReactElement {
-  return <section className="np-card np-date-card"><NoorBrandHeader scope="personal" /><img alt="شعار نور" className="np-state-logo" src="/brand/personal-logo.webp" /><h1 className="np-control-title">{title}</h1><p className="np-control-subtitle">{copy}</p>{onRetry?<button type="button" className="np-cc-button np-reconnect-state-r296" data-testid="r296-reconnect-state" disabled={retrying} onClick={onRetry}>{retrying?"جارٍ الاتصال…":"إعادة الاتصال ↻"}</button>:null}</section>;
+  return <section className="np-card np-date-card"><NoorBrandHeader scope="personal" /><img alt="شعار نور" className="np-state-logo" src={NOOR_BRAND.personal.pickerLogo} /><h1 className="np-control-title">{title}</h1><p className="np-control-subtitle">{copy}</p>{onRetry?<button type="button" className="np-cc-button np-reconnect-state-r296" data-testid="r296-reconnect-state" disabled={retrying} onClick={onRetry}>{retrying?"جارٍ الاتصال…":"إعادة الاتصال ↻"}</button>:null}</section>;
 }
 
 export function NoorPersonalApplicationView({ initialResult, initialWorkspace }: NoorPersonalApplicationViewProps): ReactElement {

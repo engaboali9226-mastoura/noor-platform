@@ -448,8 +448,21 @@ try{
   await expect(visible("[data-testid=today-summary]"),"Existing progress retained");
   await expect("(()=>{const c=document.querySelector('.np-caffeine-card-r299'),d=document.querySelector('[data-testid=today-summary]'),w=document.querySelector('[data-testid=r332-weekly-card]'),s=c?.querySelector('.np-caffeine-signal-r295');if(!c||!d||!w||!s)return false;const a=c.getBoundingClientRect(),b=d.getBoundingClientRect(),k=w.getBoundingClientRect(),p=s.getBoundingClientRect();return b.bottom<=k.top+1&&k.bottom<=a.top+1&&a.height<=200&&p.height<=34})()","Daily, weekly and drinks cards ordered without overlap");
   await expect("getComputedStyle(document.querySelector('.np-r323-header .np-brand'),'::before').display==='none'","No duplicated header art");
-  await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),ring=c?.querySelector('.np-r332-week-ring'),rows=c?.querySelectorAll('.np-r332-week-counts>div'),bars=c?.querySelectorAll('.np-week-day .np-week-value');if(!c||!ring||rows?.length!==3||bars?.length!==7)return false;const b=c.getBoundingClientRect(),r=ring.getBoundingClientRect();return r.width>=80&&r.height>=80&&b.left>=-1&&b.right<=innerWidth+1&&Array.from(bars).every(x=>Math.abs(x.getBoundingClientRect().top-bars[0].getBoundingClientRect().top)<2)})()","R332 approved weekly ring, three count rows and seven aligned daily bars fit screen");
+  await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),ring=c?.querySelector('.np-r332-week-ring'),rows=c?.querySelectorAll('.np-r332-week-counts>div'),bars=c?.querySelectorAll('.np-week-day .np-week-value');if(!c||!ring||rows?.length!==3||bars?.length!==7)return false;const b=c.getBoundingClientRect(),r=ring.getBoundingClientRect();return r.width>=80&&r.height>=80&&b.left>=-1&&b.right<=innerWidth+1&&Array.from(bars).every(x=>{const d=x.getBoundingClientRect();return x.classList.contains('np-week-day-circle')&&Math.abs(d.width-d.height)<2&&d.height<=35&&Math.abs(d.top-bars[0].getBoundingClientRect().top)<2})})()","R332 approved weekly ring, three count rows and seven aligned daily circles fit screen");
   await expect("(()=>{const c=document.querySelector('[data-testid=r332-weekly-card]'),days=c?.querySelector('.np-week-days'),cells=days?.querySelectorAll('[data-week-date]');return !!days&&cells?.length===7&&getComputedStyle(days).direction==='rtl'&&cells[0].getBoundingClientRect().left>cells[6].getBoundingClientRect().left&&!c.querySelector('.np-r332-week-note')})()","R333 Saturday starts at the right and the weekly footer is absent");
+  await expect(`(() => {
+    const older=document.querySelector('[data-testid=week-history-previous]');
+    const newer=document.querySelector('[data-testid=week-history-next]');
+    return older.getBoundingClientRect().left>newer.getBoundingClientRect().left
+      &&older.querySelector('path').getAttribute('d').startsWith('m6')
+      &&newer.querySelector('path').getAttribute('d').startsWith('m10');
+  })()`,"Weekly arrows point towards their own navigation directions");
+  if(screen.mobile)await expect(`(() => {
+    const r=sel=>document.querySelector(sel).getBoundingClientRect();
+    const g=r('.np-r323-greeting'),c=r('.np-header-clock'),s=r('.np-header-status'),date=r('.np-header-calendar');
+    return g.left>=c.right-1&&s.right<=c.left+1&&Math.max(g.bottom,c.bottom,s.bottom)<=date.top+1;
+  })()`,"Mobile masthead keeps greeting right, clock centered, weather left and dates below");
+  await expect("getComputedStyle(document.querySelector('.np-r369-prayer-countdown')).boxShadow!=='none'","Next-prayer countdown has its own visible shadow");
   await expect("document.documentElement.scrollWidth<=innerWidth+2","Dashboard horizontal overflow");
   await expect("document.querySelector('.np-r323-home-grid').querySelectorAll('.np-r323-rhythm').length===1","No duplicate timer");
   await expect("document.querySelectorAll(\'[data-testid=r331-announcement-board] .np-r331-board-grid>.np-r331-tile\').length===6&&document.querySelectorAll(\'#noor-r331-prayers [data-prayer-key]\').length===5&&!document.querySelector(\'[data-testid=r296-reconnect-button]\')","Six functional tiles, five prayers, no refresh icon");
@@ -704,7 +717,7 @@ try{
          fill.backgroundSize.split(",").at(-1).trim()==="cover" &&
          backdrop.backgroundSize.split(",").at(-1).trim()==="contain" &&
          backdrop.backgroundRepeat.split(",").every(repeat=>repeat.trim()==="no-repeat") &&
-         parseFloat(getComputedStyle(clock).fontSize)>=32 &&
+         parseFloat(getComputedStyle(clock).fontSize)>=(innerWidth<=560?20:32) &&
          parseFloat(getComputedStyle(date).fontSize)<=16 &&
          divider.getBoundingClientRect().width>=2 &&
          clock.getBoundingClientRect().bottom<=date.getBoundingClientRect().top;

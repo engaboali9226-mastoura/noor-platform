@@ -271,6 +271,9 @@ const STYLES=`
 export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trustedJournal:providedTrustedJournal}:{personalDate?:string|undefined;storage?:NotesPersistenceR173;trustedJournal?:NoorTrustedJournalPortR194}):ReactElement {
  // NOOR_R202_PRIVACY_FAIL_CLOSED: a production build never enters unscoped IndexedDB mode.
  const r202Production=(((import.meta as ImportMeta & {env?:{PROD?:boolean}}).env?.PROD)===true);
+ const [readAttempt,setReadAttempt]=useState(0);
+ const [journalChecking,setJournalChecking]=useState(true);
+ const formId="noor-space-journal-form";
  const [serverTrustedJournal,setServerTrustedJournal]=useState<NoorTrustedJournalPortR194|undefined>(undefined);
  useEffect(()=>{
    // R221: any missing API, invalid session or failed readiness leaves R202 blocked.
@@ -279,7 +282,7 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
       typeof window === 'undefined' || typeof window.fetch !== 'function')return;
    let active=true;
    const cancel=new AbortController();
-   setServerTrustedJournal(undefined);
+   setServerTrustedJournal(undefined);setJournalChecking(true);
    void window.fetch('/api/noor/personal/journal/status',{
      method:'POST',mode:'same-origin',credentials:'same-origin',cache:'no-store',
      redirect:'error',headers:{'Content-Type':'application/json'},body:'{}',
@@ -288,9 +291,9 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
      if(response.status!==204 || response.headers.get('cache-control')!=='no-store')return;
      const {createNoorTrustedJournalDialogAdapterR194}=await import('./noor-trusted-journal-dialog-adapter-r194.js');
      if(active)setServerTrustedJournal(createNoorTrustedJournalDialogAdapterR194((path,init)=>window.fetch(path,init)));
-   }).catch(()=>{/* The private journal must stay blocked on any failure. */});
+   }).catch(()=>{/* Keep the private journal blocked on failure. */}).finally(()=>{if(active)setJournalChecking(false);});
    return()=>{active=false;cancel.abort();};
- },[r202Production,providedTrustedJournal,personalDate]);
+ },[r202Production,providedTrustedJournal,personalDate,readAttempt]);
  const trustedJournal=providedTrustedJournal??serverTrustedJournal;
  const closed=resolveNoorJournalReleaseModeR202({production:r202Production,trustedJournalPresent:trustedJournal!==undefined})==='blocked';
  const [active,setActive]=useState<SpaceKindR171|null>(null);
@@ -320,7 +323,7 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
    setReady(false);setStorageError(true);
   });
   return()=>{activeRead=false;};
- },[storage,trustedJournal,closed]);
+ },[storage,trustedJournal,closed,readAttempt]);
  useEffect(()=>{
   if(!active)return;
   const old=document.body.style.overflow;
@@ -346,7 +349,7 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
   document.addEventListener("noor:open-legacy-feelings",openArchive);
   return()=>document.removeEventListener("noor:open-legacy-feelings",openArchive);
  },[]);
- const close=()=>{setActive(null);setError('');setConfirmDelete(null);};
+ const close=()=>{if(saving)return;setActive(null);setError('');setConfirmDelete(null);};
  const save=async(event:FormEvent<HTMLFormElement>)=>{
   event.preventDefault();if(!active||saving)return;
   if(r202Production&&active==='feelings'){setError('لإضافة تدوينة مشاعر جديدة استخدم مساحتي؛ هذا القسم محفوظ للرجوع إلى السجل السابق.');return;}
@@ -364,9 +367,10 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
    if (trustedJournal) {
     // No bulk migration: create only the newly submitted note in the trusted API.
     await trustedJournal.create(note);
-    const currentRemote=await trustedJournal.read();
-    setNotes(currentRemote);
-    setStatus('تم حفظ التدوينة في خدمة المختبر الآمنة.');
+    setStatus('تم حفظ التدوينة.');
+    // A failed refresh after a confirmed write must not offer a duplicate save.
+    try{setNotes(await trustedJournal.read());}
+    catch{setStorageError(true);}
    } else {
     await storage.write(updated);
     setNotes(updated);
@@ -437,12 +441,17 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
  </div>
  {active&&createPortal(<div className="nr171-overlay" data-noor-theme={typeof document === "undefined" ? "noor" : (document.querySelector(".np-page")?.getAttribute("data-appearance") ?? "noor")} style={visualViewport?{top:visualViewport.top,height:visualViewport.height,bottom:'auto'}:undefined} onMouseDown={event=>{if(event.target===event.currentTarget)close();}}>
   <div className="nr171-modal" role="dialog" aria-modal="true" aria-label={`مساحة ${TITLES_R171[active]}`} tabIndex={-1} ref={modal} onKeyDown={keyDown}>
-   <header className="nr171-head"><div><h2>{active==='feelings'?(legacyFeelingsArchiveR285?'💗 مشاعري · السجل السابق':'💗 مشاعري'):active==='ideas'?'💡 أفكاري':'🛠️ تطوير نور'}</h2><p>{active==='feelings'?(legacyFeelingsArchiveR285?'تدوين المشاعر الجديد أصبح في «مساحتي». سجلك السابق محفوظ هنا للمراجعة دون نقل أو حذف.':'تدوين شعور محدد وما سبقه وما ساعدني؛ منفصل عن تفريغ المشاعر في مساحتي'):active==='ideas'?'أدوّن الفكرة قبل أن تضيع':'ملاحظاتي لتحسين المنصة'}</p></div><button type="button" onClick={close} aria-label="إغلاق مساحة التدوين">إغلاق ×</button></header>
-   <nav className="nr171-tabs" role="tablist" aria-label="إضافة أو سجل المساحة">{!legacyFeelingsArchiveR285?<button role="tab" type="button" aria-selected={view==='add'} onClick={()=>{setView('add');setError('');}}>إضافة جديدة</button>:null}<button role="tab" type="button" aria-selected={view==='history'} onClick={()=>{setView('history');setError('');}}>السجل السابق ({current.length})</button></nav>
-   <div className="nr171-scroll"><p className="nr171-info" role="note">{closed?'التدوينات الخاصة غير متاحة مؤقتًا في هذا الإصدار حتى اعتماد التخزين المشفّر المرتبط بحسابك. لن تُحفظ بياناتك في هذا المتصفح، ولم تُحذف أي تدوينات محلية قديمة.':trustedJournal?'مختبر الخدمة الموثوقة: تُرسل هذه التدوينة الجديدة فقط إلى خادم المختبر المصرّح به، ولا يتم نقل سجلات IndexedDB القديمة أو حذفها. لا تستخدم بيانات خاصة حتى اعتماد الإصدار النهائي.':'مختبر محلي فقط: السجل يُحفظ في IndexedDB داخل هذا المتصفح دون تشفير أو مزامنة، وقد يراه مستخدم الجهاز. استخدم بيانات تجريبية، ولا تكتب معلومات شديدة الخصوصية. لا يُرسل شيء إلى المطوّر تلقائيًا.'}</p>
-   {storageError&&<p className="nr171-error" role="alert">{trustedJournal?'خدمة المختبر الموثوقة غير متاحة. لا يوجد رجوع تلقائي إلى IndexedDB.':'التخزين المحلي غير متاح. لن تُحفظ التدوينات حتى تفعّله.'}</p>}{error&&<p className="nr171-error" role="alert">{error}</p>}{status&&<p className="nr171-status" role="status">{status}</p>}
-   {view==='add'?(closed?<p className="nr171-info" role="status">الحفظ متوقف لحماية خصوصيتك. لن يتم حفظ أي تدوينة محليًا أو إرسالها للخادم في هذا الوضع.</p>:legacyFeelingsArchiveR285?<p className="nr171-info" role="status">التدوين الجديد عبر «مساحتي» فقط؛ السجل القديم لم يُحذف.</p>:<form className="nr171-form" dir="rtl" key={active} onSubmit={save} data-testid={`r171-form-${active}`}>
-    <label>عنوان مختصر *<input name="title" maxLength={100} placeholder={active==='feelings'?'مثلًا: شعور بالراحة بعد الصلاة':active==='ideas'?'عنوان الفكرة':'ملخص المقترح'} required/></label>
+   <header className="nr171-head"><h2>{TITLES_R171[active]}{legacyFeelingsArchiveR285?' · السجل السابق':''}</h2><button type="button" disabled={saving} onClick={close} aria-label="إغلاق مساحة التدوين">×</button></header>
+   <nav className="nr171-tabs" role="tablist" aria-label="إضافة أو سجل المساحة">{!legacyFeelingsArchiveR285?<button role="tab" type="button" aria-selected={view==='add'} onClick={()=>{setView('add');setError('');}}>تدوين جديد</button>:null}<button role="tab" type="button" aria-selected={view==='history'} onClick={()=>{setView('history');setError('');}}>السجل ({current.length})</button></nav>
+   <div className="nr171-scroll">
+   {r202Production&&closed&&journalChecking||!closed&&!ready&&!storageError?<p className="nr171-info" role="status">جارٍ فتح التخزين الآمن…</p>:null}
+   {((closed&&!journalChecking)||storageError)&&<div className="nr171-error"><p role="alert">تعذّر فتح السجل الآمن. أعد المحاولة.</p><button type="button" onClick={()=>setReadAttempt(value=>value+1)}>إعادة المحاولة</button></div>}
+   {!r202Production&&!trustedJournal?<p className="nr171-info" role="note">التدوينات التجريبية تُحفظ في هذا المتصفح دون تشفير أو مزامنة، ولا تُرسل إلى المطوّر.</p>:null}
+   {!r202Production&&trustedJournal?<p className="nr171-info" role="note">التدوين التجريبي يُحفظ في خادم المختبر المصرّح به.</p>:null}
+   {legacyFeelingsArchiveR285?<p className="nr171-info" role="note">هذا سجل تأملي سابق. اكتب تدوينات المشاعر الجديدة من «مساحتي».</p>:null}
+   {error&&<p className="nr171-error" role="alert">{error}</p>}{status&&<p className="nr171-status" role="status">{status}</p>}
+   {view==='add'?(closed?null:legacyFeelingsArchiveR285?<p className="nr171-info" role="status">التدوين الجديد عبر «مساحتي» فقط؛ السجل القديم لم يُحذف.</p>:<form id={formId} className="nr171-form" dir="rtl" key={active} onSubmit={save} data-testid={`r171-form-${active}`}>
+    <label>{active==='ideas'?'عنوان الفكرة':'العنوان'} *<input name="title" maxLength={100} placeholder={active==='feelings'?'مثلًا: شعور بالراحة بعد الصلاة':active==='ideas'?'عنوان الفكرة':'ملخص المقترح'} required/></label>
     {active==='feelings'?<><label>كيف كان شعورك؟<select name="mood" defaultValue="3" required><option value="1">1 — صعب جدًا</option><option value="2">2 — غير مريح</option><option value="3">3 — متوازن</option><option value="4">4 — جيد</option><option value="5">5 — جيد جدًا</option></select></label><label>ما الحدث الذي سبق ذلك الشعور؟<textarea dir="rtl" name="precedingEvent" maxLength={500} rows={2} placeholder="صف ما حدث قبل أن تشعر بهذه الطريقة"/></label><label>ماذا شعرت أو فكّرت؟ *<textarea dir="rtl" name="body" maxLength={4000} rows={4} required placeholder="مساحة حرة لكتابة ما بداخلك"/></label><label>ما الذي ساعدني أو قد يساعدني؟ (اختياري)<textarea dir="rtl" name="helpful" maxLength={500} rows={2}/></label></>:<>
      {active==='developer'&&<label>نوع المقترح<select name="category" defaultValue="improvement"><option value="improvement">اقتراح تطوير</option><option value="issue">ملاحظة / مشكلة</option><option value="efficiency">زيادة الفاعلية</option><option value="ux">تحسين تجربة الاستخدام</option><option value="other">أخرى</option></select></label>}
      <label>{active==='ideas'?'تفاصيل الفكرة *':'وصف المشكلة أو المقترح *'}<textarea dir="rtl" name="body" maxLength={4000} rows={5} required placeholder={active==='ideas'?'ما الفكرة؟ وما أول خطوة لتجربتها؟':'ما الذي يحتاج التحسين؟ وكيف تتصور الحل؟'}/></label>
@@ -454,11 +463,17 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
       <small>يفتح GitHub النموذج جاهزًا. يجب تسجيل الدخول والضغط على Create issue هناك لتأكيد النشر. بيانات المشاعر والأفكار لا تُنقل.</small>
      </section>}
     </>}
-    <div className="nr171-action"><button className="nr171-primary" type="submit" disabled={!ready||saving}>{saving?"جارٍ الحفظ…":trustedJournal?"حفظ في الخدمة الموثوقة":"حفظ التدوينة في المختبر"}</button><button type="button" onClick={()=>{setView('history');setError('');}}>عرض السابق</button></div>
+
    </form>):<div><div className="nr171-action" style={{marginBottom:12}}>{!legacyFeelingsArchiveR285?<button type="button" onClick={()=>{setView('add');setConfirmDelete(null);}}>+ إضافة جديدة</button>:<p role="note">للتدوين الجديد استخدم «مساحتي» في الشريط العلوي.</p>}{active==='developer'&&<button type="button" onClick={exportDeveloper}>تصدير المقترحات الموافق عليها للمطوّر</button>}</div>
     {closed?<p className="nr171-info" role="status">السجل غير متاح حتى اعتماد خدمة التدوينات الآمنة؛ البيانات المحلية السابقة لم تُمس.</p>:current.length===0?<p className="nr171-empty">لا توجد تدوينات سابقة في هذه المساحة.</p>:current.map(n=><article className="nr171-record" key={n.id} data-testid={`r171-record-${n.kind}`}><h3>{n.title}</h3><time dateTime={n.createdAt}>{n.localDate}</time>{active==='feelings'&&<p className="nr171-record-meta">تقييم الشعور: {n.mood}/5</p>}{n.precedingEvent&&<p><strong>الحدث الذي سبق الشعور:</strong> {n.precedingEvent}</p>}<p>{n.body}</p>{n.helpful&&<p><strong>ما يساعدني:</strong> {n.helpful}</p>}{active==='developer'&&<p className="nr171-record-meta">{n.shareApproved?'موافقة محلية على التصدير — لم يُرسل':'خاص — غير مخصص للمشاركة'}</p>}<div className="nr171-action"><button type="button" onClick={()=>{void remove(n.id);}} disabled={saving}>{confirmDelete===n.id?'تأكيد الحذف':'حذف التدوينة'}</button>{confirmDelete===n.id&&<button type="button" onClick={()=>setConfirmDelete(null)}>إلغاء الحذف</button>}{active==='developer'&&<button type="button" onClick={()=>{if(window.confirm('تنبيه: سيتم نشر عنوان ووصف هذه الملاحظة للعامة في GitHub بعد تأكيدك النهائي هناك. هل تريد المتابعة؟'))openDeveloperGitHub(n as NoteR171 & {kind:'developer'},true);}}>فتح في GitHub (عام)</button>}</div></article>)}
    </div>}
    </div>
+   {view==='add'&&!closed&&!legacyFeelingsArchiveR285?<footer className="noor-journal-footer">
+     <button type="button" onClick={close} disabled={saving}>إلغاء</button>
+     <button className="nr171-primary" type="submit" form={formId} disabled={!ready||saving}>
+       {saving?'جارٍ الحفظ…':active==='ideas'?'حفظ الفكرة':active==='developer'?'حفظ المقترح':'حفظ التدوينة'}
+     </button>
+   </footer>:null}
   </div>
  </div>,document.body)}
  </>;

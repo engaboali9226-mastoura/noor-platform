@@ -51,12 +51,13 @@ export function yesterdayAchievement(rows:readonly WeightedStatisticRow[],curren
 
 /** R332: use only the displayed civil week. Prayer recording is not a score or a
  * claim of actual attendance; keep it separate from weighted task/habit credit. */
-export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:readonly {date:string;future:boolean}[],history:readonly {date:string;records:readonly {key:string}[]}[],prayerDays:readonly PrayerStatisticDayR334[]=[],completedPrayerHabits:readonly {date:string;key:PrayerKeyR331}[]=[]){
+export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:readonly {date:string;future:boolean}[],history:readonly {date:string;records:readonly {key:string}[]}[],prayerDays:readonly PrayerStatisticDayR334[]=[],completedPrayerHabits:readonly {date:string;key:PrayerKeyR331}[]=[],todayDue?:Readonly<{date:string;keys:readonly PrayerKeyR331[]}>){
  const elapsed=days.filter(d=>!d.future),dates=new Set(elapsed.map(d=>d.date)),keys=new Set(["fajr","dhuhr","asr","maghrib","isha"]);
  const weekRows=rows.filter(r=>dates.has(r.date));
  const recordedByDate=new Map<string,Set<string>>();
+ const dueToday=new Set<string>(todayDue?.keys.filter(key=>keys.has(key))??[]);
  const record=(date:string,key:string)=>{
-  if(!dates.has(date)||!keys.has(key))return;
+  if(!dates.has(date)||!keys.has(key)||(date===todayDue?.date&&!dueToday.has(key)))return;
   const recorded=recordedByDate.get(date)??new Set<string>();
   recorded.add(key);
   recordedByDate.set(date,recorded);
@@ -64,9 +65,8 @@ export function weeklyCardSummaryR332(rows:readonly WeightedStatisticRow[],days:
  for(const day of history)for(const prayer of day.records)record(day.date,prayer.key);
  for(const prayer of completedPrayerHabits)record(prayer.date,prayer.key);
  for(const day of prayerDays)for(const prayer of day.score.rows)if(prayer.recorded)record(day.date,prayer.key);
- // The weekly target includes all five prayers for every day reached,
- // including today, even when a score projection has only some prayers.
- const due=dates.size*keys.size;
+ // Past days each have five prayers. A verified current-day schedule adds only elapsed prayers.
+ const due=dates.size*keys.size-(todayDue&&dates.has(todayDue.date)?keys.size-dueToday.size:0);
  const recorded=[...recordedByDate.values()].reduce((sum,prayers)=>sum+prayers.size,0);
  const first=days[0]?.date;
  // Keep the existing Saturday–Friday date boundaries. Week label uses the ISO

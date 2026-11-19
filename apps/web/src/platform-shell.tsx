@@ -671,7 +671,7 @@ export function PlatformShell(
               }
             `}</style>
             <div className="noor-entry-content">
-              <img className={state.application.appKey==="noor-personal"?"noor-entry-logo noor-personal-entry-mark":"noor-entry-logo"} src={state.application.appKey==="noor-personal"?NOOR_BRAND.personal.entryLogo:state.application.appKey==="noor-work"?NOOR_BRAND.work.logo:NOOR_BRAND.platform.logo} alt="شعار نور" decoding="sync" loading="eager" />
+              <img className={state.application.appKey==="noor-personal"?"noor-entry-logo noor-personal-entry-mark":"noor-entry-logo"} src={state.application.appKey==="noor-personal"?NOOR_BRAND.personal.entryLogo:state.application.appKey==="noor-work"?NOOR_BRAND.work.pickerLogo:NOOR_BRAND.personal.entryLogo} alt="شعار نور" decoding="sync" loading="eager" />
               <h1 className="noor-entry-title">مرحبا بك في منصة نور</h1>
               <p className="noor-entry-status" role="status" aria-live="polite">
                 جارٍ تجهيز مساحتك الشخصية…

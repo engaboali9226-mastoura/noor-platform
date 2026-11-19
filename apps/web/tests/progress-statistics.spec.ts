@@ -47,3 +47,11 @@ test('weekly prayer target reaches 25 on day five even with a partial projection
  const projected=[{date:today,score:{rows:[{key:'fajr' as const,weight:20,credit:1,recorded:true}],excludedHabitDefinitionIds:[],weight:20,earnedWeight:20}}];
  assert.deepEqual(weeklyCardSummaryR332([],days,history,projected).prayers,{recorded:21,due:25});
 });
+
+test('weekly elapsed-prayer total reaches 35 and ignores duplicates or prayers before their time',()=>{
+ const keys=['fajr','dhuhr','asr','maghrib','isha'] as const;
+ const days=Array.from({length:7},(_,i)=>({date:`2026-11-${14+i}`,future:false}));
+ const history=days.map(({date})=>({date,records:[...keys,'fajr'].map(key=>({key}))}));
+ assert.deepEqual(weeklyCardSummaryR332([],days,history).prayers,{recorded:35,due:35});
+ assert.deepEqual(weeklyCardSummaryR332([],days,history,[],[],{date:'2026-11-20',keys:keys.slice(0,2)}).prayers,{recorded:32,due:32});
+});

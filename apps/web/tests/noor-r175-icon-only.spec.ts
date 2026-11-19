@@ -10,7 +10,7 @@ test('R175 icons-only contains no visible shortcut title or comment; accessible 
  assert.doesNotMatch(component,/className="nr171-label"/u);
  assert.match(component,/grid-template-columns:repeat\(3,(?:46|48)px\)/u);
  assert.match(component,/aria-label=\{`فتح \$\{TITLES_R171\[kind\]\}/u);
- assert.match(component,/<h2>\{active==='feelings'/u);
+ assert.match(component,/<h2>\{TITLES_R171\[active\]/u);
  assert.doesNotMatch(component,/\b(?:localStorage|sessionStorage|document\.cookie|sessionId|SUPABASE_SERVICE_ROLE_KEY)\b/u);
 });
 test('R175 real DOM shows three icon-only buttons and opens the feelings dialog',async()=>{

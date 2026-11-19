@@ -307,7 +307,7 @@ export function NoorAdminMfaPageR315({
 
  return <main className="na315-page" dir="rtl" id="main-content"><section className="na315-panel" ref={panel} data-step={step}>
   <NoorBrandHeader scope="platform" />
-  <header><img src="/brand/platform-logo.webp" alt="شعار نور" width="64" height="64"/><div><p lang="en" dir="ltr"><NoorWordmark /> SECURITY</p><h1>تأمين حساب الإدارة</h1><span>إعداد المصادقة الثنائية TOTP</span></div></header>
+  <header><img src="/brand/icon-r369-192.png" alt="شعار نور" width="64" height="64"/><div><p lang="en" dir="ltr"><NoorWordmark /> SECURITY</p><h1>تأمين حساب الإدارة</h1><span>إعداد المصادقة الثنائية TOTP</span></div></header>
   <p className="na315-caution">هذه الصفحة مخصصة لحساب المدير المستقل. لا تظهر إدارة الحسابات إلا بعد المصادقة الثنائية واعتماد دور المدير على الخادم.</p>
   <div className="na315-stage na315-complete" role="status"><h2>اكتملت المصادقة الثنائية ✓</h2><p>تم تأكيد المصادقة الثنائية. لا يسمح الخادم بالإدارة إلا لحساب المدير المعتمد.</p><NoorAdminAccountsPanelR316 token={()=>service.current?.accessToken()??Promise.resolve(null)}/></div>
   {notice?<p role="status" className="na315-notice">{notice}</p>:null}

@@ -151,8 +151,7 @@
 .np-r332-week .np-week-heading h3 svg{width:21px;height:21px;color:var(--ng-accent)}
 .np-page .np-r332-week .np-week-navigation{display:flex;align-items:center;justify-content:center;width:auto!important;gap:5px;direction:rtl}
 .np-page .np-r332-week .np-week-navigation button{display:grid;place-items:center;border:1px solid var(--ng-line);border-radius:50%;width:32px;min-width:32px;height:32px;min-height:32px;background:var(--ng-card);color:var(--ng-ink);box-shadow:0 2px 7px #456c8a1b}
-.np-page .np-r332-week .np-week-navigation button:first-child{order:3}.np-page .np-r332-week .np-week-navigation button:last-child{order:1}
-.np-r332-week-range{display:grid;order:2;gap:2px;text-align:center;line-height:1.25;white-space:nowrap}
+.np-r332-week-range{display:grid;gap:2px;text-align:center;line-height:1.25;white-space:nowrap}
 .np-r332-week-range b{font-size:12px;color:var(--ng-ink)}.np-r332-week-range small{font-size:10px;color:var(--ng-muted)}
 .np-r332-week-overview{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(94px,1fr);gap:clamp(12px,3vw,36px);align-items:center}
 .np-r332-week-counts{display:grid;gap:6px;min-width:0}
@@ -1206,4 +1205,98 @@ button[aria-label^="إغلاق"] {
 @media(max-width:580px){
   .np-r324-quick-sheet{padding:12px}
   .np-quick-form-body .np-form{grid-template-columns:minmax(0,1fr)}
+}
+
+.np-page .np-r332-week .np-week-navigation button svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.np-page .np-r332-week .np-week-navigation button:disabled{opacity:.46}
+.np-page .np-r332-week button.np-week-day{
+  grid-template-rows:auto auto auto auto!important;gap:2px;padding:3px 0;
+}
+.np-page .np-r332-week button.np-week-day .np-week-value.np-week-day-circle{
+  display:grid;place-items:center;width:min(100%,34px)!important;height:auto!important;
+  min-height:0!important;aspect-ratio:1;overflow:visible;border-radius:50%!important;background:none!important;
+}
+.np-week-day-circle svg{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke-width:3}
+.np-week-circle-track{stroke:var(--ng-muted);opacity:.24}
+.np-week-circle-fill{stroke:#359b83;stroke-linecap:round}
+.np-page .np-r332-week .np-week-day-circle .np-r332-day-rate{position:relative;line-height:1;min-height:0;font-size:clamp(8px,2.55vw,11px)}
+.np-page .np-r332-week .is-future .np-week-day-circle{opacity:.45}
+.np-profile-photo{grid-row:1;display:grid;justify-items:center;gap:7px}
+.np-profile-photo .np-avatar-select{display:grid;justify-items:center;gap:9px;background:transparent;border:0;color:var(--ng-ink);box-shadow:none}
+.np-avatar-select img,.np-avatar-select svg{box-sizing:border-box;width:96px;height:96px;border-radius:50%;border:2px solid var(--ng-line);object-fit:cover;background:var(--ng-sub)}
+.np-avatar-select svg{padding:24px;fill:none;stroke:var(--ng-accent);stroke-width:1.8;stroke-linecap:round}
+.np-profile-crop-backdrop{position:fixed;inset:var(--noor-dialog-top,0) 0 auto;height:var(--noor-dialog-height,100dvh);z-index:125000;display:grid;place-items:center;padding:12px;box-sizing:border-box;background:#152c4899;backdrop-filter:blur(6px)}
+.np-profile-crop-dialog{box-sizing:border-box;display:flex;flex-direction:column;gap:12px;width:min(100%,390px);max-height:100%;padding:15px;overflow:hidden;border:1px solid var(--ng-line);border-radius:24px;background:var(--ng-bg);color:var(--ng-ink);box-shadow:var(--ng-shadow);font:16px system-ui,Tahoma,sans-serif}
+.np-profile-crop-dialog header,.np-profile-crop-dialog footer{display:flex;align-items:center;justify-content:space-between;gap:9px}
+.np-profile-crop-dialog h2{font-size:20px;margin:0}
+.np-profile-crop-dialog button{min-height:44px;border:1px solid var(--ng-line);border-radius:11px;padding:7px 13px;background:var(--ng-card);color:var(--ng-ink);font:inherit}
+.np-profile-crop-dialog header button{border-radius:50%;width:44px;padding:0;font-size:23px}
+.np-profile-crop-body{min-height:0;overflow:auto;display:grid;justify-items:center;gap:12px}
+.np-profile-crop-body label{display:grid;gap:5px;width:min(100%,245px);margin:auto;text-align:center}
+.np-profile-crop-preview{width:min(100%,192px);aspect-ratio:1;overflow:hidden;border:2px solid var(--ng-line);border-radius:50%;touch-action:none;cursor:grab}
+.np-profile-crop-preview img{display:block;width:100%;height:100%;object-fit:cover;pointer-events:none}
+.np-profile-crop-dialog footer{flex-direction:row-reverse}
+.np-profile-crop-dialog footer button:last-child{flex:1;background:var(--ng-accent);color:#fff}
+
+.nr171-overlay .nr171-modal,.nw165-backdrop .nw165-dialog[data-journal-layout=true]{
+  width:min(100%,520px);height:auto;max-height:100%;font-family:system-ui,Tahoma,sans-serif;
+}
+.nr171-overlay .nr171-head,.nw165-dialog[data-journal-layout=true] .nw165-head{gap:10px;padding:11px 15px}
+.nr171-overlay .nr171-head h2,.nw165-dialog[data-journal-layout=true] .nw165-head h2{font-size:20px}
+.nr171-overlay .nr171-head button,.nw165-dialog[data-journal-layout=true] .nw165-head button{
+  display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;font-size:24px;line-height:1;
+}
+.nr171-modal .nr171-scroll,.nw165-dialog[data-journal-layout=true] .nw165-body{
+  min-height:0;padding:12px 15px;overscroll-behavior:contain;
+}
+.noor-journal-footer{display:flex;flex:0 0 auto;flex-direction:row-reverse;gap:9px;padding:10px 15px;border-top:1px solid var(--ng-line);background:var(--ng-bg)}
+.noor-journal-footer button:last-child{flex:1}
+.nr171-modal .noor-journal-footer .nr171-primary,.nw165-dialog .noor-journal-footer .nw165-primary,
+.nr171-modal .nr171-tabs button[aria-selected=true],.nw165-dialog .nw165-journal-tabs button[aria-pressed=true]{
+  background:var(--ng-accent);border-color:var(--ng-accent);color:white;
+}
+.nr171-modal .noor-journal-footer button:disabled,.nw165-dialog .noor-journal-footer button:disabled{opacity:.55}
+.nr171-modal .nr171-form :is(input:not([type=checkbox]),textarea,select),
+.nw165-dialog[data-journal-layout=true] .nw165-stack :is(input,textarea){
+  color:var(--ng-ink);background:var(--ng-card);border:1px solid var(--ng-muted);font-size:16px;
+}
+.nw165-dialog[data-journal-layout=true] .nw165-journal-content>.nw165-card{min-width:0;box-shadow:none;background:none;border:0;padding:0}
+.nw165-journal-content>[hidden]{display:none!important}
+.nw165-journal-tabs{display:flex;gap:8px;margin-block:9px}
+.nw165-journal-tabs button{flex:1}
+
+/* Match the desktop reading order below the masthead at narrower widths. */
+@media(max-width:560px){
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]{
+   grid-template-areas:"brand brand brand" "greeting clock status" "calendar calendar calendar"!important;
+   grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+   align-items:center;gap:6px!important;
+ }
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-r323-greeting{
+   justify-self:start!important;font-size:clamp(13px,4.1vw,21px)!important;white-space:normal;
+ }
+ .np-r339-header .np-r323-greeting>.np-greeting-text{overflow-wrap:anywhere}
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-clock{
+   font-size:clamp(20px,5.25vw,32px)!important;white-space:nowrap;
+ }
+ .np-page[data-appearance] .np-topbar.np-r339-header[data-testid="platform-topbar"]>.np-header-calendar{
+   grid-row:3!important;
+ }
+ .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-location{
+   min-width:0;font-size:clamp(9px,2.8vw,13px)!important;
+ }
+ .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-location>span{
+   white-space:normal;overflow-wrap:anywhere;
+ }
+ .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-header-weather{max-width:100%;flex-wrap:wrap;gap:2px!important}
+ .np-page[data-appearance] .np-r339-header[data-testid="platform-topbar"] .np-weather-details{
+   grid-template-columns:repeat(2,minmax(0,1fr));gap:2px;
+ }
+ .np-r339-header .np-weather-details .np-weather-metric{gap:2px;font-size:8px}
+}
+.np-page[data-appearance] .np-r331-board-grid .np-r369-prayer-countdown{
+  display:inline-block;color:var(--ng-ink)!important;font-weight:800!important;
+  font-size:clamp(13px,2.6vw,22px)!important;font-variant-numeric:tabular-nums;
+  padding:4px 7px;border-radius:8px;border:1px solid var(--ng-line);
+  background:var(--ng-card);box-shadow:0 2px 8px #1b507340;line-height:1.2;
 }
