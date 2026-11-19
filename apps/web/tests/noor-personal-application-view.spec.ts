@@ -196,11 +196,21 @@ test("midnight rollover keeps compact task cards and past prayer recording on it
   const recovery=document.querySelector<HTMLElement>('.np-recovery-date-sheet')!;
   assert.ok(recovery);
   assert.equal(command,undefined);
+  assert.equal(recovery.querySelector("input:checked"),null);
+  assert.equal(recovery.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled,true);
+  await act(async()=>recovery.querySelector<HTMLInputElement>('input[value="2026-10-25"]')!.click());
+  assert.match(recovery.querySelector(".np-recovery-points")?.textContent??"",/0.7 نقطة.*70%/);
   await act(async()=>recovery.querySelector<HTMLInputElement>(`input[value="${date}"]`)!.click());
+  assert.match(recovery.querySelector(".np-recovery-points")?.textContent??"",/1 نقطة.*100%/);
   await act(async()=>recovery.querySelector("form")!.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
   assert.deepEqual(command,{type:"recover-historical-execution",executionId:"past-task",localDate:date,performedOn:date,expectedStatus:"Planned"});
+  assert.equal(document.querySelector('.np-recovery-date-sheet'),null);
+  assert.equal(recoveryButton.querySelector("strong")?.textContent,"0");
+  assert.match(taskDialog.textContent??"",/2026-10-24.*1 نقطة/);
   await act(async()=>resolveSave(new Response(null,{status:503})));
-  await act(async()=>recovery.querySelector<HTMLButtonElement>('[aria-label="إغلاق تسجيل الإتمام"]')!.click());
+  assert.equal(recoveryButton.querySelector("strong")?.textContent,"1");
+  assert.ok(t.container.querySelector(".np-failed-save"));
+  await act(async()=>[...t.container.querySelectorAll<HTMLButtonElement>(".np-failed-save button")].find(button=>button.textContent==="تجاهل التغيير غير المحفوظ")!.click());
   command=undefined;
 
   await act(async()=>taskDialog.querySelector<HTMLButtonElement>('[aria-label="إغلاق المهام"]')!.click());
@@ -216,6 +226,47 @@ test("midnight rollover keeps compact task cards and past prayer recording on it
   await act(async()=>resolveSave(new Response(null,{status:503})));
   assert.equal(checkbox.getAttribute("aria-checked"),"false");
  }finally{await act(async()=>root.unmount());Date.now=originalNow;t.dom.window.setInterval=originalInterval;t.restore();t.dom.window.close();}
+});
+
+test("a recovered session updates the selected day once, and retries the same save",async()=>{
+ const t=installDom(),root=createRoot(t.container),date="2026-10-23",currentDate="2026-10-24";
+ const definition={...workspace.workspace.definitions[0]!,weight:10,sessionPlan:{distribution:"custom",sessions:[{
+  id:"missed-session",title:"جلسة أمس",objective:"",target:null,rangeStart:null,rangeEnd:null,scheduledDate:date,
+  order:1,note:"",revision:0,createdAt:date+"T00:00:00Z",updatedAt:date+"T00:00:00Z",completedAt:null,
+ }]}};
+ const initialWorkspace={...workspace,workspace:{...workspace.workspace,definitions:[definition,workspace.workspace.definitions[1]!],
+  statistics:{currentDate,rows:[{date,id:"past-session-task",definitionId:definition.id,kind:"Task",title:definition.title,
+    status:"Missed",weight:10,sessionWeight:10,amount:0,unit:"",credit:0}]}}};
+ const fetcher=globalThis.fetch;
+ const sent:unknown[]=[];
+ let respond:(response:Response)=>void=()=>{};
+ globalThis.fetch=async(url,options)=>{
+  if(!String(url).includes("/command"))return fetcher(url,options);
+  sent.push(JSON.parse(String(options?.body)));
+  return new Promise<Response>(resolve=>{respond=resolve;});
+ };
+ const tile=()=>t.container.querySelector<HTMLButtonElement>(".np-r339-recovery")!;
+ const points=()=>t.container.querySelector('[data-testid="daily-recovery-points"]')?.textContent;
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace})));
+  assert.equal(tile().querySelector("strong")?.textContent,"1");
+  await act(async()=>tile().click());
+  await act(async()=>document.querySelector<HTMLButtonElement>('.np-r331-recovery-row button')!.click());
+  const editor=document.querySelector(".np-recovery-date-sheet")!;
+  await act(async()=>editor.querySelector<HTMLInputElement>(`input[value="${currentDate}"]`)!.click());
+  await act(async()=>editor.querySelector("form")!.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
+  assert.equal(document.querySelector(".np-recovery-date-sheet"),null);
+  assert.equal(tile().querySelector("strong")?.textContent,"0");
+  assert.match(points()??"",/7 نقطة/);
+  await act(async()=>respond(new Response(null,{status:503})));
+  assert.equal(points(),undefined);
+  assert.equal(tile().querySelector("strong")?.textContent,"1");
+  await act(async()=>t.container.querySelector<HTMLButtonElement>(".np-failed-save button")!.click());
+  assert.equal(sent.length,2);
+  assert.deepEqual(sent[0],sent[1]);
+  assert.match(points()??"",/7 نقطة/);
+  await act(async()=>respond(new Response(null,{status:503})));
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
 
 test("R367 quick add changes form inside one centered overlay",async()=>{

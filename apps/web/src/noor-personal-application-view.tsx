@@ -1,5 +1,5 @@
 import {applyFinanceOperation} from "../../noor-personal/src/domain/model.js";
-import { prepareTaskSessionPlan, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate } from "../../noor-personal/src/domain/task-sessions.js";
+import { prepareTaskSessionPlan, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate, recordedSessionAchievement } from "../../noor-personal/src/domain/task-sessions.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {useDashboardDialog,useDialogViewport} from "./noor-dashboard-dialog.js";
 import { prayerDayScoreR334, validPrayerScoreSnapshotR334, type PrayerScoreSnapshotR334, R331_PRAYERS, validPrayerRecordR331, recoveryCreditR367, canRecoverDueDate, RECOVERY_LOOKBACK_DAYS, type PrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331 } from "../../noor-personal/src/domain/completion-r331.js";
@@ -70,7 +70,7 @@ export interface NoorPersonalApplicationViewProps {
   readonly initialWorkspace?: NoorPersonalWorkspaceResult;
 }
 
-type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'|'adjust-beverage-serving'|'finance'|'set-personal-profile'|'configure-reminder'}>;
+type FastCommand=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'record-activity'|'edit-activity-note'|'correct-historical-execution'|'record-historical-progress'|'record-task-session-progress'|'complete-task-session'|'record-prayer-r331'|'create-definition'|'update-definition'|'adjust-beverage-serving'|'finance'|'set-personal-profile'|'configure-reminder'|'recover-historical-execution'|'recover-task-session-r331'}>;
 type BeverageAdjustment=Extract<FastCommand,{type:"adjust-beverage-serving"}>;
 function matchesBeverageDefinition(id:string,reference:string):boolean{
   return id===reference||reference.startsWith("pending:")&&id.startsWith("definition-request:")&&id.endsWith(`:${reference.slice(8)}`);
@@ -84,6 +84,10 @@ function isSessionSave(command:NoorPersonalCommandInput):command is Extract<Fast
 }
 type FastCompletion=Extract<NoorPersonalCommandInput,{type:'set-execution-completed'|'correct-historical-execution'}>;
 function isFastCompletion(command:FastCommand):command is FastCompletion{return command.type==='set-execution-completed'||command.type==='correct-historical-execution';}
+type RecoveryCommand=Extract<FastCommand,{type:"recover-historical-execution"|"recover-task-session-r331"}>;
+function isRecoveryCommand(command:FastCommand):command is RecoveryCommand {
+  return command.type==="recover-historical-execution"||command.type==="recover-task-session-r331";
+}
 function fastFailureKey(change:FastChange):string {
   const {command}=change;
   if(isFastCompletion(command))return `completion:${change.executionId}`;
@@ -92,6 +96,7 @@ function fastFailureKey(change:FastChange):string {
   if(command.type==="finance")return `finance:${command.operation.id}`;
   if(command.type==="set-personal-profile")return "profile";
   if(command.type==="configure-reminder")return `reminder:${command.definitionId}`;
+  if(command.type==="recover-historical-execution")return `recovery:${change.executionId}`;
   return `entry:${command.entryId}`;
 }
 type FastChange={
@@ -3401,7 +3406,6 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const [prayerSaveError,setPrayerSaveError]=useState("");
   const [recoverError,setRecoverError]=useState("");
   const [recoverySave,setRecoverySave]=useState<{row:StatisticRow;performedOn:string}|null>(null);
-  const [recoverySaving,setRecoverySaving]=useState(false);
   const [sessionRecovery,setSessionRecovery]=useState<{row:StatisticRow;session:StoredTaskSessionR254;entryId:string;amount:string;note:string;performedOn:string}|null>(null);
   const recoveryViewport=useDashboardDialog(recoverySave||sessionRecovery?'.np-recovery-date-sheet':null);
   const [sleepRequest,setSleepRequest]=useState<{executionId:string;date:string;trigger:HTMLButtonElement|null}|null>(null);
@@ -3500,30 +3504,26 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
       setShowRecovery(true);
     }):null;
   const saveRecoveredSession=async()=>{
-    if(!sessionRecovery||busy||recoverySaving)return;
+    if(!sessionRecovery?.performedOn||busy)return;
     const def=definitionsById.get(sessionRecovery.row.definitionId),s=sessionRecovery.session;
     if(!def)return;
     const amount=s.target===null?0:Number(sessionRecovery.amount),previous=sessionProgressR254(def.activityLog,s.id);
     if(s.target!==null&&(!Number.isFinite(amount)||amount<=0||Math.round((amount+previous)*1e6)>Math.round(s.target*1e6))){setRecoverError("أدخل مقدارًا منجزًا لا يتجاوز المتبقي.");return;}
     setRecoverError("");
-    setRecoverySaving(true);
     const ok=await onHistoryCommand({type:"recover-task-session-r331",executionId:sessionRecovery.row.id,localDate:sessionRecovery.row.date,performedOn:sessionRecovery.performedOn,taskSessionId:s.id,entryId:sessionRecovery.entryId,amount,note:sessionRecovery.note});
-    setRecoverySaving(false);
     if(ok)setSessionRecovery(null);else setRecoverError("تعذر تسجيل الجلسة المتأخرة. تحقق من المقدار ثم أعد المحاولة.");
   };
   const recovery=(row:StatisticRow)=>{
     if(busy||!recoverable.some(item=>item.id===row.id))return;
     setRecoverError("");
-    setRecoverySave({row,performedOn:achievementDate});
+    setRecoverySave({row,performedOn:""});
   };
   const saveRecovery=async()=>{
-    if(!recoverySave||busy||recoverySaving)return;
+    if(!recoverySave?.performedOn||busy)return;
     const {row,performedOn}=recoverySave;
     setRecoverError("");
-    setRecoverySaving(true);
     const ok=await onHistoryCommand({type:"recover-historical-execution",executionId:row.id,localDate:row.date,performedOn,
       expectedStatus:row.status as "Missed"|"Pending"|"Planned"|"InProgress"});
-    setRecoverySaving(false);
     if(ok)setRecoverySave(null);else setRecoverError("تعذر حفظ الاستدراك. أعد المحاولة بعد تحديث البيانات.");
   };
   const prayerRecords=workspace?.prayerHistoryR331.find(r=>r.date===(historyDate??achievementDate))?.records??[];
@@ -3877,10 +3877,10 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
     {showTaskList?createPortal(<div className="np-r331-overlay np-r339-overlay np-current-task-overlay" style={dashboardDialog} onMouseDown={e=>{if(e.target===e.currentTarget)setShowTaskList(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="المهام" onKeyDown={e=>{if(e.key==="Escape"&&!e.defaultPrevented)setShowTaskList(false);}}><header><h2>{sheetTask?.title??"المهام"}</h2><button type="button" aria-label="إغلاق المهام" onClick={()=>setShowTaskList(false)}>×</button></header><div className="np-page np-r339-task-sheet" dir="rtl">{sheetTask?<>{!definitionsById.get(sheetTask.definitionId)?.measurement?<div className="np-r340-task-progress np-current-task-sheet-progress"><progress max={100} value={taskProgress(sheetTask)} aria-label="تقدم المهمة الحالية"/><strong>{taskProgress(sheetTask)}%</strong></div>:null}{renderSheetTask(sheetTask,true)}</>:null}
     {taskSheetHistory?null:sheetTask?<details><summary>المهام الأخرى</summary>{[...liveTasks].filter(item=>item.id!==sheetTask.id).sort((a,b)=>b.weight-a.weight).map(item=>renderSheetTask(item))}</details>:[...liveTasks].sort((a,b)=>b.weight-a.weight).map(item=>renderSheetTask(item))}</div>{!taskSheetHistory&&!liveTasks.length?<p>لا توجد مهام اليوم.</p>:null}{!taskSheetHistory&&(workspace?.definitions??[]).filter(d=>d.kind==="Task"&&d.state==="Active"&&!providedView.tasks.some(t=>t.definitionId===d.id)&&!["appointment","event"].includes(d.countdownPlan?.kind??"task")).map(d=><div key={d.id} className="np-r331-recovery-row"><div><strong>{d.title}</strong><small>{d.category} · {d.startDate}</small></div></div>)}</section></div>,document.body):null}
     {recoverySave||sessionRecovery?createPortal(<div className="np-r331-overlay np-recovery-date-overlay" style={recoveryViewport}
-      onMouseDown={event=>{if(event.target===event.currentTarget&&!recoverySaving&&!busy){setRecoverySave(null);setSessionRecovery(null);}}}>
+      onMouseDown={event=>{if(event.target===event.currentTarget&&!busy){setRecoverySave(null);setSessionRecovery(null);}}}>
       <section className="np-r331-sheet np-recovery-date-sheet" role="dialog" aria-modal="true" aria-label="تسجيل إتمام فائت"
-        onKeyDown={event=>{if(event.key==="Escape"&&!recoverySaving&&!busy){setRecoverySave(null);setSessionRecovery(null);}keepFocusInDialog(event);}}>
-        <header><h2>تسجيل إتمام فائت</h2><button type="button" aria-label="إغلاق تسجيل الإتمام" disabled={recoverySaving||busy}
+        onKeyDown={event=>{if(event.key==="Escape"&&!busy){setRecoverySave(null);setSessionRecovery(null);}keepFocusInDialog(event);}}>
+        <header><h2>تسجيل إتمام فائت</h2><button type="button" aria-label="إغلاق تسجيل الإتمام" disabled={busy}
           onClick={()=>{setRecoverySave(null);setSessionRecovery(null);}}><NoorCloseGlyph/></button></header>
         <form onSubmit={event=>{event.preventDefault();void (sessionRecovery?saveRecoveredSession():saveRecovery());}}>
           {(()=>{
@@ -3893,26 +3893,25 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
             const dates=Array.from({length:RECOVERY_LOOKBACK_DAYS+1},(_,index)=>shiftStatisticDate(achievementDate,index-RECOVERY_LOOKBACK_DAYS)).filter(date=>date>=row.date);
             return <>
               <h3>{session?.title??row.title}</h3><p>الاستحقاق {weekDateLabel(row.date,true)} ، وزن {points(weight)} نقطة</p>
-              <fieldset><legend>يوم الإتمام</legend>{dates.map(date=><label key={date}>
+              <fieldset><legend>متى تم الإتمام فعليًا؟</legend>{dates.map(date=><label key={date}>
                 <input type="radio" name="recovery-date" value={date} checked={date===performedOn}
                   onChange={()=>{if(sessionRecovery)setSessionRecovery({...sessionRecovery,performedOn:date});else if(recoverySave)setRecoverySave({...recoverySave,performedOn:date});}}/>
-                <span>{weekDateLabel(date,true)} {weekDateLabel(date)} {date===row.date?" · الاستحقاق":date===achievementDate?" · اليوم":""}</span>
-                <b dir="ltr">{points(100*recoveryCreditR367(row.date,date))}%</b>
+                <span>{date===achievementDate?"اليوم":date===yesterdayDate?"أمس":weekDateLabel(date,true)} · {weekDateLabel(date)}{date===row.date?" · يوم الاستحقاق":""}</span>
               </label>)}</fieldset>
               {sessionRecovery&&session?.target!==null?<label className="np-recovery-input">المقدار المنجز<input type="number" inputMode="decimal"
                 value={sessionRecovery.amount} min="0.000001" step="any" required onChange={event=>setSessionRecovery({...sessionRecovery,amount:event.currentTarget.value})}/></label>:null}
               {sessionRecovery?<label className="np-recovery-input">ملاحظة اختيارية<textarea dir="rtl" rows={2} maxLength={2000}
                 value={sessionRecovery.note} onChange={event=>setSessionRecovery({...sessionRecovery,note:event.currentTarget.value})}/></label>:null}
-              <div className="np-recovery-points"><span>الوزن المحتسب</span><strong>{points(weight*fraction*recoveryCreditR367(row.date,performedOn))} نقطة</strong></div>
+              <div className="np-recovery-points"><span>الوزن المحتسب</span><strong>{performedOn?`${points(weight*fraction*recoveryCreditR367(row.date,performedOn))} نقطة (${points(100*recoveryCreditR367(row.date,performedOn))}%)`:"اختر يوم الإتمام"}</strong></div>
               {recoverError?<p role="alert">{recoverError}</p>:null}
-              <footer><button type="submit" disabled={busy||recoverySaving}>حفظ الإتمام</button><button type="button" disabled={busy||recoverySaving}
+              <footer><button type="submit" disabled={busy||!(recoverySave??sessionRecovery)?.performedOn}>حفظ الإتمام</button><button type="button" disabled={busy}
                 onClick={()=>{setRecoverySave(null);setSessionRecovery(null);}}>إلغاء</button></footer>
             </>;
           })()}
         </form>
       </section>
     </div>,document.body):null}
-    {showRecovery?createPortal(<div className="np-r331-overlay" style={dashboardDialog} onMouseDown={event=>{if(event.target===event.currentTarget)setShowRecovery(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="تدارك الفائت" onKeyDown={e=>{if(e.key==="Escape")setShowRecovery(false);}}><header><h2>تدارك الفائت</h2><button type="button" onClick={()=>{setSessionRecovery(null);setShowRecovery(false);}} aria-label="إغلاق التدارك">×</button></header><div className="np-r339-recovery-days">{recoverySheetDates.map(date=><button type="button" key={date} aria-pressed={date===selectedRecoveryDate} onClick={()=>{setRecoveryDate(date);setSessionRecovery(null);setRecoverError("");}}>{weekDateLabel(date,true)}<br/>{weekDateLabel(date)}</button>)}</div>{recoveryDaySessions.length?<h3>جلسات مجدولة فائتة</h3>:null}{recoveryDaySessions.map(({row,session,def,progress})=><article key={row.id+"-"+session.id} className="np-r331-recovery-row"><div><strong>{session.title}</strong><small>{def.title} · {row.date} · وزن الجلسة {row.sessionWeight??row.weight}</small>{session.target!==null?<small>{progress} / {session.target} {def.measurement?.unit??""}</small>:null}</div><button type="button" disabled={busy} onClick={()=>{setRecoverError("");setSessionRecovery({row,session,entryId:globalThis.crypto.randomUUID(),amount:session.target===null?"0":String(Math.round((session.target-progress)*1e6)/1e6),note:"",performedOn:achievementDate});}}>تسجيل التقدم</button></article>)}{!recoveryCount?<p role="status">لا يوجد فائت قابل للتدارك في آخر {RECOVERY_LOOKBACK_DAYS} أيام.</p>:recoveryDayRows.map(row=><article key={row.id} className="np-r331-recovery-row"><div><strong>{row.title}</strong><small>{row.date} · {Number((row.weight*recoveryCreditR367(row.date,achievementDate)).toPrecision(5))} من {row.weight} نقطة</small></div><button type="button" disabled={busy} onClick={()=>{void recovery(row)}}>تسجيل الإتمام</button></article>)}{recoverError?<p role="alert">{recoverError}</p>:null}</section></div>,document.body):null}
+    {showRecovery?createPortal(<div className="np-r331-overlay" style={dashboardDialog} onMouseDown={event=>{if(event.target===event.currentTarget)setShowRecovery(false);}}><section className="np-r331-sheet" role="dialog" aria-modal="true" aria-label="تدارك الفائت" onKeyDown={e=>{if(e.key==="Escape")setShowRecovery(false);}}><header><h2>تدارك الفائت</h2><button type="button" onClick={()=>{setSessionRecovery(null);setShowRecovery(false);}} aria-label="إغلاق التدارك">×</button></header><div className="np-r339-recovery-days">{recoverySheetDates.map(date=><button type="button" key={date} aria-pressed={date===selectedRecoveryDate} onClick={()=>{setRecoveryDate(date);setSessionRecovery(null);setRecoverError("");}}>{weekDateLabel(date,true)}<br/>{weekDateLabel(date)}</button>)}</div>{recoveryDaySessions.length?<h3>جلسات مجدولة فائتة</h3>:null}{recoveryDaySessions.map(({row,session,def,progress})=><article key={row.id+"-"+session.id} className="np-r331-recovery-row"><div><strong>{session.title}</strong><small>{def.title} · {row.date} · وزن الجلسة {row.sessionWeight??row.weight}</small>{session.target!==null?<small>{progress} / {session.target} {def.measurement?.unit??""}</small>:null}</div><button type="button" disabled={busy} onClick={()=>{setRecoverError("");setSessionRecovery({row,session,entryId:globalThis.crypto.randomUUID(),amount:session.target===null?"0":String(Math.round((session.target-progress)*1e6)/1e6),note:"",performedOn:""});}}>تسجيل التقدم</button></article>)}{!recoveryCount?<p role="status">لا يوجد فائت قابل للتدارك في آخر {RECOVERY_LOOKBACK_DAYS} أيام.</p>:recoveryDayRows.map(row=><article key={row.id} className="np-r331-recovery-row"><div><strong>{row.title}</strong><small>الاستحقاق {row.date} · الوزن الأصلي {row.weight} نقطة</small></div><button type="button" disabled={busy} onClick={()=>{void recovery(row)}}>تسجيل الإتمام</button></article>)}{recoverError?<p role="alert">{recoverError}</p>:null}</section></div>,document.body):null}
 
     <div className="np-r331-overlay np-r339-overlay" style={dashboardDialog} hidden={!showPrayerTimes} onMouseDown={e=>{if(e.target===e.currentTarget)setShowPrayerTimes(false);}}><div className="np-r331-sheet" role="dialog" aria-modal={showPrayerTimes} aria-label="مواقيت الصلوات" onKeyDown={e=>{if(e.key==="Escape")setShowPrayerTimes(false);}}><header><h2>مواقيت الصلوات</h2><button type="button" aria-label="إغلاق مواقيت الصلوات" onClick={()=>setShowPrayerTimes(false)}>×</button></header><section id="noor-r331-prayers" aria-label="الصلوات" className="np-card np-prayer-card" data-header-layout="padding-only-132" data-prayer-layout="compact-five-obligatory-r331" data-testid="prayer-card">
       <div className="np-prayer-card-head">
@@ -4339,10 +4338,14 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
           if(item.id!==change.definitionId)return item;
           if(command.type==="edit-activity-note")return {...item,activityLog:item.activityLog.map(e=>e.id===command.entryId&&e.executionId===command.executionId?{...e,note:command.note??""}:e)};
           if(!entry||item.activityLog.some(e=>e.id===entry.id))return item;
-          const sessionPlan=item.sessionPlan&&isSessionSave(command)&&command.type==="complete-task-session"
-            ?{...item.sessionPlan,sessions:item.sessionPlan.sessions.map(session=>session.id===entry.taskSessionId?{...session,completedAt:entry.at}:session)}
+          const completesSession=command.type==="complete-task-session"||command.type==="recover-task-session-r331";
+          const log=[...item.activityLog,entry];
+          const sessionPlan=item.sessionPlan&&completesSession
+            ?{...item.sessionPlan,sessions:item.sessionPlan.sessions.map(session=>
+              session.id===entry.taskSessionId&&(session.target===null||sessionFinishedR254(session,log))
+                ?{...session,completedAt:entry.at}:session)}
             :item.sessionPlan;
-          return {...item,state:entry.endReason?"Stopped":item.state,activityLog:[...item.activityLog,entry],...(sessionPlan?{sessionPlan}:{})};
+          return {...item,state:entry.endReason?"Stopped":item.state,activityLog:log,...(sessionPlan?{sessionPlan}:{})};
         });
       }
     }
@@ -4366,6 +4369,47 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       }
       return status===row.status?row:{...row,status,credit:status==="Completed"?1:0};
     })}};
+    const pendingRecovery=fastChanges.filter(({command})=>isRecoveryCommand(command));
+    if(pendingRecovery.length){
+      const rows=new Map(result.statistics.rows.map(row=>[row.id,row]));
+      for(const {command,entry,definitionId} of pendingRecovery){
+        if(!isRecoveryCommand(command)||!command.performedOn)continue;
+        const row=rows.get(command.executionId);
+        if(!row||row.date!==command.localDate)continue;
+        const performed=command.performedOn;
+        if(command.type==="recover-historical-execution"){
+          if(row.status==="Completed")continue;
+          const share=recoveryCreditR367(row.date,performed);
+          const updated={...row,status:"Completed",completionDate:performed,recoveredWeight:row.weight*share,credit:performed===row.date?share:0};
+          rows.set(row.id,updated);
+          if(performed!==row.date){
+            const id=`recovery:${row.id}:${performed}`;
+            rows.set(id,{...updated,id,date:performed,amount:0,credit:share,recoveryBonus:true});
+          }
+          continue;
+        }
+        const definition=result.definitions.find(item=>item.id===definitionId);
+        const plan=definition?.sessionPlan;
+        const session=plan?.sessions.find(item=>item.id===command.taskSessionId);
+        if(!entry||!definition||!plan||!session)continue;
+        const log=definition.activityLog;
+        const weight=row.sessionWeight??row.weight;
+        const scored=sessionAchievementOnDate(plan,log,row.date);
+        const matching=log.filter(item=>item.executionId===row.id);
+        const newest=matching.filter(item=>item.achievementDateR367).at(-1);
+        const newestSession=plan.sessions.find(item=>item.id===newest?.taskSessionId);
+        rows.set(row.id,{...row,amount:matching.reduce((sum,item)=>sum+item.amount,0),credit:scored.scheduled?scored.earned/scored.scheduled:0,
+          ...(newest&&newestSession?{completionDate:newest.achievementDateR367!,recoveredWeight:weight*recordedSessionAchievement(newestSession,newest)}:{})});
+        if(performed!==row.date){
+          const credit=Math.min(1,matching.filter(item=>item.taskSessionId===session.id&&item.achievementDateR367===performed)
+            .reduce((sum,item)=>sum+recordedSessionAchievement(session,item),0));
+          const id=`recovery:${row.id}:${performed}:${session.id}`;
+          if(credit>0)rows.set(id,{...row,id,date:performed,amount:0,weight,credit,status:"Completed",nonAchievement:false,
+            recoveryBonus:true,completionDate:performed,recoveredWeight:weight*credit});
+        }
+      }
+      result={...result,statistics:{...result.statistics,rows:[...rows.values()]}};
+    }
     const date=view?.localDate;
     if(view&&date&&fastChanges.length){
       const affectedExecutions=new Set(fastChanges.filter(change=>!["correct-historical-execution","record-historical-progress"].includes(change.command.type)).map(change=>change.executionId));
@@ -4636,6 +4680,29 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
       return queueChange({command,executionId:execution?.id??"",definitionId:execution?.definitionId??"",title:prayer?.label??execution?.title??"",
         prayerAt:previous?.mode===command.mode&&previous.timing===command.timing?previous.recordedAt:new Date().toISOString()});
     }
+    if(command.type==="recover-historical-execution"||command.type==="recover-task-session-r331"){
+      const date=baseView?.localDate,performed=command.performedOn;
+      const row=baseWorkspace?.statistics.rows.find(item=>item.id===command.executionId&&item.date===command.localDate);
+      if(!date||!performed||!row||performed>date||!canRecoverDueDate(row.date,date)||recoveryCreditR367(row.date,performed)<=0||
+        !["Missed","Pending","Planned","InProgress"].includes(row.status))return false;
+      const definition=activityWorkspace?.definitions.find(item=>item.id===row.definitionId);
+      if(!definition)return false;
+      const change={command,executionId:row.id,definitionId:row.definitionId,title:row.title};
+      if(command.type==="recover-historical-execution"){
+        if(row.status!==command.expectedStatus||definition.sessionPlan)return false;
+        return queueChange(change);
+      }
+      const plan=definition.sessionPlan;
+      const session=plan?.sessions.find(item=>item.id===command.taskSessionId);
+      if(!plan||!session||session.scheduledDate!==row.date||sessionFinishedR254(session,definition.activityLog)||
+        fastQueue.current.some(({command:c})=>c.type==="recover-task-session-r331"&&c.executionId===row.id&&c.taskSessionId===session.id))return false;
+      const factor=recoveryCreditR367(row.date,performed),manual=session.target===null;
+      const entry:ActivityEntry={id:command.entryId,executionId:row.id,taskSessionId:session.id,localDate:row.date,
+        performedOnR331:performed,achievementDateR367:performed,at:new Date().toISOString(),
+        amount:command.amount,note:command.note.trim(),endReason:null,sessionAchievementShare:sessionAchievementShare(session,command.amount)*factor,
+        sessionDayCredit:sessionEventCredit(definition.measurement,plan,session,command.amount,manual)*factor};
+      return queueChange({...change,title:session.title,entry});
+    }
     if(isSessionSave(command)){
       const execution=baseView?.tasks.find(item=>item.id===command.executionId);
       const definition=activityWorkspace?.definitions.find(item=>item.id===execution?.definitionId);
@@ -4720,7 +4787,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
   @keyframes np-r296-spin{to{transform:rotate(360deg)}}
   @media(prefers-reduced-motion:reduce){.np-page .np-refresh-spin-r296{animation:none}}
   @media(max-width:700px){.np-page .np-cc-header{flex-wrap:wrap}.np-page .np-cc-header .np-cc-header-logo{width:48px;height:48px;flex-basis:48px}.np-page .np-cc-header-actions{width:100%;justify-content:flex-start}.np-page .np-topbar .np-top-actions{gap:5px}.np-page .np-topbar .np-refresh-icon-r296{width:38px;height:38px}}
-  `}</style><section className={`np-page${!result ? " np-page-entry-loading" : result.kind === "success" ? " np-page-entry-ready" : ""}`} data-appearance={appearance} data-design-version="r62-visible-layout-fix" dir="rtl"><div className="np-wrap"><div className="np-save-notices" data-save-feedback="classic-achievement-r95">{orderError?<p className="np-failed-save" role="alert">{orderError}</p>:null}{failedChanges.map((change,i)=><div className="np-failed-save" role="alert" key={fastFailureKey(change)}><span>لم يتأكد الحفظ: {change.title}. تم إرجاع العرض لآخر بيانات مؤكدة.</span>{change.command.type==='edit-activity-note'?<p>{change.command.note??'حذف الملاحظة'}</p>:null}{change.command.type==='record-activity'||change.command.type==='record-historical-progress'||change.command.type==='record-task-session-progress'?<p>{change.command.note}{change.command.amount>0?` · الكمية: ${change.command.amount}`:''}</p>:null}<button type="button" disabled={fastChanges.some(c=>fastFailureKey(c)===fastFailureKey(change))} onClick={()=>{setFailedChanges(previous=>previous.filter((_,j)=>j!==i));void Promise.resolve(change.command.type==="adjust-beverage-serving"?queueChange(change):fastCommand(change.command,change.beforeSave)).then(ok=>{if(!ok)setFailedChanges(previous=>previous.some(item=>fastFailureKey(item)===fastFailureKey(change))?previous:[...previous,change]);});}}>إعادة المحاولة</button><button type="button" onClick={()=>setFailedChanges(previous=>previous.filter((_,j)=>j!==i))}>تجاهل التغيير غير المحفوظ</button></div>)}</div>{content}</div>{result?.kind==="success"&&view?<nav className="np-r323-bottom-nav np-r324-bottom-nav" data-testid="r324-persistent-navigation" aria-label="التنقل الرئيسي">{([["home","الرئيسية"],["habits","العادات"],["plus","إضافة سريعة"],["tasks","المهام"],["grid","الأدوات"]] as const).map(([target,label])=><button key={target} type="button" data-testid={`r324-nav-${target}`} aria-label={target==="grid"?"فتح مركز التحكم":undefined} aria-current={(quickAddOpen?"plus":controlOpen?(navSection):navSection==="habits"||navSection==="tasks"?navSection:"home")===target?"page":undefined} className={target==="plus"?"np-r323-nav-add":undefined} disabled={busy||logoutPending} onClick={()=>navigateR324(target)}><NoorR323Icon name={target==="habits"?"leaf":target==="tasks"?"check":target}/><span>{label}</span></button>)}</nav>:null}{quickAddOpen&&view?<QuickAddDialog busy={busy} appearance={appearance} categories={workspace?.categories??COMMON_CATEGORIES}
+  `}</style><section className={`np-page${!result ? " np-page-entry-loading" : result.kind === "success" ? " np-page-entry-ready" : ""}`} data-appearance={appearance} data-design-version="r62-visible-layout-fix" dir="rtl"><div className="np-wrap"><div className="np-save-notices" data-save-feedback="classic-achievement-r95">{orderError?<p className="np-failed-save" role="alert">{orderError}</p>:null}{failedChanges.map((change,i)=><div className="np-failed-save" role="alert" key={fastFailureKey(change)}><span>لم يتأكد الحفظ: {change.title}. تم إرجاع العرض لآخر بيانات مؤكدة.</span>{change.command.type==='edit-activity-note'?<p>{change.command.note??'حذف الملاحظة'}</p>:null}{change.command.type==='record-activity'||change.command.type==='record-historical-progress'||change.command.type==='record-task-session-progress'||change.command.type==='recover-task-session-r331'?<p>{change.command.note}{change.command.amount>0?` · الكمية: ${change.command.amount}`:''}</p>:null}<button type="button" disabled={fastChanges.some(c=>fastFailureKey(c)===fastFailureKey(change))} onClick={()=>{setFailedChanges(previous=>previous.filter((_,j)=>j!==i));void Promise.resolve(change.command.type==="adjust-beverage-serving"?queueChange(change):fastCommand(change.command,change.beforeSave)).then(ok=>{if(!ok)setFailedChanges(previous=>previous.some(item=>fastFailureKey(item)===fastFailureKey(change))?previous:[...previous,change]);});}}>إعادة المحاولة</button><button type="button" onClick={()=>setFailedChanges(previous=>previous.filter((_,j)=>j!==i))}>تجاهل التغيير غير المحفوظ</button></div>)}</div>{content}</div>{result?.kind==="success"&&view?<nav className="np-r323-bottom-nav np-r324-bottom-nav" data-testid="r324-persistent-navigation" aria-label="التنقل الرئيسي">{([["home","الرئيسية"],["habits","العادات"],["plus","إضافة سريعة"],["tasks","المهام"],["grid","الأدوات"]] as const).map(([target,label])=><button key={target} type="button" data-testid={`r324-nav-${target}`} aria-label={target==="grid"?"فتح مركز التحكم":undefined} aria-current={(quickAddOpen?"plus":controlOpen?(navSection):navSection==="habits"||navSection==="tasks"?navSection:"home")===target?"page":undefined} className={target==="plus"?"np-r323-nav-add":undefined} disabled={busy||logoutPending} onClick={()=>navigateR324(target)}><NoorR323Icon name={target==="habits"?"leaf":target==="tasks"?"check":target}/><span>{label}</span></button>)}</nav>:null}{quickAddOpen&&view?<QuickAddDialog busy={busy} appearance={appearance} categories={workspace?.categories??COMMON_CATEGORIES}
   date={civilLocalDate(nowMs,view.timeZone)} onSave={fastCommand} onClose={()=>setQuickAddOpen(false)}/>:null}</section></>;
 }
 
