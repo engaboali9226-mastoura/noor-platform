@@ -497,7 +497,7 @@ try{
   await expect(visible(".np-friday-story-actions"),"Friday image actions open from Noor board");
   await run("document.querySelector('.np-friday-story-actions button').click()");
   await expect("JSON.stringify(window.noorFridayExport)==='[\"image/png\",1080,1920]'","Friday copy produces a story-sized PNG");
-  await run("document.querySelector('[aria-label=\'إغلاق مؤقتات اليوم\']').click();window.scrollTo(0,document.body.scrollHeight)");
+  await run(`document.querySelector('[aria-label="إغلاق مؤقتات اليوم"]').click();window.scrollTo(0,document.body.scrollHeight)`);
   await expect(`scrollY>0&&getComputedStyle(document.querySelector(".np-page"),"::before").backgroundSize.split(",").at(-1).trim()==="cover"`,
     "Landscape still covers the viewport at the bottom of Personal home");
   await snap(screen.name+"-full-background-scrolled");
