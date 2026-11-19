@@ -4,7 +4,9 @@ import {spawn} from "node:child_process";
 import {tmpdir} from "node:os";
 import {resolve} from "node:path";
 import assert from "node:assert/strict";
+import {runInNewContext} from "node:vm";
 const web=resolve("apps/web"),htmlFile=resolve(web,"__r323_visual_fixture.html"),scriptFile=resolve(web,"__r323_visual_fixture.tsx");
+const waitingFile=resolve(web,"__r371_waiting_fixture.html");
 const output=resolve("r323-visual-evidence"),profile=await mkdtemp(resolve(tmpdir(),"noor-visual-"));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let vite,chrome,socket;
@@ -46,9 +48,12 @@ try{
  'const previewReading=fixtureParams.get("task-preview")==="1";',
  'const previewDefinitions=workspace.workspace.definitions.map(d=>previewReading&&d.id==="d1"?{...d,title:"أمة الدوبامين",revisionId:"preview-reading",measurement:{target:310,unit:"صفحة"},sessionPlan:{distribution:"custom",sessions:[{id:"preview-session",title:"الجلسة الحالية",objective:"قراءة 16 صفحة",target:16,rangeStart:129,rangeEnd:144,scheduledDate:"2026-11-06",order:1,note:"",revision:0,createdAt:"2026-11-06T00:00:00Z",updatedAt:"2026-11-06T00:00:00Z",completedAt:null}]},activityLog:[{id:"preview-progress",executionId:"e1",localDate:"2026-11-06",at:"2026-11-06T12:00:00Z",amount:128,note:"",endReason:null}]}:d);',
  'const adminService={signIn:async()=>setupFactor?"enroll-needed" as const:"challenge-needed" as const,enroll:async()=>({factorId:"fixture",qrSvg:`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>`,secret:"TEST-KEY"}),verify:async(code:string)=>code==="123456"?"aal2" as const:"invalid" as const,accessToken:async()=>null,signOut:async()=>{}};',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,tasks:today.today.tasks.map(task=>previewReading?{...task,title:"أمة الدوبامين"}:task),habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,definitions:[...previewDefinitions,...appointments]}} as any}/>);'
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,tasks:today.today.tasks.map(task=>previewReading?{...task,title:"أمة الدوبامين"}:task),habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,profile:{...workspace.workspace.profile,displayName:"عبد الرحمن محمد",updatedAt:"2026-11-06T00:00:00Z"},definitions:[...previewDefinitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
+ const worker=await readFile(resolve(web,"public/noor-service-worker.js"),"utf8");
+ const waiting=runInNewContext(worker+"\nWAITING",{self:{addEventListener(){}}});
+ await writeFile(waitingFile,waiting.replace("<script>",'<script>window.fetch=async()=>new Response(null,{status:503});</script><script>'));
  vite=spawn("npm",["--workspace","apps/web","run","dev","--","--host","127.0.0.1","--port","5179","--strictPort"],{stdio:"inherit",env:{...process.env,VITE_NOOR_SUPABASE_URL:"http://127.0.0.1:54321",VITE_NOOR_SUPABASE_PUBLISHABLE_KEY:"sb_publishable_noor_browser_fixture"}});
  const url="http://127.0.0.1:5179/__r323_visual_fixture.html";
  await wait(async()=> (await fetch(url)).ok);
@@ -460,8 +465,10 @@ try{
   if(screen.mobile)await expect(`(() => {
     const r=sel=>document.querySelector(sel).getBoundingClientRect();
     const g=r('.np-r323-greeting'),c=r('.np-header-clock'),s=r('.np-header-status'),date=r('.np-header-calendar');
-    return g.left>=c.right-1&&s.right<=c.left+1&&Math.max(g.bottom,c.bottom,s.bottom)<=date.top+1;
-  })()`,"Mobile masthead keeps greeting right, clock centered, weather left and dates below");
+    const heading=document.querySelector('.np-greeting-text');
+    return heading.scrollWidth<=heading.clientWidth+1&&getComputedStyle(heading).whiteSpace==="nowrap"&&
+      g.bottom<=Math.min(c.top,s.top)+1&&s.right<=c.left+1&&Math.max(c.bottom,s.bottom)<=date.top+1;
+  })()`,"Mobile masthead keeps the greeting and name on their own row above time and weather");
   await expect("getComputedStyle(document.querySelector('.np-r369-prayer-countdown')).boxShadow!=='none'","Next-prayer countdown has its own visible shadow");
   await expect("document.documentElement.scrollWidth<=innerWidth+2","Dashboard horizontal overflow");
   await expect("document.querySelector('.np-r323-home-grid').querySelectorAll('.np-r323-rhythm').length===1","No duplicate timer");
@@ -700,6 +707,11 @@ try{
        throw error;
      });
      await expect("document.documentElement.scrollWidth<=innerWidth+2","Weather dashboard fits width "+viewport.width);
+     if(viewport.mobile)await expect(`(() => {
+       const greeting=document.querySelector('.np-greeting-text'),name=greeting.querySelector('bdi');
+       return name?.textContent==="عبد الرحمن محمد"&&greeting.scrollWidth<=greeting.clientWidth+1&&
+         getComputedStyle(greeting).whiteSpace==="nowrap";
+     })()`,"Full greeting and name fit the mobile masthead at "+viewport.width);
      await expect(`(() => {
        const days = [...document.querySelectorAll(".np-r339-header .np-header-date-main")];
        return days.length === 2 && days.every(el => parseFloat(getComputedStyle(el).fontSize) >= 12) &&
@@ -743,8 +755,21 @@ try{
      await snap(viewport.width+"-"+daylight+"-"+weather);
    }
  }
+ for(const viewport of [{width:320,height:568,mobile:true},{width:1440,height:900,mobile:false}]){
+   await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
+   await cdp("Page.navigate",{url:"http://127.0.0.1:5179/__r371_waiting_fixture.html"});
+   await expect(`(() => {
+     const logo=document.querySelector('main h1 img'),note=document.querySelector('#message');
+     const phrase=document.querySelector('#dhikr'),r=logo?.getBoundingClientRect();
+     return logo?.naturalWidth===320&&logo.alt.includes("NOOR Platform")&&
+       Math.abs((r.left+r.right)/2-innerWidth/2)<2&&r.bottom<note.getBoundingClientRect().top&&
+       getComputedStyle(phrase).animationName==="noor-dhikr"&&document.documentElement.scrollWidth<=innerWidth;
+   })()`,"Self-contained waiting page fits "+viewport.width);
+   await expect("document.querySelector('#dhikr')?.textContent==='الحمد لله'","Waiting page advances to the next phrase");
+   await snap(viewport.width+"-platform-waiting");
+ }
  await writeFile(resolve(output,"report.json"),JSON.stringify(report,null,2));
  console.log("R323_BROWSER_SMOKE_PASS "+JSON.stringify(report));
 }finally{
- socket?.close();chrome?.kill();vite?.kill();await rm(htmlFile,{force:true});await rm(scriptFile,{force:true});await rm(profile,{recursive:true,force:true}).catch(()=>{});
+ socket?.close();chrome?.kill();vite?.kill();await rm(htmlFile,{force:true});await rm(scriptFile,{force:true});await rm(waitingFile,{force:true});await rm(profile,{recursive:true,force:true}).catch(()=>{});
 }
