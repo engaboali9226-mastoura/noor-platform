@@ -1743,3 +1743,29 @@
 .np-page[data-appearance="dark"] .np-r248-reference-strip .np-r311-friday-hint {
   color:#b0ddcc;
 }
+
+.np-r232-section .np-r248-reference-strip .np-r237-friday-hours .np-r234-times {
+  position:static !important;
+  width:100% !important;
+  height:auto !important;
+  overflow:visible !important;
+  clip-path:none !important;
+  display:flex;
+  align-items:start;
+  gap:3px;
+  text-align:center;
+}
+.np-r237-friday-hours .np-r234-time-point {gap:2px}
+.np-r237-friday-hours .np-r234-time-point :is(small,strong) {
+  font-size:11px;
+  line-height:1.25;
+}
+@media(max-width:530px) {
+  .np-r232-section .np-r248-reference-strip .np-r237-friday-hours .np-r234-times {
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+  }
+  .np-r237-friday-hours .np-r234-time-line {display:none}
+  .np-r237-friday-hours .np-r234-time-point {text-align:right}
+  .np-r237-friday-hours .np-r234-time-point:last-child {text-align:left}
+}

@@ -33,10 +33,14 @@ try{
  'import {NoorPersonalApplicationView} from "./src/noor-personal-application-view";',
  'const fixtureParams=new URLSearchParams(location.search);',
  'const fixtureDay=fixtureParams.get("daylight")==="day";',
- 'Date.now=()=>Date.parse(fixtureDay?"2026-11-06T08:02:00Z":"2026-11-06T18:02:00Z");',
+ 'const thursday=fixtureParams.get("friday-preview")==="1";',
+ 'Date.now=()=>Date.parse(thursday?"2026-11-05T12:10:00Z":fixtureDay?"2026-11-06T08:02:00Z":"2026-11-06T18:02:00Z");',
  'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,uv_index:3,wind_speed_10m:8,wind_direction_10m:140,precipitation:0,weather_code:fixtureParams.get("weather")==="unknown"?undefined:({partly:2,cloudy:3,fog:45,precipitation:61} as Record<string,number>)[fixtureParams.get("weather")??""]??0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
  ].join("\n");
  const render=[
+ 'const fridayPreview={localDate:"2026-11-06",sunrise:"2026-11-06T03:30:00Z",dhuhr:"2026-11-06T08:40:00Z",city:"الرياض"};',
+ 'const thursdayTimes=Object.fromEntries(Object.entries(today.today.islamicContext.prayerTimes).map(([key,at])=>[key,at.replaceAll("2026-11-06","2026-11-05").replaceAll("2026-11-07","2026-11-06")]));',
+ 'const prayerFixture=thursday?{personalDay:{...today.today.personalDay,boundary:{...today.today.personalDay.boundary,localDate:"2026-11-05"}},islamicContext:{...today.today.islamicContext,prayerTimes:thursdayTimes},upcomingFriday:fridayPreview}:{};',
  'const root=createRoot(document.getElementById("root")!);',
  'const isLogin=new URLSearchParams(location.search).get("screen")==="login";',
  'const isSelector=new URLSearchParams(location.search).get("screen")==="selector";',
@@ -49,7 +53,7 @@ try{
  'const previewDefinitions=workspace.workspace.definitions.map(d=>previewReading&&d.id==="d1"?{...d,title:"أمة الدوبامين",revisionId:"preview-reading",measurement:{target:310,unit:"صفحة"},sessionPlan:{distribution:"custom",sessions:[{id:"preview-session",title:"الجلسة الحالية",objective:"قراءة 16 صفحة",target:16,rangeStart:129,rangeEnd:144,scheduledDate:"2026-11-06",order:1,note:"",revision:0,createdAt:"2026-11-06T00:00:00Z",updatedAt:"2026-11-06T00:00:00Z",completedAt:null}]},activityLog:[{id:"preview-progress",executionId:"e1",localDate:"2026-11-06",at:"2026-11-06T12:00:00Z",amount:128,note:"",endReason:null}]}:d);',
  'const finance={userId:"user",currency:"SAR",accounts:[],debts:[],entries:[],requests:[],people:Array.from({length:14},(_,i)=>({id:"person-"+i,name:"شخص "+(i+1),note:""}))};',
  'const adminService={signIn:async()=>setupFactor?"enroll-needed" as const:"challenge-needed" as const,enroll:async()=>({factorId:"fixture",qrSvg:`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>`,secret:"TEST-KEY"}),verify:async(code:string)=>code==="123456"?"aal2" as const:"invalid" as const,accessToken:async()=>null,signOut:async()=>{}};',
- 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,tasks:today.today.tasks.map(task=>previewReading?{...task,title:"أمة الدوبامين"}:task),habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,finance,profile:{...workspace.workspace.profile,displayName:"عبد الرحمن محمد",updatedAt:"2026-11-06T00:00:00Z"},definitions:[...previewDefinitions,...appointments]}} as any}/>);'
+ 'root.render(new URLSearchParams(location.search).get("screen")==="admin"?<NoorAdminMfaPageR315 createMfa={()=>adminService} createRecovery={()=>({send:async(email:string)=>email==="failed@example.test"?"unavailable":"sent",complete:async(password:string)=>password==="ExpiredFixturePass!"?"invalid":"updated"})}/>:(isLogin||isSelector)?<PlatformShell state={{kind:"no-application-selected"}} navigate={path=>{Object.assign(window,{pickerDestination:path});}} signIn={async()=>{}} authenticationState={isSelector?"authenticated":"idle"} accountService={accountService}/>:<NoorPersonalApplicationView initialResult={{...today,today:{...today.today,...prayerFixture,tasks:today.today.tasks.map(task=>previewReading?{...task,title:"أمة الدوبامين"}:task),habits:today.today.habits.map(h=>({...h,status:"Completed"}))}} as any} initialWorkspace={{...workspace,workspace:{...workspace.workspace,finance,profile:{...workspace.workspace.profile,displayName:"عبد الرحمن محمد",updatedAt:"2026-11-06T00:00:00Z"},definitions:[...previewDefinitions,...appointments]}} as any}/>);'
  ].join("\n");
  await writeFile(scriptFile,[styles,setup,fixture,render].join("\n"));
  const worker=await readFile(resolve(web,"public/noor-service-worker.js"),"utf8");
@@ -438,7 +442,7 @@ try{
   await expect("!!document.querySelector('[data-testid=prayer-card]').closest('[hidden]')","Prayer sheet initially closed");
   await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
   await expect(visible("[data-testid=prayer-card]"),"Prayer card visible after opening sheet");
-  await expect("document.querySelectorAll('.np-r339-friday-grid>div').length===5","Five Friday hours retained");
+  await expect("document.querySelectorAll('.np-r339-friday-grid .np-friday-prayer-range').length===5","Five actual Friday times retained");
   await expect(`(() => {
     const prayers = [...document.querySelectorAll('.np-r339-overlay .np-prayer-times .np-prayer')].map(p => p.getBoundingClientRect());
     return prayers.length===5 && prayers.every((p,i) => p.width>=200 && p.height<=64 && (i===0 || p.top>prayers[i-1].bottom));
@@ -745,7 +749,13 @@ try{
        rings.forEach(el=>el.style.setProperty("width","min(100%,34px)","important"));
        const previousHeight=card.getBoundingClientRect().height;
        styled.forEach(([el,style])=>el.style.cssText=style);
-       return stroke>=4.5&&bounds.width>34&&height<=previousHeight+1&&
+       const tracks=[...document.querySelectorAll(".np-week-circle-track,.np-r332-ring-track,.np-day-ring-track")];
+       const fills=[...document.querySelectorAll(".np-week-circle-fill,.np-r332-ring-fill,.np-day-ring-fill")];
+       const paint=tracks.length>=9&&tracks.every(track=>{
+         const style=getComputedStyle(track);
+         return style.stroke==="rgb(255, 255, 255)"&&Number(style.opacity)===0.66;
+       })&&fills.length>0&&fills.every(fill=>getComputedStyle(fill).stroke==="rgb(38, 131, 91)");
+       return paint&&stroke>=4.5&&bounds.width>34&&height<=previousHeight+1&&
          Math.hypot(label.width,label.height)/2<=innerRadius+0.75&&
          Math.abs(label.left+label.right-bounds.left-bounds.right)<=2;
      })()`,"Bolder weekly circles contain 100% without growing the card at "+viewport.width);
@@ -799,12 +809,38 @@ try{
  }
  for(const viewport of [{width:320,height:568,mobile:true},{width:1440,height:900,mobile:false}]){
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
+   await cdp("Page.navigate",{url:url+"?friday-preview=1"});
+   await find(".np-r370-friday-entry");
+   await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
+   await expect(visible("[data-testid=prayer-card]"),"Prayer sheet opens on Thursday");
+   await expect("document.querySelectorAll('.np-r339-friday-grid .np-friday-prayer-range').length===5","Thursday prayer sheet displays Friday's five verified times");
+   await run("document.querySelector('button[aria-label=\"إغلاق مواقيت الصلوات\"]').click()");
+   await run("document.querySelector('.np-r370-friday-entry').click()");
+   await expect(visible(".np-friday-story-actions"),"Thursday sharing uses Friday's verified schedule");
+   await expect(`(() => {
+     const ranges=[...document.querySelectorAll('.np-r237-friday-hours .np-r234-times')];
+     return ranges.length===5&&ranges.every(range=>{
+       const [from,to]=range.querySelectorAll('.np-r234-time-point');
+       const bounds=range.getBoundingClientRect();
+       const fromText=from.querySelector("strong"),toText=to.querySelector("strong");
+       const contained=[fromText,toText].every(text=>text.clientWidth>0&&text.scrollWidth<=text.clientWidth+1);
+       const correctlyOrdered=innerWidth<=530?getComputedStyle(from).textAlign==="right"&&getComputedStyle(to).textAlign==="left"
+         :from.getBoundingClientRect().left>to.getBoundingClientRect().left;
+       return bounds.height>12&&contained&&correctlyOrdered;
+     });
+   })()`,"Thursday times place From on the right and To on the left");
+   await snap(viewport.width+"-thursday-friday-hours");
+ }
+ for(const viewport of [{width:320,height:568,mobile:true},{width:1440,height:900,mobile:false}]){
+   await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
    await cdp("Page.navigate",{url:"http://127.0.0.1:5179/__r371_waiting_fixture.html"});
    await expect(`(() => {
      const logo=document.querySelector('main h1 img'),note=document.querySelector('#message');
+     const wordmark=document.querySelector('.wordmark');
      const phrase=document.querySelector('#dhikr'),r=logo?.getBoundingClientRect();
-     return logo?.naturalWidth===320&&logo.alt.includes("NOOR Platform")&&
-       Math.abs((r.left+r.right)/2-innerWidth/2)<2&&r.bottom<note.getBoundingClientRect().top&&
+     return logo?.naturalWidth===295&&wordmark?.textContent==="NOOR Platform"&&
+       getComputedStyle(wordmark.firstElementChild,"::after").maskImage!=="none"&&
+       Math.abs((r.left+r.right)/2-innerWidth/2)<2&&wordmark.getBoundingClientRect().bottom<note.getBoundingClientRect().top&&
        getComputedStyle(phrase).animationName==="noor-dhikr"&&document.documentElement.scrollWidth<=innerWidth;
    })()`,"Self-contained waiting page fits "+viewport.width);
    await expect("document.querySelector('#dhikr')?.textContent==='الحمد لله'","Waiting page advances to the next phrase");

@@ -1380,7 +1380,7 @@ button[aria-label^="إغلاق"] {
 /* The rings retain their established dimensions and scoring. */
 .np-page[data-appearance] :is(.np-day-ring-track,.np-ring-track,.np-r332-ring-track,.np-week-circle-track) {
   stroke:#fff;
-  opacity:1;
+  opacity:.66;
 }
 .np-page[data-appearance] :is(.np-day-ring-fill,.np-ring-value,.np-r332-ring-fill,.np-week-circle-fill) {
   stroke:#26835b;
@@ -1467,3 +1467,5 @@ button[aria-label^="إغلاق"] {
 .nw165-journal-extras {padding:10px 12px;border:1px solid var(--ng-line);border-radius:10px;background:var(--ng-sub)}
 .nw165-journal-extras summary {cursor:pointer;font-weight:650}
 .nw165-journal-extras label {margin-top:10px}
+
+.np-r339-friday-grid .np-friday-prayer-range {display:grid;gap:2px;line-height:1.45}

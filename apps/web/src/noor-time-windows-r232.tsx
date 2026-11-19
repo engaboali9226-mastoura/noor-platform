@@ -1,11 +1,11 @@
 import {useDashboardDialog} from "./noor-dashboard-dialog.js";
 import {NoorR323Icon} from "./noor-r323-icons.js";
 import {useEffect,useState,type ReactElement} from "react";
-import {r232Countdown,r232DailyWindows,r283FridayHoursAtDhuhr,r283CarriedNightWindow,r232FastingCountdownEnabled,
+import {r232Countdown,r232DailyWindows,r283CarriedNightWindow,r232FastingCountdownEnabled,
  type R232Window,type R283PrecedingNight} from "./noor-islamic-daylight-r232.js";
 import type {NoorR232Preferences} from "./noor-time-display-preferences-r232.js";
 import {fridayVirtueR284,NOOR_FRIDAY_VIRTUES_SOURCE_R284} from "./noor-friday-virtues-r284.js";
-import {noorFridayPresentationR310} from "./noor-friday-visibility-r310.js";
+import {noorFridayDisplay} from "./noor-friday-visibility-r310.js";
 
 import type {UpcomingFridaySchedule} from "./noor-friday-story-r370.js";
 
@@ -22,6 +22,13 @@ function remaining(ms:number):string{
  const seconds=Math.max(0,Math.ceil(ms/1000));
  const hour=Math.floor(seconds/3600),min=Math.floor(seconds%3600/60),sec=seconds%60;
  return [hour,min,sec].map(n=>String(n).padStart(2,"0")).join(":");
+}
+function WindowTimes({interval,timeZone}:{interval:Pick<R232Window,"startMs"|"endMs">;timeZone:string}){
+ return <div className="np-r234-times" dir="rtl">
+    <span className="np-r234-time-point"><small>من</small><strong>{clock(interval.startMs,timeZone)}</strong></span>
+    <span className="np-r234-time-line" aria-hidden="true"/>
+    <span className="np-r234-time-point"><small>إلى</small><strong>{clock(interval.endMs,timeZone)}</strong></span>
+  </div>;
 }
 function WindowCard({title,window:interval,nowMs,timeZone,unavailable,showTimer=true,tone="day",nightCarry=false,fridayHour,fridaySelected=false,fridaySelectionBusy=false,onSelectFridayHour}:{
  title:string;window:R232Window|null;nowMs:number;timeZone:string;unavailable:string;
@@ -45,11 +52,7 @@ function WindowCard({title,window:interval,nowMs,timeZone,unavailable,showTimer=
     <span className="np-r234-state">{state.phase==="active"?"جارٍ الآن":state.phase==="finished"?"انتهت":"لم تبدأ بعد"}</span>
   </div>
   <p className="np-r248-subtitle">{subtitle}</p>
-  <div className="np-r234-times" dir="rtl">
-    <span className="np-r234-time-point"><small>من</small><strong>{clock(interval.startMs,timeZone)}</strong></span>
-    <span className="np-r234-time-line" aria-hidden="true"/>
-    <span className="np-r234-time-point"><small>إلى</small><strong>{clock(interval.endMs,timeZone)}</strong></span>
-  </div>
+  <WindowTimes interval={interval} timeZone={timeZone}/>
   <div className="np-r234-card-bottom">
     <span className="np-r234-duration" data-testid={tone==="day"?"r288-day-total-hours":tone==="night"?"r288-night-total-hours":undefined}>{tone==="day"?"ساعات النهار":tone==="night"?"ساعات الليل":"المدة"}: {duration(interval.durationMs)}</span>
     {showTimer?<div className="np-r247-timer" role={state.phase==="active"?"timer":"status"} aria-label={state.phase==="finished"?"انتهت الفترة":state.phase==="upcoming"?"لم تبدأ بعد":"الوقت المتبقي"}>
@@ -94,20 +97,14 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
    fastingStartMs:windows.fastingDay?.startMs??NaN,timeZone,
    outsideRamadanEnabled:preferences.fastingTimerOutsideRamadan,
  });
- const fridayMode=noorFridayPresentationR310(nowMs,timeZone,prayers);
+ const {mode:fridayMode,hours:exportHours,city:previewCity}=noorFridayDisplay({
+   nowMs,timeZone,prayers,upcomingFriday,sunriseOffsetMinutes:preferences.afterSunrise,
+ });
  const friday=fridayMode==="friday";
  const thursdayReminder=fridayMode==="thursday-reminder";
- const fridayHours=friday?r283FridayHoursAtDhuhr({
-   nowMs,timeZone,prayers,sunriseOffsetMinutes:preferences.afterSunrise,
-  }):null;
- const tomorrow = new Date(Date.parse(new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(nowMs)+"T00:00:00Z")+86400000);
- const thursdayHours=thursdayReminder&&upcomingFriday&&upcomingFriday.localDate===tomorrow.toISOString().slice(0,10)
-   ?r283FridayHoursAtDhuhr({
-      nowMs:Date.parse(upcomingFriday.sunrise),timeZone,sunriseOffsetMinutes:preferences.afterSunrise,
-      prayers:[{key:"sunrise",at:upcomingFriday.sunrise},{key:"dhuhr",at:upcomingFriday.dhuhr}],
-    }):null;
- const exportHours=fridayHours??thursdayHours;
- const exportCity=thursdayHours?upcomingFriday?.city:fridayCity;
+ const fridayHours=friday?exportHours:null;
+ const thursdayHours=thursdayReminder?exportHours:null;
+ const exportCity=previewCity??fridayCity;
  const exportStory=async(copy:boolean)=>{
    if(!exportHours||exportState==="working")return;
    setExportState("working");
@@ -227,7 +224,9 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
       working:"جارٍ تجهيز الصورة",copied:"تم نسخ الصورة",saved:"تم تنزيل الصورة",error:"تعذّر تجهيز الصورة أو نسخها. جرّب حفظها من الزر الآخر.",
     }[exportState]}</p>:null}
     <p className="np-r232-note">من ارتفاع الشمس إلى موعد الظهر المعتمد يوم الجمعة، موزعة على خمس فترات متساوية. فضائل التبكير بالترتيب الوارد في الحديث، وليست حسابًا رقميًا للأجر.</p>
-    {thursdayReminder?<p className="np-r310-friday-caption" role="status">تذكير: غدًا الجمعة · استعد للتبكير</p>:null}
+    {thursdayReminder?<p className="np-r310-friday-caption" role="status">
+      {thursdayHours?"تذكير: غدًا الجمعة · استعد للتبكير":"غدًا الجمعة · المواقيت غير متاحة حاليًا."}
+    </p>:null}
     {thursdayReminder?<>
       <div className="np-r232-five-grid np-r235-five-rows np-r237-friday-hours" role="group" aria-label="تذكير بساعات الجمعة الخمس">
         {([1,2,3,4,5] as const).map(number=>{
@@ -237,8 +236,8 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
             <div className="np-r234-card-title">
               <h3 aria-label={`الساعة ${hourLabel}`}>{hourLabel}</h3>
               <p className="np-r284-friday-virtue" data-testid={`friday-virtue-${number}`}><span aria-hidden="true">{virtue.icon}</span><span>{virtue.description}</span></p>
-              {thursdayHours?<small>من {clock(thursdayHours[number-1]!.startMs,timeZone)} إلى {clock(thursdayHours[number-1]!.endMs,timeZone)}</small>:null}
             </div>
+            {thursdayHours?<WindowTimes interval={thursdayHours[number-1]!} timeZone={timeZone}/>:null}
             <div className="np-r234-card-bottom"><div className="np-r247-timer" role="status" aria-label="تذكير ليوم الجمعة"><span className="np-r247-inactive">غدًا</span></div></div>
           </article>;
         })}

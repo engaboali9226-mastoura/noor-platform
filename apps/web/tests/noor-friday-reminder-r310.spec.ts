@@ -91,6 +91,21 @@ test("Friday image uses verified Friday hours and unlocks at the exact Thursday 
  assert.doesNotMatch(story("2026-11-05T12:14:59Z"),/نسخ الصورة/);
  assert.match(story("2026-11-05T12:15:00Z"),/نسخ الصورة/);
  assert.match(story("2026-11-05T12:15:00Z"),/حفظ الصورة/);
+ const document=new JSDOM(story("2026-11-05T12:15:00Z")).window.document;
+ const ranges=[...document.querySelectorAll(".np-r237-friday-hours .np-r234-times")];
+ const format=(iso:string)=>new Intl.DateTimeFormat("ar-SA-u-nu-latn",{
+   timeZone:zone,hour:"numeric",minute:"2-digit",hour12:true,
+ }).format(at(iso));
+ assert.equal(ranges.length,5);
+ const midnight=new JSDOM(story("2026-11-05T21:00:00Z")).window.document;
+ assert.equal(midnight.querySelector('[data-testid="friday-five-hours-r232"]')?.getAttribute("data-friday-mode"),"friday");
+ assert.equal(midnight.querySelectorAll(".np-r237-friday-hours .np-r234-times").length,5);
+ assert.equal(ranges[0]?.querySelector("strong")?.textContent,format("2026-11-06T03:50:00Z"));
+ assert.equal(ranges[4]?.querySelector("span:last-child strong")?.textContent,format(upcomingFriday.dhuhr));
+ for(const range of ranges)assert.deepEqual([...range.querySelectorAll("small")].map(e=>e.textContent),["من","إلى"]);
  assert.doesNotMatch(story("2026-11-05T12:15:00Z",{...upcomingFriday,localDate:"2026-10-30"}),/نسخ الصورة/);
  assert.doesNotMatch(story("2026-11-05T12:15:00Z",{...upcomingFriday,sunrise:"2026-11-05T03:30:00Z"}),/نسخ الصورة/);
+ assert.doesNotMatch(story("2026-11-05T12:15:00Z",{
+   ...upcomingFriday,sunrise:"2026-10-30T03:30:00Z",dhuhr:"2026-10-30T08:40:00Z",
+ }),/نسخ الصورة/);
 });
