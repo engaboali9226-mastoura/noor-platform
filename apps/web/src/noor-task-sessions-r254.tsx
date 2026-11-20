@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {useEffect,useRef,useState,type ReactElement} from "react";
 import type {NoorPersonalCommandInput,NoorTaskSessionDraft} from "./noor-personal-today-client.js";
 import {spreadTaskSessionsR288,weeklyTaskSessionDatesR298,type SessionCadenceR288} from "./noor-session-calendar-r288.js";
@@ -168,7 +169,7 @@ export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistr
       <label>التوزيع<select disabled={busy} value={distribution} onChange={e=>setDistribution(e.currentTarget.value as "equal"|"custom")}><option value="equal">متساوٍ</option><option value="custom">مخصص</option></select></label>
       <section className="nts-weekly-r298" data-testid="r298-weekly-planner" aria-label="جدولة الجلسات حسب أيام الأسبوع">
         <div className="nts-weekly-heading-r298"><strong>جدولة الجلسات تلقائيًا</strong>
-          <small>حدّد البداية وعدد الجلسات وأيام الأسبوع. مع تاريخ نهاية تُوزَّع الجلسات على كامل الفترة، وبدونه تبدأ من أول يوم متاح.</small>
+          <NoorContextHelp label="مساعدة: حدّد البداية وعدد الجلسات">حدّد البداية وعدد الجلسات وأيام الأسبوع. مع تاريخ نهاية تُوزَّع الجلسات على كامل الفترة، وبدونه تبدأ من أول يوم متاح.</NoorContextHelp>
         </div>
         <div className="nts-weekly-fields-r298">
           <label>تاريخ البداية<input type="date" data-testid="r298-weekly-start" value={weeklyFirstDate}
@@ -190,7 +191,7 @@ export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistr
                 onClick={()=>setWeeklyDays(current=>current.includes(item.day)?current.filter(d=>d!==item.day):[...current,item.day])}>{item.label}</button>)}
           </div>
         </fieldset>
-        {parentScheduleKind==="Weekdays"?<small className="nts-weekly-note-r298">اختَر أيامًا ضمن أيام تكرار المهمة المحددة أعلاه، وإلا فلن يقبل الخادم الجدولة.</small>:null}
+        {parentScheduleKind==="Weekdays"?<NoorContextHelp label="مساعدة: اختَر أيامًا ضمن أيام">اختَر أيامًا ضمن أيام تكرار المهمة المحددة أعلاه، وإلا فلن يقبل الخادم الجدولة.</NoorContextHelp>:null}
         {sessions.length>0?<small className="nts-weekly-note-r298">الجلسات الموجودة: {sessions.length}؛ لا تُعاد إنشاؤها أو تغيير أهدافها. لتغيير العدد استخدم إضافة أو إزالة جلسة أدناه.</small>:null}
         {sessions.some(session=>session.scheduledDate)?<label className="nts-weekly-replace-r298">
           <input type="checkbox" checked={replaceScheduled} disabled={busy} onChange={e=>setReplaceScheduled(e.currentTarget.checked)}/>
@@ -206,20 +207,20 @@ export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistr
             {sessions.filter(session=>session.scheduledDate).length>8?<small>والمزيد حسب ترتيب الجلسات أدناه…</small>:null}
           </div>
         </div>:null}
-        <small className="nts-weekly-note-r298">التوزيع مقترح فقط حتى تضغط حفظ المهمة. الخادم يحمي الجلسات ذات الإنجاز المسجل ولا يسمح بنقلها إلى يوم آخر.</small>
+        <NoorContextHelp label="مساعدة: التوزيع مقترح فقط">التوزيع مقترح فقط حتى تضغط حفظ المهمة. الخادم يحمي الجلسات ذات الإنجاز المسجل ولا يسمح بنقلها إلى يوم آخر.</NoorContextHelp>
       </section>
       <details className="nts-legacy-calendar-r298"><summary>خيارات التوزيع الأخرى (يدوي / أسبوعي / شهري)</summary>
-      {distribution==="equal"?<div className="nts-split"><label>عدد الجلسات<input type="number" min="1" max="200" value={count} onChange={e=>setCount(Number(e.currentTarget.value))}/></label><button type="button" disabled={busy||sessions.length>0} onClick={split}>إنشاء جلسات متساوية</button><small>لا تُستبدل الجلسات الموجودة تلقائيًا حفاظًا على أي سجل سابق.</small></div>:null}
+      {distribution==="equal"?<div className="nts-split"><label>عدد الجلسات<input type="number" min="1" max="200" value={count} onChange={e=>setCount(Number(e.currentTarget.value))}/></label><button type="button" disabled={busy||sessions.length>0} onClick={split}>إنشاء جلسات متساوية</button><NoorContextHelp label="مساعدة: لا تُستبدل الجلسات الموجودة تلقائيًا">لا تُستبدل الجلسات الموجودة تلقائيًا حفاظًا على أي سجل سابق.</NoorContextHelp></div>:null}
       <div className="nts-calendar-r288" data-testid="r288-calendar-planner" aria-label="توزيع الجلسات على التواريخ">
         <strong>جدولة الجلسات على أيام محددة</strong>
-        <p>اختر أول يوم وعدد الأيام ونوع الفاصل؛ توزّع الجلسات الموجودة على تلك الأيام. يمكنك تعديل تاريخ كل جلسة بعدها، ولن يُحفظ أي تغيير حتى تحفظ المهمة.</p>
+        <NoorContextHelp label="مساعدة: اختر أول يوم وعدد الأيام">اختر أول يوم وعدد الأيام ونوع الفاصل؛ توزّع الجلسات الموجودة على تلك الأيام. يمكنك تعديل تاريخ كل جلسة بعدها، ولن يُحفظ أي تغيير حتى تحفظ المهمة.</NoorContextHelp>
         <div className="nts-calendar-fields">
           <label>أول يوم للجلسات<input type="date" value={calendarFirstDate} onChange={e=>setCalendarFirstDate(e.currentTarget.value)} disabled={busy}/></label>
           <label>عدد الأيام<input type="number" min="1" max={sessions.length||1} value={calendarDays} data-testid="r288-calendar-days" onChange={e=>setCalendarDays(Number(e.currentTarget.value))} disabled={busy}/></label>
           <label>التوزيع<select data-testid="r288-calendar-cadence" value={calendarCadence} disabled={busy} onChange={e=>setCalendarCadence(e.currentTarget.value as SessionCadenceR288)}><option value="daily">أيام متتابعة حسب جدول المهمة</option><option value="weekly">أسبوعيًا</option><option value="monthly">شهريًا في اليوم نفسه</option></select></label>
         </div>
         <button type="button" data-testid="r288-calendar-apply" disabled={busy||sessions.length===0} onClick={applyCalendar}>توزيع مواعيد الجلسات</button>
-        <small>التواريخ يجب أن توافق تكرار المهمة ونطاقها؛ التقدم السابق للجلسات محمي عند الحفظ.</small>
+        <NoorContextHelp label="مساعدة: التواريخ يجب أن توافق">التواريخ يجب أن توافق تكرار المهمة ونطاقها؛ التقدم السابق للجلسات محمي عند الحفظ.</NoorContextHelp>
       </div>
       </details>
       {sessions.map((s,i)=><fieldset className="nts-editor" key={s.id}><legend>الجلسة {i+1}</legend>
@@ -231,7 +232,7 @@ export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistr
       </fieldset>)}
       <button type="button" disabled={busy||sessions.length>=200} onClick={()=>setSessions([...sessions,makeSession(sessions.length+1)])}>+ إضافة جلسة</button>
       {target!==null?<p className="nts-plan-total" data-testid="r285-session-target-total" role="status">مجموع المستهدفات المحددة: {round(sessions.reduce((sum,session)=>sum+(session.target??0),0))} من {target} {unit||"وحدة"}{sessions.some(s=>s.target===null)?" · توجد جلسات لم تحدد كميتها بعد":""}</p>:null}
-      <small>لكل جلسة موعد مستقل، وعند تأكيد «تمت» في يومها يحفظ الخادم إنجازها في تاريخ ذلك اليوم مرة واحدة، ويحسب حصتها من وزن المهمة. لا يمكن تغيير موعد جلسة لها تقدم سابق. نطاقات الصفحات يجب أن تكون صحيحة وغير متداخلة.</small>
+      <NoorContextHelp label="مساعدة: لكل جلسة موعد مستقل">لكل جلسة موعد مستقل، وعند تأكيد «تمت» في يومها يحفظ الخادم إنجازها في تاريخ ذلك اليوم مرة واحدة، ويحسب حصتها من وزن المهمة. لا يمكن تغيير موعد جلسة لها تقدم سابق. نطاقات الصفحات يجب أن تكون صحيحة وغير متداخلة.</NoorContextHelp>
       {error?<p role="alert">{error}</p>:null}
     </div>:null}
   </section>;
@@ -416,8 +417,8 @@ export function TaskSessionListR254({plan,log,definitionId,executionId,busy,onCo
   return <details className="nts-list" data-testid="task-sessions-r254" open={expanded||undefined}>
     <summary>الجلسات: {count} / {plan.sessions.length} مكتملة <small>{plan.sessions.some(s=>s.target!==null)?'حدد تم للجلسة المكتملة أو سجل مقدارًا جزئيًا؛ كل تقدم يدخل في إنجاز تاريخ تسجيله، ويُعرض تاريخ الإتمام المحفوظ.':'اضغط تم بعد تنفيذ كل جلسة؛ تُحتسب مرة واحدة من وزن المهمة.'}</small></summary>
     <div className="nts-list-body">
-      {hasUnscheduled?<p className="nts-scheduled-info">لتحديد استحقاق الجلسات، افتح «الأدوات ← المهام ← تعديل البيانات والجدول».</p>:null}
-      {plan.sessions.length?plan.sessions.map(s=><OneSessionR254 key={s.id} session={s} log={log} definitionId={definitionId} executionId={executionId} busy={busy} onCommand={onCommand} reading={/قراء|كتاب|reading|book/i.test(title)} pageUnit={isWholePageUnitR254(unit)} unit={unit} todayDate={todayDate}/>):<p>يمكنك إضافة جلسات لاحقًا من تعديل المهمة.</p>}
+      {hasUnscheduled?<NoorContextHelp label="مساعدة: لتحديد استحقاق الجلسات">لتحديد استحقاق الجلسات، افتح «الأدوات ← المهام ← تعديل البيانات والجدول».</NoorContextHelp>:null}
+      {plan.sessions.length?plan.sessions.map(s=><OneSessionR254 key={s.id} session={s} log={log} definitionId={definitionId} executionId={executionId} busy={busy} onCommand={onCommand} reading={/قراء|كتاب|reading|book/i.test(title)} pageUnit={isWholePageUnitR254(unit)} unit={unit} todayDate={todayDate}/>):<NoorContextHelp label="مساعدة: يمكنك إضافة جلسات لاحقًا">يمكنك إضافة جلسات لاحقًا من تعديل المهمة.</NoorContextHelp>}
       <details className="nts-summary"><summary>{expanded?"ملاحظات المهمة":"الملاحظات والإنجازات"}</summary>
         {revisionId?<TaskGeneralNoteR254 definitionId={definitionId} revisionId={revisionId} storedNote={taskGeneralNote} busy={busy} onCommand={onCommand}/>:null}
         {plan.sessions.filter(s=>s.note).slice().sort((a,b)=>a.updatedAt.localeCompare(b.updatedAt)).map(s=><div key={s.id}><strong>{s.title}</strong><time dateTime={s.updatedAt}>{s.updatedAt.slice(0,10)}</time><p>{s.note}</p></div>)}
