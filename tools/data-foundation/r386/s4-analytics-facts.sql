@@ -5,7 +5,9 @@ CREATE TABLE noor_r386_candidate.s4_fact(
  fact_kind text NOT NULL CHECK(fact_kind IN ('execution','execution-transition','activity','session','prayer-policy','prayer-record','prayer-alias')),
  entity_id noor_r386_candidate.identifier NOT NULL,
  sub_id noor_r386_candidate.identifier NOT NULL,
- definition_id noor_r386_candidate.identifier,
+ -- Prayer facts are deliberately not tied to a habit definition. The S1
+ -- identifier domain rejects NULL, so use an explicitly nullable validated ID.
+ definition_id text COLLATE "C" CHECK(definition_id IS NULL OR noor_r386_candidate.valid_id(definition_id)),
  source_revision noor_r386_candidate.revision NOT NULL,
  fact_version integer NOT NULL DEFAULT 1 CHECK(fact_version=1),
  observed_at timestamptz NOT NULL DEFAULT clock_timestamp() CHECK(isfinite(observed_at)),
