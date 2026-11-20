@@ -11,3 +11,17 @@
 
 - Offline shadow transition hardened against unrelated operational removals even when no corresponding event exists, orphan execution links, changed execution-to-definition identity, and invalid empty owner. The audited R385 persistence removes definitions/executions only through permanent deletion, distinct from separate historical-event operations. Existing event removal, key and immutable content checks retained; new errors are specific to the candidate, not a change to production error handling. CI required for latest modifications.
 - Read-only production analytics audit and fact-provenance requirements recorded in docs/noor/r386-analytics-readiness.md. No score recalculation, no analytics materialization and no production state mutation.
+
+## Pre-implementation review — 2026-11-20, G0 still open
+
+Reviewed exact candidate 241cad7e5dea97daf60df1faf2ffabfdb327fa32; no runtime or SQL changes. The future persistent bridge must cover distinct mutation/acknowledgement boundaries rather than replacing only the ordinary UPDATE:
+
+| Existing path | Required future invariant | Acceptance test |
+| --- | --- | --- |
+| BoundFoundationOperation.runTransaction unchanged-state branch | Preserve no-op semantics; if a cached candidate was used, verify its revision; a durable request receipt must not require an existing foundation row. | Absent owner and unchanged operation; retry with same request; stale cached revision rejected. |
+| SupabasePostgresPersonalFoundationPersistence.commit first INSERT | First creation and receipt/history/delivery must be atomic, including competing creators. | Two concurrent first writes; lost response after commit; no double creation or duplicate receipt. |
+| commit existing UPDATE (owner and revision predicates) | Preserve owner-scoped CAS and acknowledgement of exactly one next revision. | Concurrent device writes, stale revision, duplicate logical request and post-commit response loss. |
+| initializePersonalProfile via noor_initialize_personal_profile_r321 | Separate authorized RPC writes foundation state and invalidates command cache; must participate in revision/invalidation design even if no outbox event is appended. | Repeat initialization without overwriting configured profile; concurrent initialization/ordinary mutation; correct shadow revision. |
+| permanentlyDeleteFoundationDefinition | Removes definition, executions and related outbox records; future retained facts/history/receipts must obey authorized erasure and avoid silently retaining deleted personal content. | Delete and replay after deletion; no orphan history/facts; unchanged unrelated owner. |
+
+G1 interface decisions still required: event identifier limits must agree between JS contract (up to 4096 UTF-16 code units for text) and indexed synthetic SQL (512 UTF-8 bytes for event id/key); use one validated bounded representation without silent truncation. Full version/type/payload/privacy validation must precede persistence; lab SQL currently checks only identity/owner/length/delivery state. Retain exact old due-date/actual-date/weight provenance and unknowns; do not recalculate historical scores. The current synthetic SQL is not a production migration. Review is preparation only, not execution of G1, and does not change prior sequential gate requirements. G0 remains open for actual linked positive sessions/RPC/owner isolation and managed recovery. Earlier blocked fixture creation must not be retried via another route. No implementation, production write, merge or deploy in this checkpoint.
