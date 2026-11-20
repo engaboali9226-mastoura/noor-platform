@@ -9,11 +9,15 @@ tmp=$(mktemp -d "$RUNNER_TEMP/r386.XXXXXX")
 cleanup(){ docker rm -f "$name" >/dev/null 2>&1 || true; rm -rf "$tmp"; }
 trap cleanup EXIT
 docker run -d --pull always --name "$name" --network none -e POSTGRES_PASSWORD=synthetic-r386-ci-only postgres:17-alpine >/dev/null
-for i in $(seq 1 45); do
- if docker exec "$name" pg_isready -U postgres -d postgres >/dev/null 2>&1; then break; fi
+# The image bootstraps with a socket-only temporary server; wait for a real
+# SQL query over loopback TCP from the final server, not pg_isready on its socket.
+ready=0
+for i in $(seq 1 60); do
+ if docker exec -e PGPASSWORD=synthetic-r386-ci-only "$name" psql -X -h 127.0.0.1 -U postgres -d postgres -At -v ON_ERROR_STOP=1 -c 'SELECT 1' 2>/dev/null | grep -qx 1; then ready=1; break; fi
  sleep 1
 done
-docker exec "$name" pg_isready -U postgres -d postgres >/dev/null
+if test "$ready" != 1; then docker logs "$name"; echo R386_PG17_READINESS_FAILED; exit 1; fi
+echo R386_PG17_TCP_READY
 sql(){ docker exec -i "$name" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -At "$@"; }
 sql -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;'
 sql -1 < tools/data-foundation/r386/staging-lab-schema.sql

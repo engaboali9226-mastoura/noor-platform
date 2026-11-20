@@ -25,6 +25,12 @@ jobs:
           node-version: 24.x
           cache: npm
 
+      - name: R386 isolated PostgreSQL 17 concurrency and persistence proof
+        if: startsWith(github.head_ref, 'foundation/r386-')
+        run: bash tools/data-foundation/r386/run-isolated-ci.sh
+      - name: R386 offline legacy event contract
+        if: startsWith(github.head_ref, 'foundation/r386-')
+        run: node --test tools/data-foundation/r386/legacy-event-contract.test.mjs tools/data-foundation/r386/shadow-transition.test.mjs
       - name: Run canonical architecture validation
         run: bash tools/ci/run-architecture-validation.sh
       - name: Build workspace
@@ -40,9 +46,3 @@ jobs:
           path: r323-visual-evidence/
           if-no-files-found: warn
 
-      - name: R386 isolated PostgreSQL 17 concurrency and persistence proof
-        if: startsWith(github.head_ref, 'foundation/r386-')
-        run: bash tools/data-foundation/r386/run-isolated-ci.sh
-      - name: R386 offline legacy event contract
-        if: startsWith(github.head_ref, 'foundation/r386-')
-        run: node --test tools/data-foundation/r386/legacy-event-contract.test.mjs tools/data-foundation/r386/shadow-transition.test.mjs
