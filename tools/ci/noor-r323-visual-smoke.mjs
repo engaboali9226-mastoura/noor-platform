@@ -502,7 +502,7 @@ try{
   await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-habits,r324-nav-plus,r324-nav-tasks,r324-nav-grid'","Approved RTL navigation order");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
-  await expect("document.querySelector('.np-r331-board-grid > :nth-child(6)').textContent.includes('معركة تاريخية تجريبية')","R381 public events appear on board");
+  await expect("document.querySelector('.np-r331-board-grid > :nth-child(6)').textContent.includes('حدث هجري تجريبي')","R384 available Islamic anniversary is shown on board");
   await run("document.querySelector('.np-r331-board-grid > :nth-child(6)').click()");
   await expect("document.querySelectorAll('.np-r381-history-event').length===2 && document.querySelector('.np-r381-history-event a').hostname==='ar.wikipedia.org'","R381 both calendars display sourced events");
   await expect("Array.from(document.querySelectorAll('.np-r382-history-detail')).every(d=>!d.open&&d.querySelector('p').getClientRects().length===0)","R382 event descriptions hidden until requested");
@@ -561,6 +561,14 @@ try{
         rect.top>=0 && rect.bottom<=innerHeight+1 && rect.right<=innerWidth+1;
     })()`,name+" Noor surface stays within the viewport");
     await snap(screen.name+"-"+name);
+    if(name==="alerts"){
+      await expect(`(()=>{const h=document.querySelector('.np-r338-alert-sheet header h2'),mark=h?.querySelector('.noor-help-mark-r384');if(!mark)return false;const r=mark.getBoundingClientRect(),t=h.getBoundingClientRect();return r.width===15&&r.height===15&&r.left>=t.left&&r.right<=t.right+1&&r.top>=t.top-1&&r.bottom<=t.bottom+1;})()`,"R384 help mark is 15px and aligned inside the heading");
+      await run("document.querySelector('.np-r338-alert-sheet header h2 .noor-help-trigger-r382').click()");
+      await expect(`(()=>{const d=document.querySelector('.noor-help-dialog-r384');if(!d)return false;const r=d.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight&&Math.abs((r.top+r.bottom)/2-innerHeight/2)<2&&d.contains(document.activeElement);})()`,"R384 centered help fits viewport and receives focus");
+      await snap(screen.name+"-r384-help-modal");
+      await run("document.querySelector('.noor-help-dialog-r384 button').click()");
+      await expect("!document.querySelector('.noor-help-dialog-r384')&&document.activeElement===document.querySelector('.np-r338-alert-sheet header h2 .noor-help-trigger-r382')","R384 closes help and restores trigger focus");
+    }
     await run(`document.querySelector(${JSON.stringify(dialog)}).querySelector('button[aria-label^="إغلاق"]').click()`);
     await expect("!("+visible(dialog)+")",name+" closes");
   }
