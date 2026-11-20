@@ -210,3 +210,12 @@ sql -c "SELECT noor_r386_candidate.erase_owner(owner_id) FROM noor_r386_candidat
 sql -c "DELETE FROM noor_r386_lab.synthetic_source WHERE owner_id LIKE 'synthetic-r386-s2-%'"
 test "$(sql -c 'SELECT (SELECT count(*) FROM noor_r386_candidate.owner_scope)+(SELECT count(*) FROM noor_r386_candidate.event_history)+(SELECT count(*) FROM noor_r386_candidate.delivery_outbox)+(SELECT count(*) FROM noor_r386_candidate.checkpoint)+(SELECT count(*) FROM noor_r386_candidate.command_receipt)')" = 0
 echo R386_S2_PERMANENT_BACKFILL_PASS
+
+# S3 persistent save primitive (synthetic source only).
+sql -1 < tools/data-foundation/r386/s3-atomic-save.sql
+sql < tools/data-foundation/r386/s3-atomic-save-regression.sql
+for role in anon authenticated service_role; do
+ if sql -c "SET ROLE $role; SELECT * FROM noor_r386_candidate.s3_enrollment" >"$tmp/s3-role" 2>&1; then echo R386_S3_ROLE_LEAK; exit 1; fi
+ grep -q 'permission denied' "$tmp/s3-role"
+done
+echo R386_S3_ISOLATED_SQL_PASS
