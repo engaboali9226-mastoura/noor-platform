@@ -83,7 +83,7 @@ test("R231 protected access errors remain truthful but use branded styling",()=>
 test("R231 first-paint refresh is branded before React even on a deep link",()=>{
  assert.match(html,/#root:empty::before/u);
  assert.match(html,/#root:empty::after/u);
- assert.match(html,/\/brand\/platform-logo\.webp/u);
+ assert.match(html,/\/brand\/icon-r369-192\.png/u);
  assert.match(html,/مرحبا بك في منصة نور/u);
  assert.match(html,/background: #f7f5ef/u);
  assert.match(main,/import "\.\/noor-welcome-gateway-r231\.css";/u);

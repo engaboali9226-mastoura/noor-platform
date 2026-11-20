@@ -32,7 +32,7 @@ for (const [label, markup] of [["route", entry], ["Personal", waiting]] as const
   });
 }
 test("R101 logo is preloaded by the application HTML before module startup", () => {
-  assert.match(html, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
+  assert.match(html, /rel="preload" as="image" type="image\/png" href="\/brand\/icon-r369-192\.png"/u);
   const knownEntries = ['src="/src/main.tsx"', 'src="/src/main.noor-lab.tsx"'];
   const matches = knownEntries.filter(entry => html.includes(entry));
   assert.equal(matches.length, 1, "Exactly one recognized application entrypoint must be present");
