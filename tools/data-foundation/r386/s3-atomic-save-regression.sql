@@ -69,7 +69,7 @@ END $$;
 -- Existing owner: S3 must consume a verified S2 checkpoint, not initialize a
 -- competing history or rebase an unverified source. Then prove rollback
 -- erasure of stale shadow rows while the old state remains authoritative.
-DO $
+DO $$
 DECLARE c text:='synthetic-r386-s3-c';
  old_state jsonb; next_state jsonb; result jsonb;
  hash text:=repeat('c',64); hashes jsonb:=jsonb_build_object('k1',repeat('c',64));
@@ -94,7 +94,7 @@ BEGIN
  OR EXISTS(SELECT 1 FROM noor_r386_candidate.event_history WHERE owner_id=c AND event_id='e-3')
  OR NOT EXISTS(SELECT 1 FROM noor_r386_candidate.command_receipt WHERE owner_id=c AND request_id='transition')
  THEN RAISE EXCEPTION 'R386_S3_ROLLBACK_ERASURE'; END IF;
-END $;
+END $$;
 SELECT 'R386_S3_BACKFILL_TRANSITION_AND_ROLLBACK_ERASURE_PASS';
 SELECT 'R386_S3_PERSISTENT_ATOMIC_PRIMITIVE_PASS';
 ROLLBACK;
