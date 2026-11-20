@@ -38,10 +38,14 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;'
       - name: Create experiment schema
         run: psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/staging-lab-schema.sql
+      - name: Upgrade synthetic lab to v2
+        run: psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/staging-lab-v2.sql
+      - name: Atomic CAS and request receipt proof
+        run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-atomic.sql
       - name: Regression, privilege and rollback proof
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-regression.sql
       - name: Representative synthetic volume
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-scale.sql
       - name: Verify no fixture data remains
         run: |
-          psql -X -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM noor_r386_lab.synthetic_source) OR EXISTS (SELECT 1 FROM noor_r386_lab.event_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.checkpoint) THEN RAISE EXCEPTION 'residual fixture data'; END IF; END \$\$;"
+          psql -X -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM noor_r386_lab.synthetic_source) OR EXISTS (SELECT 1 FROM noor_r386_lab.event_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.checkpoint) OR EXISTS (SELECT 1 FROM noor_r386_lab.command_receipt) THEN RAISE EXCEPTION 'residual fixture data'; END IF; END \$\$;"
