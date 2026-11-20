@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {createHistoryEngine} from './noor-history-r381.mjs';
 import {createUsernameLogin,createUsernameLoginHandler} from './noor-username-login.mjs';
 import {readFile,realpath,stat} from 'node:fs/promises';
 import path from 'node:path';
@@ -30,7 +31,7 @@ export function validatePublicBuildEnvironment(env){
 
 // Authentication, authorization, commands and persistence remain owned by the
 // existing runtime. This transport serves build files and streams API traffic.
-export async function createHostedWebServer({staticDirectory,apiOrigin,publicOrigin,releaseCommit=null,usernameLogin}){
+export async function createHostedWebServer({staticDirectory,apiOrigin,publicOrigin,releaseCommit=null,usernameLogin,historyDay=createHistoryEngine()}){
  const api=new URL(apiOrigin),origin=new URL(publicOrigin);
  if(!['http:','https:'].includes(origin.protocol)||origin.username||origin.password||origin.pathname!=='/'||origin.search||origin.hash)throw Error('PUBLIC_ORIGIN_INVALID');
  if(api.protocol!=='http:'||api.hostname!=='127.0.0.1'||api.username||api.password||api.pathname!=='/'||api.search||api.hash)throw Error('INTERNAL_API_ORIGIN_INVALID');
@@ -42,6 +43,12 @@ export async function createHostedWebServer({staticDirectory,apiOrigin,publicOri
    if(!req.url?.startsWith('/')||req.url.startsWith('//'))return reply(res,400,'Invalid request.',req.method);
    const url=new URL(req.url,origin);
    if(url.pathname==='/healthz')return reply(res,['GET','HEAD'].includes(req.method)?200:405,'ok',req.method,{'X-Noor-App-Shell':'1',...(releaseSha?{'X-Noor-Release-Sha':releaseSha}:{})});
+   if(url.pathname==='/api/noor/public-history/day'){
+    if(!['GET','HEAD'].includes(req.method))return reply(res,405,'Method not allowed.',req.method);
+    const calendar=url.searchParams.get('calendar'),month=Number(url.searchParams.get('month')),day=Number(url.searchParams.get('day'));
+    const result=await historyDay(calendar,month,day);
+    return reply(res,result.status==='invalid'?400:result.status==='unavailable'?503:200,JSON.stringify(result),req.method,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age='+ (result.status==='ok'?3600:30)});
+   }
    if(url.pathname==='/api/noor/username-login'&&usernameHandler){
     const {status,proof}=await usernameHandler(req);
     return reply(res,status,JSON.stringify(proof?{proof}:{}),req.method,{'Content-Type':'application/json'});
