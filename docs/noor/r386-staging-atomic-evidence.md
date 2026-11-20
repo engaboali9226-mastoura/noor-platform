@@ -1,0 +1,7 @@
+# R386 v2 isolated atomic persistence evidence
+- Staging migration r386_isolated_synthetic_event_history_lab_v2 applied only to NOOR-R219-Staging.
+- Regression PASS (3 events, 2 checkpoints); atomic model PASS (3 receipts) including identical late replay, same request different payload collision, stale revision, removal conflict, same revision event-count mutation, simulated crash, cross-owner request scoping. All synthetic rows removed by rollback; verification found zero rows in all four lab tables.
+- Volume PASS (2216 events, exact JSON equality). One local run: first copy 165.87 ms, retry 702.99 ms; prior 173.12 and 825.13 ms. Not a statistically established improvement; still scans per-owner JSON and stores full request snapshots in lab receipt. Production receipt must store bounded canonical request hash and stable response metadata, not duplicate private snapshots.
+- Atomic model is separate from live CAS and does not authenticate actual users or persist real records. Legacy Pending values unchanged. Live deletion/correction cannot be blocked by this lab; production integration needs explicit lifecycle handling.
+- Added deterministic two independent database connections test in isolated PG17 CI container, requiring observed row-lock wait, stale writer rejection, exact idempotent retry, and explicit app role access denial. CI result not yet established.
+- Backup/restore, full staging parity, and Render manual-only enforcement remain production cutover blockers. No production mutations or runtime deployment.

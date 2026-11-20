@@ -39,3 +39,7 @@ jobs:
           name: noor-r323-browser-evidence
           path: r323-visual-evidence/
           if-no-files-found: warn
+
+      - name: R386 isolated PostgreSQL 17 concurrency and persistence proof
+        if: startsWith(github.head_ref, 'foundation/r386-')
+        run: bash tools/data-foundation/r386/run-isolated-ci.sh
