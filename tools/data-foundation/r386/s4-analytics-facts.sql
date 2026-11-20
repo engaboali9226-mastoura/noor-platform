@@ -283,7 +283,7 @@ BEGIN
  AND x.definition_id=e->'payload'->>'definitionId' AND x.record->>'status'=e->'payload'->>'executionStatus'
  JOIN jsonb_array_elements(NEW.state->'personalDays') z(d) ON d->>'id'=x.record->>'dayId'
  WHERE e->>'eventType' IN ('ExecutionCompleted','ExecutionMissed','ExecutionCancelled','ExecutionReopened')
- AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(prior_events) old WHERE old->>'id'=e->>'id');
+ AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(prior_events) pold(ev) WHERE pold.ev->>'id'=e->>'id');
  RETURN NEW;
 END $$;
 CREATE TRIGGER r386_s4_capture AFTER INSERT OR UPDATE OF state ON noor_r386_lab.synthetic_source
