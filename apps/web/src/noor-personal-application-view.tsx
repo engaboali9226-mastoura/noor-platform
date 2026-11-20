@@ -3464,7 +3464,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
   const displayedPrayer=prayerDays.find(p=>p.date===displayedDate);
   const displayedWeightedRows=historyDate?weightedHistory.filter(r=>r.date===displayedDate):weightedToday;
   const displayedScore=summarizeProgress(displayedWeightedRows);
-  const recoveryPoints=displayedWeightedRows.filter(row=>row.recoveryBonus).reduce((total,row)=>total+row.weight*statisticEarnedShareR285(row),0);
+  const recoveryPoints=displayedWeightedRows.filter(row=>!row.recoveryBonus&&"recoveredWeight" in row&&row.completionDate).reduce((total,row)=>total+Math.min(row.weight*statisticEarnedShareR285(row),row.recoveredWeight??0),0);
   const sessionPoints=displayedWeightedRows.reduce((total,row)=>total+(row.kind==="Task"&&definitionsById.get(row.definitionId)?.sessionPlan?row.weight*statisticEarnedShareR285(row):0),0);
   const completionRate=displayedScore.rate??0;
   const achievementWeek=wholeWeekAchievement(weightedHistory,achievementDate,weightedToday),yesterday=yesterdayAchievement(weightedHistory,displayedDate);
@@ -3902,7 +3902,7 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
                 value={sessionRecovery.amount} min="0.000001" step="any" required onChange={event=>setSessionRecovery({...sessionRecovery,amount:event.currentTarget.value})}/></label>:null}
               {sessionRecovery?<label className="np-recovery-input">ملاحظة اختيارية<textarea dir="rtl" rows={2} maxLength={2000}
                 value={sessionRecovery.note} onChange={event=>setSessionRecovery({...sessionRecovery,note:event.currentTarget.value})}/></label>:null}
-              <div className="np-recovery-points"><span>الوزن المحتسب</span><strong>{performedOn?`${points(weight*fraction*recoveryCreditR367(row.date,performedOn))} نقطة (${points(100*recoveryCreditR367(row.date,performedOn))}%)`:"اختر يوم الإتمام"}</strong></div>
+              <div className="np-recovery-points"><span>الوزن المحتسب ليوم الاستحقاق</span><strong>{performedOn?`${points(weight*fraction*recoveryCreditR367(row.date,performedOn))} نقطة (${points(100*recoveryCreditR367(row.date,performedOn))}%)`:"اختر يوم الإتمام"}</strong></div>
               {recoverError?<p role="alert">{recoverError}</p>:null}
               <footer><button type="submit" disabled={busy||!(recoverySave??sessionRecovery)?.performedOn}>حفظ الإتمام</button><button type="button" disabled={busy}
                 onClick={()=>{setRecoverySave(null);setSessionRecovery(null);}}>إلغاء</button></footer>
@@ -4380,12 +4380,8 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         if(command.type==="recover-historical-execution"){
           if(row.status==="Completed")continue;
           const share=recoveryCreditR367(row.date,performed);
-          const updated={...row,status:"Completed",completionDate:performed,recoveredWeight:row.weight*share,credit:performed===row.date?share:0};
+          const updated={...row,status:"Completed",completionDate:performed,recoveredWeight:row.weight*share,credit:share};
           rows.set(row.id,updated);
-          if(performed!==row.date){
-            const id=`recovery:${row.id}:${performed}`;
-            rows.set(id,{...updated,id,date:performed,amount:0,credit:share,recoveryBonus:true});
-          }
           continue;
         }
         const definition=result.definitions.find(item=>item.id===definitionId);
@@ -4400,13 +4396,7 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
         const newestSession=plan.sessions.find(item=>item.id===newest?.taskSessionId);
         rows.set(row.id,{...row,amount:matching.reduce((sum,item)=>sum+item.amount,0),credit:scored.scheduled?scored.earned/scored.scheduled:0,
           ...(newest&&newestSession?{completionDate:newest.achievementDateR367!,recoveredWeight:weight*recordedSessionAchievement(newestSession,newest)}:{})});
-        if(performed!==row.date){
-          const credit=Math.min(1,matching.filter(item=>item.taskSessionId===session.id&&item.achievementDateR367===performed)
-            .reduce((sum,item)=>sum+recordedSessionAchievement(session,item),0));
-          const id=`recovery:${row.id}:${performed}:${session.id}`;
-          if(credit>0)rows.set(id,{...row,id,date:performed,amount:0,weight,credit,status:"Completed",nonAchievement:false,
-            recoveryBonus:true,completionDate:performed,recoveredWeight:weight*credit});
-        }
+
       }
       result={...result,statistics:{...result.statistics,rows:[...rows.values()]}};
     }

@@ -220,7 +220,7 @@ export function sessionAchievementOnDate(plan: TaskSessionPlan, log: readonly Ac
         if (!due) continue;
         scheduled++;
         earned += Math.min(1, entries.reduce((total,entry) =>
-            entry.localDate === date && (!entry.achievementDateR367 || entry.achievementDateR367 === date)
+            entry.localDate === date
                 ? total + recordedSessionAchievement(session,entry) : total, 0));
     }
     return {scheduled, earned};

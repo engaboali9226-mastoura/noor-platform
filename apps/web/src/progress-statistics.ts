@@ -7,7 +7,8 @@ export function parseStatisticRows(value:unknown):StatisticRow[]{if(!Array.isArr
 export const statisticEligible=(r:WeightedStatisticRow)=>!r.nonAchievement&&r.status!=='Suppressed'&&r.status!=='Cancelled';
 /** Explicit credit is the fraction earned from the row’s scheduled weight.
  * Legacy rows lacking a credit field retain historical all-or-nothing behavior.
- * Dated recovery contributes separately on its selected completion day. */
+ * R380 projects dated recovery credit on the original scheduled day.
+ * Legacy recoveryBonus rows remain readable during version transitions. */
 export function statisticEarnedShareR285(r:WeightedStatisticRow):number{
  return r.credit===undefined?(r.status==='Completed'?1:0):r.credit;
 }
