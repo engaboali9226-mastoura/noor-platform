@@ -213,6 +213,7 @@ echo R386_S2_PERMANENT_BACKFILL_PASS
 
 # S3 persistent save primitive (synthetic source only).
 sql -1 < tools/data-foundation/r386/s3-atomic-save.sql
+sql -1 < tools/data-foundation/r386/s3-isolated-role.sql
 sql < tools/data-foundation/r386/s3-atomic-save-regression.sql
 for role in anon authenticated service_role; do
  if sql -c "SET ROLE $role; SELECT * FROM noor_r386_candidate.s3_enrollment" >"$tmp/s3-role" 2>&1; then echo R386_S3_ROLE_LEAK; exit 1; fi

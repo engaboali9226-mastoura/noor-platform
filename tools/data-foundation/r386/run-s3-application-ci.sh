@@ -20,6 +20,7 @@ sql -1 < tools/data-foundation/r386/s1-persistent-migration.sql
 sql -1 < tools/data-foundation/r386/staging-lab-schema.sql
 sql -1 < tools/data-foundation/r386/s2-permanent-backfill.sql
 sql -1 < tools/data-foundation/r386/s3-atomic-save.sql
+sql -1 < tools/data-foundation/r386/s3-isolated-role.sql
 node --import tsx tools/data-foundation/r386/s3-application-ci.mjs "$name"
 test "$(sql -c 'SELECT (SELECT count(*) FROM noor_r386_lab.synthetic_source)+(SELECT count(*) FROM noor_r386_candidate.s3_enrollment)+(SELECT count(*) FROM noor_r386_candidate.owner_scope)+(SELECT count(*) FROM noor_r386_candidate.event_history)+(SELECT count(*) FROM noor_r386_candidate.delivery_outbox)+(SELECT count(*) FROM noor_r386_candidate.checkpoint)+(SELECT count(*) FROM noor_r386_candidate.command_receipt)')" = 0
 echo R386_S3_REAL_APPLICATION_SYNTHETIC_PASS

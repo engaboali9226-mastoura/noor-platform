@@ -17,7 +17,9 @@ const psql=sql=>new Promise((resolve,reject)=>{
  child.on("close",code=>code===0?resolve(out.trim()):reject(Error("R386_S3_SQL_REJECTED:"+(err.match(/R386_[A-Z0-9_]+/)?.[0]??"UNKNOWN"))));
  child.stdin.end(sql+";\n");
 });
-const query=async sql=>JSON.parse(await psql(sql));
+// Application transport always runs the narrow executor entry points, never
+// the operator's SQL privileges. SET ROLE is fixture-only privilege testing.
+const query=async sql=>JSON.parse(await psql("SET ROLE noor_r386_s3_executor; "+sql));
 const database={
  lookup:(owner,request)=>query("SELECT noor_r386_candidate.s3_lookup("+literal(owner)+","+literal(request)+")"),
  load:owner=>query("SELECT noor_r386_candidate.s3_load("+literal(owner)+")"),
