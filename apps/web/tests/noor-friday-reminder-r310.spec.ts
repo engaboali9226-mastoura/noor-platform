@@ -120,8 +120,8 @@ test("R385 rhythm tile shows only the active Friday hour and returns to ordinary
   for(const ms of [a,b-1000]){
    const t=tile(ms);
    assert.equal(t.getAttribute("data-friday-hour"),String(i+1));
-   assert.equal(t.querySelector("h2")?.textContent,"الجمعة · "+names[i]);
-   assert.ok(t.querySelector('[data-testid="r385-friday-hour-duration"]'));
+   assert.equal(t.querySelector("h2")?.textContent,"الساعة "+names[i]);
+   assert.equal(t.querySelector('[data-testid="r385-friday-hour-duration"] span')?.textContent,"المدة");
    assert.equal(t.querySelectorAll('[role="timer"]').length,1);
    assert.equal(t.querySelector('[role="timer"]')?.textContent,[Math.floor(Math.ceil((b-ms)/1000)/3600),Math.floor(Math.ceil((b-ms)/1000)%3600/60),Math.ceil((b-ms)/1000)%60].map(n=>String(n).padStart(2,"0")).join(":"));
   }
