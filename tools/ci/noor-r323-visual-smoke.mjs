@@ -490,11 +490,12 @@ try{
      cell.left >= bounds.left && cell.right <= bounds.right && cell.bottom <= bounds.bottom &&
      Math.abs(cell.top - cells[row * 3].top) < 1 &&
      Math.abs(cell.left - cells[column].left) < 1 &&
-     Math.abs(cell.height - cells[row * 3].height) < 1 &&
+     Math.abs(cell.height - cells[0].height) < 1 &&
      (column === 0 || cell.right < cells[i - 1].left) &&
      (row === 0 || cell.top > cells[column].bottom);
    });
-  })()`,"One outer card contains two aligned RTL rows with equal tile heights within each row");
+  })()`,"One outer card contains two aligned RTL rows with equal tile heights across both rows");
+  await expect("!document.querySelector('.np-r331-board-grid .np-r370-friday-entry')","Friday hours remain outside the compact board");
   await expect(visible(".np-r323-bottom-nav"),"Real bottom navigation exists");
   await expect(visible(".np-r339-profile"),"Profile shortcut in header");
   await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-habits,r324-nav-plus,r324-nav-tasks,r324-nav-grid'","Approved RTL navigation order");
@@ -505,7 +506,7 @@ try{
     const image=await createImageBitmap(png);
     window.noorFridayExport=[png.type,image.width,image.height];
     image.close();
-  }}}); document.querySelector(".np-r370-friday-entry").click(); void 0;`);
+  }}}); document.querySelector("[data-testid=r322-open-time-windows]").click(); void 0;`);
   await expect(visible(".np-friday-story-actions"),"Friday image actions open from Noor board");
   await run("document.querySelector('.np-friday-story-actions button').click()");
   await expect("JSON.stringify(window.noorFridayExport)==='[\"image/png\",1080,1920]'","Friday copy produces a story-sized PNG");
@@ -810,12 +811,13 @@ try{
  for(const viewport of [{width:320,height:568,mobile:true},{width:1440,height:900,mobile:false}]){
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
    await cdp("Page.navigate",{url:url+"?friday-preview=1"});
-   await find(".np-r370-friday-entry");
+   await find("[data-testid=r322-open-time-windows]");
+   await expect("!document.querySelector('.np-r331-board-grid .np-r370-friday-entry')","Thursday Friday shortcut does not stretch the rhythm tile");
    await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
    await expect(visible("[data-testid=prayer-card]"),"Prayer sheet opens on Thursday");
    await expect("document.querySelectorAll('.np-r339-friday-grid .np-friday-prayer-range').length===5","Thursday prayer sheet displays Friday's five verified times");
    await run("document.querySelector('button[aria-label=\"إغلاق مواقيت الصلوات\"]').click()");
-   await run("document.querySelector('.np-r370-friday-entry').click()");
+   await run("document.querySelector('[data-testid=r322-open-time-windows]').click()");
    await expect(visible(".np-friday-story-actions"),"Thursday sharing uses Friday's verified schedule");
    await expect(`(() => {
      const ranges=[...document.querySelectorAll('.np-r237-friday-hours .np-r234-times')];

@@ -146,11 +146,9 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
  const currentEnd=nightPreview?(nightCountdown?.phase==="active"?trustedNight!.endMs:nearestFajr):duhaPreview?windows.duha!.endMs:dayPreview?windows.fastingDay!.endMs:NaN;
  const currentTimer=Number.isFinite(currentEnd)&&currentEnd>nowMs?remaining(currentEnd-nowMs):null;
  const currentWindow=nightPreview&&nightCountdown?.phase==="active"?trustedNight:dayPreview?windows.fastingDay:null;
- const currentFridayHour=fridayHours?.find(h=>r232Countdown(h,nowMs).phase==="active")??null;
- const previewLabel=(n:number)=>["الأولى","الثانية","الثالثة","الرابعة","الخامسة"][n-1]??String(n);
  return <>
  <section className="np-card np-r322-timer-hub np-r323-rhythm" data-testid="r322-premium-timer-hub" dir="rtl" aria-label="إيقاع اليوم والمؤقت النشط">
-   <div className="np-r322-timer-head"><span className="np-r322-timer-icon" aria-hidden="true"><NoorR323Icon name="sun"/></span>
+   <div className="np-r322-timer-head"><span className="np-r322-timer-icon" aria-hidden="true"><NoorR323Icon name={nightPreview?"moon":"sun"}/></span>
      <div><h2>{currentTitle}</h2><p>المؤقت النشط الآن</p></div>
    </div>
    <button type="button" className={"np-r322-timer-feature "+(nightPreview?"is-night":"is-day")}
@@ -164,11 +162,7 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
      :fallbackToFajr?<span className="np-r322-range">حتى الفجر المؤكد · لم تتوفر بداية الليل لحساب مدته</span>:null}
     </button><button type="button" className="np-r322-expand np-r323-expand" onClick={()=>setDetailsOpen(true)}>اضغط لعرض جميع المؤقتات ‹</button>
  </section>
-   {friday?<button type="button" className="np-card np-r322-friday-preview np-r323-friday np-r370-friday-entry" onClick={()=>setDetailsOpen(true)} aria-haspopup="dialog">
-     <span className="np-r323-mini-head"><span aria-hidden="true"><NoorR323Icon name="mosque"/></span><span>ساعات الجمعة الخمس<small>الساعة الحالية</small></span></span><span className="np-r323-friday-current">
-     <strong>{currentFridayHour?"الساعة "+previewLabel(currentFridayHour.number):fridayHours&&fridayHours.every(h=>h.endMs<=nowMs)?"انتهت ساعات الجمعة":"عرض ساعات الجمعة"}</strong>
-     <span dir="ltr">{currentFridayHour?remaining(currentFridayHour.endMs-nowMs):"التفاصيل"}</span></span><span className="np-r323-mini-link">اضغط لعرض بقية المؤقتات ‹</span>
-   </button>:thursdayReminder?<button className="np-r322-friday-preview np-r370-friday-entry" type="button" onClick={()=>setDetailsOpen(true)}>ساعات الجمعة غدًا</button>:null}
+
  <div className="np-r322-modal" style={viewport} data-open={detailsOpen} role="presentation" aria-hidden={!detailsOpen} onMouseDown={event=>{if(event.target===event.currentTarget)setDetailsOpen(false);}}>
   <div role="dialog" aria-modal={detailsOpen} aria-label="إيقاع اليوم الكامل وساعات الجمعة" className="np-r322-sheet" dir="rtl">
    <span className="np-r323-sheet-handle" aria-hidden="true"/><header className="np-r322-sheet-head"><div><h2>إيقاع اليوم الكامل</h2><p>كل المواقيت والتفاصيل كما حُسبت من مصدر نور</p></div>
