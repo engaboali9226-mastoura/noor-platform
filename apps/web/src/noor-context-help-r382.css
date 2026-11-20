@@ -1,9 +1,16 @@
-/* Scoped only to opted-in explanatory copy. No global hiding or form changes. */
-.noor-context-help-r382{display:inline-flex!important;align-items:center;flex-wrap:wrap;gap:5px;max-width:100%;min-width:0;vertical-align:middle;line-height:1.5}
-.noor-context-help-r382 .noor-help-trigger-r382{appearance:none;display:inline-grid!important;place-items:center;flex:0 0 auto;width:28px;height:28px;min-height:28px;min-width:28px;padding:0!important;border:1px solid currentColor;border-radius:50%;font:inherit;font-size:16px;font-weight:600;line-height:1;color:inherit;background:transparent;cursor:pointer}
-.noor-context-help-r382 .noor-help-trigger-r382:focus-visible{outline:2px solid currentColor;outline-offset:3px}
-.noor-context-help-r382 .noor-help-copy-r382{display:block;flex-basis:100%;font-size:12px;font-weight:400;line-height:1.7;text-align:start;white-space:normal;overflow-wrap:anywhere;padding:8px;border:1px solid currentColor;border-radius:8px}
-.noor-context-help-r382 .noor-help-copy-r382[hidden]{display:none!important}
+/* R384: small visual affordance, usable hit target, fixed centered guidance. */
+.noor-context-help-r382{display:inline-flex!important;position:relative;align-items:center;justify-content:center;flex:0 0 auto;vertical-align:middle;line-height:1;margin-inline:4px;max-width:100%}
+.noor-context-help-r382>.noor-help-trigger-r382{appearance:none;display:inline-grid!important;place-items:center;flex:0 0 24px;width:24px!important;height:24px!important;min-height:24px!important;min-width:24px!important;max-width:24px;padding:0!important;border:0!important;border-radius:50%;font:inherit;font-size:11px!important;font-weight:600;line-height:1;color:inherit;background:transparent!important;box-shadow:none!important;cursor:pointer}
+.noor-help-mark-r384{display:grid;place-items:center;width:15px;height:15px;border:1px solid currentColor;border-radius:50%;opacity:.68;box-sizing:border-box}
+.noor-context-help-r382>.noor-help-trigger-r382:focus-visible{outline:2px solid currentColor;outline-offset:1px}
+.noor-r384-field-head{display:flex;align-items:center;gap:3px;min-width:0}
+.noor-r384-field-head label{margin:0}
+.noor-help-copy-r382[hidden]{display:none!important}
+.noor-help-overlay-r384{position:fixed;inset:0;display:grid;place-items:center;padding:16px;z-index:2147483000;background:#081e364d;direction:rtl}
+.noor-help-dialog-r384{width:min(100%,340px);max-height:calc(100dvh - 32px);overflow:auto;box-sizing:border-box;border:1px solid var(--border,#aeb9c7);border-radius:18px;padding:14px 16px 18px;color:var(--text,#1b3047);background:var(--card,#f9fafc);box-shadow:0 16px 50px #081e3633}
+.noor-help-dialog-r384>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:14px;font-weight:600}
+.noor-help-dialog-r384>header>button{display:grid;place-items:center;min-width:36px;min-height:36px;padding:0;border:0;background:transparent;color:inherit;font-size:23px;cursor:pointer}
+.noor-help-dialog-r384 .noor-help-copy-r382{display:block;font-size:13px;font-weight:400;line-height:1.8;white-space:normal;overflow-wrap:anywhere;text-align:start}
 
 .np-r382-history-detail>summary{display:flex;cursor:pointer;list-style:none;align-items:center;gap:10px;padding:0!important}
 .np-r382-history-detail>summary::-webkit-details-marker{display:none}

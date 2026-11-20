@@ -143,7 +143,7 @@ export function NoorNotificationCenterR338({alerts,appointments,achievementNotic
  };
  const overlay=open?<div className="np-r338-alert-overlay" onMouseDown={event=>{if(event.target===event.currentTarget)setOpen(false);}}>
   <section className="np-r338-alert-sheet" role="dialog" aria-modal="true" aria-label="مركز التنبيهات" dir="rtl" onKeyDown={trap}>
-   <header><div><h2>مركز التنبيهات</h2><NoorContextHelp label="مساعدة: التذكيرات والمواعيد المرتبطة بيومك">التذكيرات والمواعيد المرتبطة بيومك</NoorContextHelp></div><button type="button" ref={closeButton} aria-label="إغلاق مركز التنبيهات" onClick={()=>setOpen(false)}>×</button></header>
+   <header><div><h2>مركز التنبيهات<NoorContextHelp label="مساعدة: التذكيرات والمواعيد المرتبطة بيومك">التذكيرات والمواعيد المرتبطة بيومك</NoorContextHelp></h2></div><button type="button" ref={closeButton} aria-label="إغلاق مركز التنبيهات" onClick={()=>setOpen(false)}>×</button></header>
    {visibleNotices.length?<section className="np-r338-alert-group" aria-label="متابعة الإنجاز"><h3>متابعة الإنجاز</h3>{visibleNotices.map(item=><button className="np-r338-alert-row" type="button" key={item.id} onClick={()=>{markRead(item.id,achievementCommand(item));closeThen(item.open);}}>
     <span className="np-r338-alert-mark" aria-hidden="true"><NoorR323Icon name="bars"/></span><span className="np-r338-alert-copy"><strong>{item.title}</strong><small>{item.detail}</small></span><span className="np-r338-alert-arrow" aria-hidden="true">‹</span>
    </button>)}</section>:null}

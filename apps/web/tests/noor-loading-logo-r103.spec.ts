@@ -50,5 +50,5 @@ test("R103 shared Noor image, accessibility and welcome copy are intact", () => 
     assert.match(html, /aria-busy="true"/u);
   }
   const index = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(index, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
+  assert.match(index, /rel="preload" as="image" type="image\/png" href="\/brand\/icon-r369-192\.png"/u);
 });

@@ -183,8 +183,7 @@ export function NoorBeverageTrackerR294({rows,allNames=[],localDate,busy,onComma
     <button type="button" onClick={()=>{void quickCoffeeOrTea("tea");}} disabled={busy||saving}>+ شاي</button>
    </div>:null}
   {quickRow&&!historical?<div className="np-caffeine-time-picker-r295" data-testid="r295-time-picker">
-   <strong>تسجيل {quickRow.title} — اختر الوقت أولًا</strong>
-   <NoorContextHelp label="مساعدة: الفترات أوقات تقريبية ثابتة">الفترات أوقات تقريبية ثابتة للتسجيل السريع، وليست مواقيت الصلاة. لتسجيل الساعة الدقيقة اختر «تحديد الساعة يدويًا».</NoorContextHelp>
+   <strong>تسجيل {quickRow.title} — اختر الوقت أولًا<NoorContextHelp label="مساعدة: الفترات أوقات تقريبية ثابتة">الفترات أوقات تقريبية ثابتة للتسجيل السريع، وليست مواقيت الصلاة. لتسجيل الساعة الدقيقة اختر «تحديد الساعة يدويًا».</NoorContextHelp></strong>
    <div className="np-caffeine-time-options-r295">{LABELS_R295.map(option=><button type="button"
      key={option.value} aria-pressed={timeChoice===option.value} onClick={()=>setTimeChoice(option.value)}>{option.label}</button>)}</div>
    {timeChoice==="manual"?<label>وقت الشرب <input type="time" aria-label="الوقت اليدوي للشرب"

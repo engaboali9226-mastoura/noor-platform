@@ -168,8 +168,7 @@ export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistr
     {enabled?<div className="nts-planner-body">
       <label>التوزيع<select disabled={busy} value={distribution} onChange={e=>setDistribution(e.currentTarget.value as "equal"|"custom")}><option value="equal">متساوٍ</option><option value="custom">مخصص</option></select></label>
       <section className="nts-weekly-r298" data-testid="r298-weekly-planner" aria-label="جدولة الجلسات حسب أيام الأسبوع">
-        <div className="nts-weekly-heading-r298"><strong>جدولة الجلسات تلقائيًا</strong>
-          <NoorContextHelp label="مساعدة: حدّد البداية وعدد الجلسات">حدّد البداية وعدد الجلسات وأيام الأسبوع. مع تاريخ نهاية تُوزَّع الجلسات على كامل الفترة، وبدونه تبدأ من أول يوم متاح.</NoorContextHelp>
+        <div className="nts-weekly-heading-r298"><strong>جدولة الجلسات تلقائيًا<NoorContextHelp label="مساعدة: حدّد البداية وعدد الجلسات">حدّد البداية وعدد الجلسات وأيام الأسبوع. مع تاريخ نهاية تُوزَّع الجلسات على كامل الفترة، وبدونه تبدأ من أول يوم متاح.</NoorContextHelp></strong>
         </div>
         <div className="nts-weekly-fields-r298">
           <label>تاريخ البداية<input type="date" data-testid="r298-weekly-start" value={weeklyFirstDate}
@@ -212,8 +211,7 @@ export function TaskSessionPlannerR254({enabled,setEnabled,distribution,setDistr
       <details className="nts-legacy-calendar-r298"><summary>خيارات التوزيع الأخرى (يدوي / أسبوعي / شهري)</summary>
       {distribution==="equal"?<div className="nts-split"><label>عدد الجلسات<input type="number" min="1" max="200" value={count} onChange={e=>setCount(Number(e.currentTarget.value))}/></label><button type="button" disabled={busy||sessions.length>0} onClick={split}>إنشاء جلسات متساوية</button><NoorContextHelp label="مساعدة: لا تُستبدل الجلسات الموجودة تلقائيًا">لا تُستبدل الجلسات الموجودة تلقائيًا حفاظًا على أي سجل سابق.</NoorContextHelp></div>:null}
       <div className="nts-calendar-r288" data-testid="r288-calendar-planner" aria-label="توزيع الجلسات على التواريخ">
-        <strong>جدولة الجلسات على أيام محددة</strong>
-        <NoorContextHelp label="مساعدة: اختر أول يوم وعدد الأيام">اختر أول يوم وعدد الأيام ونوع الفاصل؛ توزّع الجلسات الموجودة على تلك الأيام. يمكنك تعديل تاريخ كل جلسة بعدها، ولن يُحفظ أي تغيير حتى تحفظ المهمة.</NoorContextHelp>
+        <strong>جدولة الجلسات على أيام محددة<NoorContextHelp label="مساعدة: اختر أول يوم وعدد الأيام">اختر أول يوم وعدد الأيام ونوع الفاصل؛ توزّع الجلسات الموجودة على تلك الأيام. يمكنك تعديل تاريخ كل جلسة بعدها، ولن يُحفظ أي تغيير حتى تحفظ المهمة.</NoorContextHelp></strong>
         <div className="nts-calendar-fields">
           <label>أول يوم للجلسات<input type="date" value={calendarFirstDate} onChange={e=>setCalendarFirstDate(e.currentTarget.value)} disabled={busy}/></label>
           <label>عدد الأيام<input type="number" min="1" max={sessions.length||1} value={calendarDays} data-testid="r288-calendar-days" onChange={e=>setCalendarDays(Number(e.currentTarget.value))} disabled={busy}/></label>

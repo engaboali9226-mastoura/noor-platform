@@ -6,7 +6,7 @@ import {resolve} from "node:path";
 import assert from "node:assert/strict";
 import {runInNewContext} from "node:vm";
 const web=resolve("apps/web"),htmlFile=resolve(web,"__r323_visual_fixture.html"),scriptFile=resolve(web,"__r323_visual_fixture.tsx");
-const waitingFile=resolve(web,"__r371_waiting_fixture.html");
+const waitingFile=resolve(web,"__r371_waiting_fixture.html"),entryFile=resolve(web,"__r384_entry_fixture.html");
 const output=resolve("r323-visual-evidence"),profile=await mkdtemp(resolve(tmpdir(),"noor-visual-"));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let vite,chrome,socket;
@@ -25,6 +25,7 @@ try{
  assert.match(fixture,/const workspace=/);
  const html=original.replace(/<script\b[^>]*type=["']module["'][^>]*>[\s\S]*?<\/script>/g,"").replace("</body>",'<script type="module" src="/__r323_visual_fixture.tsx"></script></body>');
  await writeFile(htmlFile,html);
+ await writeFile(entryFile,original.replace(/<script\b[^>]*type=["\x27]module["\x27][^>]*>[\s\S]*?<\/script>/g,""));
  const setup=[
  'import React from "react";',
  'import {createRoot} from "react-dom/client";',
@@ -501,7 +502,7 @@ try{
   await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-habits,r324-nav-plus,r324-nav-tasks,r324-nav-grid'","Approved RTL navigation order");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
-  await expect("document.querySelector('.np-r331-board-grid > :nth-child(6)').textContent.includes('معركة تاريخية تجريبية')","R381 public events appear on board");
+  await expect("document.querySelector('.np-r331-board-grid > :nth-child(6)').textContent.includes('حدث هجري تجريبي')","R384 available Islamic anniversary is shown on board");
   await run("document.querySelector('.np-r331-board-grid > :nth-child(6)').click()");
   await expect("document.querySelectorAll('.np-r381-history-event').length===2 && document.querySelector('.np-r381-history-event a').hostname==='ar.wikipedia.org'","R381 both calendars display sourced events");
   await expect("Array.from(document.querySelectorAll('.np-r382-history-detail')).every(d=>!d.open&&d.querySelector('p').getClientRects().length===0)","R382 event descriptions hidden until requested");
@@ -560,6 +561,14 @@ try{
         rect.top>=0 && rect.bottom<=innerHeight+1 && rect.right<=innerWidth+1;
     })()`,name+" Noor surface stays within the viewport");
     await snap(screen.name+"-"+name);
+    if(name==="alerts"){
+      await expect(`(()=>{const h=document.querySelector('.np-r338-alert-sheet header h2'),mark=h?.querySelector('.noor-help-mark-r384');if(!mark)return false;const r=mark.getBoundingClientRect(),t=h.getBoundingClientRect();return r.width===15&&r.height===15&&r.left>=t.left&&r.right<=t.right+1&&r.top>=t.top-1&&r.bottom<=t.bottom+1;})()`,"R384 help mark is 15px and aligned inside the heading");
+      await run("document.querySelector('.np-r338-alert-sheet header h2 .noor-help-trigger-r382').click()");
+      await expect(`(()=>{const d=document.querySelector('.noor-help-dialog-r384');if(!d)return false;const r=d.getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight&&Math.abs((r.top+r.bottom)/2-innerHeight/2)<2&&d.contains(document.activeElement);})()`,"R384 centered help fits viewport and receives focus");
+      await snap(screen.name+"-r384-help-modal");
+      await run("document.querySelector('.noor-help-dialog-r384 button').click()");
+      await expect("!document.querySelector('.noor-help-dialog-r384')&&document.activeElement===document.querySelector('.np-r338-alert-sheet header h2 .noor-help-trigger-r382')","R384 closes help and restores trigger focus");
+    }
     await run(`document.querySelector(${JSON.stringify(dialog)}).querySelector('button[aria-label^="إغلاق"]').click()`);
     await expect("!("+visible(dialog)+")",name+" closes");
   }
@@ -819,6 +828,10 @@ try{
          Boolean(primary.querySelector(".np-weather-condition"))===${weather!=="unknown"} &&
          primary.getBoundingClientRect().bottom<=details.getBoundingClientRect().top;
      })()`,"Weather icon follows the sky state and details stay below the reading");
+     if(daylight==="day"&&weather==="clear"){
+       await expect("(()=>{const hub=document.querySelector('[data-testid=r322-premium-timer-hub]'),board=document.querySelector('.np-r331-board-grid');if(!hub||!board)return false;const tiles=[...board.children],r=tiles[0].getBoundingClientRect(),title=hub.querySelector('h2'),tr=title.getBoundingClientRect(),timer=hub.querySelector('[role=timer]');return hub.dataset.fridayHour==='5'&&title.textContent==='الساعة الخامسة'&&!!timer&&hub.querySelector('[data-testid=r385-friday-hour-duration] span')?.textContent==='المدة'&&tiles.length===6&&tiles.every(t=>Math.abs(t.getBoundingClientRect().height-r.height)<1)&&title.scrollWidth<=title.clientWidth+1&&tr.width<=hub.getBoundingClientRect().width+1;})()","R385 Friday daytime shows fifth hour without changing six-card geometry");
+       await snap(viewport.width+"-r385-friday-active-hour");
+     }
      await snap(viewport.width+"-"+daylight+"-"+weather);
    }
  }
@@ -826,7 +839,7 @@ try{
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
    await cdp("Page.navigate",{url:url+"?friday-preview=1"});
    await find("[data-testid=r322-open-time-windows]");
-   await expect("!document.querySelector('.np-r331-board-grid .np-r370-friday-entry')","Thursday Friday shortcut does not stretch the rhythm tile");
+   await expect("!document.querySelector('.np-r331-board-grid .np-r370-friday-entry')&&!document.querySelector('[data-testid=r322-premium-timer-hub]').hasAttribute('data-friday-hour')","Thursday Friday shortcut does not replace rhythm or stretch the tile");
    await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
    await expect(visible("[data-testid=prayer-card]"),"Prayer sheet opens on Thursday");
    await expect("document.querySelectorAll('.np-r339-friday-grid .np-friday-prayer-range').length===5","Thursday prayer sheet displays Friday's five verified times");
@@ -849,6 +862,9 @@ try{
  }
  for(const viewport of [{width:320,height:568,mobile:true},{width:1440,height:900,mobile:false}]){
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
+   await cdp("Page.navigate",{url:"http://127.0.0.1:5179/__r384_entry_fixture.html"});
+   await expect(`(()=>{const root=document.querySelector('#root');return root&&!root.children.length&&getComputedStyle(root,'::before').backgroundImage.includes('/brand/icon-r369-192.png')&&!getComputedStyle(root,'::before').backgroundImage.includes('platform-logo.webp');})()`,"R384 first paint uses the current brand before React");
+   await snap(viewport.width+"-r384-prelogin");
    await cdp("Page.navigate",{url:"http://127.0.0.1:5179/__r371_waiting_fixture.html"});
    await expect(`(() => {
      const logo=document.querySelector('main h1 img'),note=document.querySelector('#message');
@@ -872,5 +888,5 @@ try{
  await writeFile(resolve(output,"report.json"),JSON.stringify(report,null,2));
  console.log("R323_BROWSER_SMOKE_PASS "+JSON.stringify(report));
 }finally{
- socket?.close();chrome?.kill();vite?.kill();await rm(htmlFile,{force:true});await rm(scriptFile,{force:true});await rm(waitingFile,{force:true});await rm(profile,{recursive:true,force:true}).catch(()=>{});
+ socket?.close();chrome?.kill();vite?.kill();await rm(htmlFile,{force:true});await rm(scriptFile,{force:true});await rm(waitingFile,{force:true});await rm(entryFile,{force:true});await rm(profile,{recursive:true,force:true}).catch(()=>{});
 }

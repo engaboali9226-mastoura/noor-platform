@@ -70,5 +70,5 @@ test("R102 real error states remain errors (no fake loading)", () => {
 
 test("R102 general Platform icon preloads before authentication", () => {
   const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /rel="preload" as="image" type="image\/webp" href="\/brand\/platform-logo\.webp"/u);
+  assert.match(html, /rel="preload" as="image" type="image\/png" href="\/brand\/icon-r369-192\.png"/u);
 });
