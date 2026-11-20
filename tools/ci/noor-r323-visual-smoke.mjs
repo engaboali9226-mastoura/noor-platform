@@ -828,6 +828,10 @@ try{
          Boolean(primary.querySelector(".np-weather-condition"))===${weather!=="unknown"} &&
          primary.getBoundingClientRect().bottom<=details.getBoundingClientRect().top;
      })()`,"Weather icon follows the sky state and details stay below the reading");
+     if(daylight==="day"&&weather==="clear"){
+       await expect("(()=>{const hub=document.querySelector('[data-testid=r322-premium-timer-hub]'),board=document.querySelector('.np-r331-board-grid');if(!hub||!board)return false;const tiles=[...board.children],r=tiles[0].getBoundingClientRect(),title=hub.querySelector('h2'),tr=title.getBoundingClientRect(),timer=hub.querySelector('[role=timer]');return hub.dataset.fridayHour==='5'&&title.textContent==='الجمعة · الخامسة'&&!!timer&&!!hub.querySelector('[data-testid=r385-friday-hour-duration]')&&tiles.length===6&&tiles.every(t=>Math.abs(t.getBoundingClientRect().height-r.height)<1)&&title.scrollWidth<=title.clientWidth+1&&tr.width<=hub.getBoundingClientRect().width+1;})()","R385 Friday daytime shows fifth hour without changing six-card geometry");
+       await snap(viewport.width+"-r385-friday-active-hour");
+     }
      await snap(viewport.width+"-"+daylight+"-"+weather);
    }
  }
@@ -835,7 +839,7 @@ try{
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
    await cdp("Page.navigate",{url:url+"?friday-preview=1"});
    await find("[data-testid=r322-open-time-windows]");
-   await expect("!document.querySelector('.np-r331-board-grid .np-r370-friday-entry')","Thursday Friday shortcut does not stretch the rhythm tile");
+   await expect("!document.querySelector('.np-r331-board-grid .np-r370-friday-entry')&&!document.querySelector('[data-testid=r322-premium-timer-hub]').hasAttribute('data-friday-hour')","Thursday Friday shortcut does not replace rhythm or stretch the tile");
    await run("Array.from(document.querySelectorAll('.np-r331-board-grid button')).find(b=>b.textContent.includes('الصلاة القادمة')).click()");
    await expect(visible("[data-testid=prayer-card]"),"Prayer sheet opens on Thursday");
    await expect("document.querySelectorAll('.np-r339-friday-grid .np-friday-prayer-range').length===5","Thursday prayer sheet displays Friday's five verified times");
