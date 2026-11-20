@@ -27,12 +27,14 @@ sql < tools/data-foundation/r386/staging-lab-atomic.sql
 sql < tools/data-foundation/r386/staging-lab-logical-receipt.sql
 sql < tools/data-foundation/r386/staging-lab-split-erasure.sql
 sql < tools/data-foundation/r386/staging-lab-scale.sql
+sql -1 < tools/data-foundation/r386/staging-lab-shadow-backfill.sql
+sql < tools/data-foundation/r386/staging-lab-shadow-regression.sql
 sql < tools/data-foundation/r386/structural-mirror.sql
 for role in anon authenticated service_role; do
  if sql -c "SET ROLE $role; SELECT * FROM noor_r386_lab.event_history" >"$tmp/role" 2>&1; then echo "R386_ROLE_ACCESS_LEAK"; exit 1; fi
  grep -q 'permission denied' "$tmp/role"
 done
-test "$(sql -c 'SELECT (SELECT count(*) FROM noor_r386_lab.synthetic_source)+(SELECT count(*) FROM noor_r386_lab.event_history)+(SELECT count(*) FROM noor_r386_lab.checkpoint)+(SELECT count(*) FROM noor_r386_lab.command_receipt)')" = 0
+test "$(sql -c 'SELECT (SELECT count(*) FROM noor_r386_lab.synthetic_source)+(SELECT count(*) FROM noor_r386_lab.event_history)+(SELECT count(*) FROM noor_r386_lab.checkpoint)+(SELECT count(*) FROM noor_r386_lab.command_receipt)+(SELECT count(*) FROM noor_r386_lab.shadow_progress)+(SELECT count(*) FROM noor_r386_lab.shadow_history)+(SELECT count(*) FROM noor_r386_lab.shadow_delivery)')" = 0
 sql -c "INSERT INTO noor_r386_lab.synthetic_source VALUES('synthetic-r386-race',0,'{\"outbox\":[],\"counter\":0}')"
 # Connection A commits state and holds row lock while B attempts competing revision.
 sql >"$tmp/a" 2>&1 <<'SQL' &

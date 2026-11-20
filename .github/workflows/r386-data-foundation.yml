@@ -50,6 +50,10 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-regression.sql
       - name: Representative synthetic volume
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-scale.sql
+      - name: Create the bounded shadow copy fixture
+        run: psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/staging-lab-shadow-backfill.sql
+      - name: Verify resumption and exact read-only source parity
+        run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-shadow-regression.sql
       - name: Verify no fixture data remains
         run: |
-          psql -X -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM noor_r386_lab.synthetic_source) OR EXISTS (SELECT 1 FROM noor_r386_lab.event_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.checkpoint) OR EXISTS (SELECT 1 FROM noor_r386_lab.command_receipt) THEN RAISE EXCEPTION 'residual fixture data'; END IF; END \$\$;"
+          psql -X -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM noor_r386_lab.synthetic_source) OR EXISTS (SELECT 1 FROM noor_r386_lab.event_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.checkpoint) OR EXISTS (SELECT 1 FROM noor_r386_lab.command_receipt) OR EXISTS (SELECT 1 FROM noor_r386_lab.shadow_progress) OR EXISTS (SELECT 1 FROM noor_r386_lab.shadow_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.shadow_delivery) THEN RAISE EXCEPTION 'residual fixture data'; END IF; END \$\$;"
