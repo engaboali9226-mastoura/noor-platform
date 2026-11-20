@@ -151,3 +151,27 @@ test('R381 public history coalesces requests, enriches Wikidata IDs, and retains
  assert.equal((await get('gregorian',11,21)).status,'unavailable');
  assert.equal((await get('x',1,1)).status,'invalid');
 });
+
+test('R382 Islamic history accepts only exact dated reviewed references and never requests Wikipedia for Hijri dates',async()=>{
+ const {createHistoryEngine}=await import('./noor-history-r381.mjs');
+ const {approvedIslamicSource}=await import('./noor-islamic-history-r382.mjs');
+ let calls=0;
+ const get=createHistoryEngine({request:async()=>{calls++;throw Error('network must not run');}});
+ const badr=await get('hijri',9,17);
+ assert.equal(badr.status,'ok');assert.equal(badr.events.length,1);
+ assert.equal(badr.events[0].scope,'islamic');assert.equal(badr.events[0].year,2);
+ assert.equal(badr.events[0].source,'ابن باز');assert.ok(approvedIslamicSource(badr.events[0].sourceUrl));
+ assert.equal((await get('hijri',9,16)).events.length,0);
+ assert.equal(calls,0);
+ for(const host of ['dorar.net','binbaz.org.sa','binothaimeen.net','shamela.ws'])assert.ok(approvedIslamicSource('https://'+host+'/example'));
+ for(const url of ['https://ar.wikipedia.org/wiki/Test','https://dorar.net.evil.test/event/59','https://dorar.net@evil.test/event','http://dorar.net/event/59','https://dorar.net/'])assert.equal(approvedIslamicSource(url),false);
+});
+test('R382 world history excludes Islamic, related and unclassified events even on Gregorian dates',async()=>{
+ const {createHistoryEngine}=await import('./noor-history-r381.mjs');
+ const get=createHistoryEngine({request:async(url)=>{
+  if(url.searchParams.get('action')==='parse')return Response.json({parse:{revid:1,wikitext:'== أحداث ==\n* 1917 - معركة كامبراي تبدأ في فرنسا.\n* 1453 - فتح القسطنطينية على يد الدولة العثمانية.\n* 1798 - غزو فرنسا لمصر.\n* 1810 - معركة مجهولة في مكان غير محدد.'}});
+  return Response.json({query:{pages:[]}});
+ }});
+ const rows=(await get('gregorian',11,20)).events;
+ assert.equal(rows.length,1);assert.equal(rows[0].scope,'world');assert.equal(rows[0].year,1917);
+});
