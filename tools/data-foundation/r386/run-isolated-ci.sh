@@ -20,6 +20,8 @@ if test "$ready" != 1; then docker logs "$name"; echo R386_PG17_READINESS_FAILED
 echo R386_PG17_TCP_READY
 sql(){ docker exec -i "$name" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -At "$@"; }
 sql -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;'
+sql -1 < tools/data-foundation/r386/s1-persistent-migration.sql
+sql < tools/data-foundation/r386/s1-persistent-regression.sql
 sql -1 < tools/data-foundation/r386/staging-lab-schema.sql
 sql -1 < tools/data-foundation/r386/staging-lab-v2.sql
 sql < tools/data-foundation/r386/staging-lab-regression.sql

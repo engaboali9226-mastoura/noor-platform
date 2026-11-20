@@ -1,9 +1,9 @@
 // R386 offline candidate: prepare shadow changes only, never mutate operational state.
 import {createHash} from "node:crypto";
-import {validateOwnerEvents} from "./legacy-event-contract.mjs";
+import {validateOwnerEvents,validIdentifier,validReceiptToken} from "./legacy-event-contract.mjs";
 const fail=code=>{throw new Error(code);};
 const record=x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&[Object.prototype,null].includes(Object.getPrototypeOf(x));
-const specText=x=>typeof x==="string"&&x.trim()!==""&&x.length<=4096;
+const specText=validIdentifier;
 // Canonical logical command (NOT regenerated state). Reject non-JSON and cycles.
 export function canonicalJson(value){
  const active=new Set();
@@ -23,7 +23,7 @@ export function canonicalJson(value){
  return visit(value);
 }
 export function logicalRequestDigest(owner,requestId,normalizedCommand){
- if(!specText(owner)||!specText(requestId)||requestId.length>128||!record(normalizedCommand))fail("R386_INVALID_REQUEST");
+ if(!specText(owner)||!validReceiptToken(requestId)||!record(normalizedCommand))fail("R386_INVALID_REQUEST");
  const encoded=canonicalJson({version:1,owner,requestId,command:normalizedCommand});
  return createHash("sha256").update(encoded,"utf8").digest("hex");
 }

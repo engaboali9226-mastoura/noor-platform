@@ -1,15 +1,16 @@
 // R386 offline runtime bridge candidate. No production imports or database access.
 import {createHmac,timingSafeEqual} from "node:crypto";
 import {canonicalJson} from "./shadow-transition.mjs";
+import {validIdentifier,validReceiptToken} from "./legacy-event-contract.mjs";
 const fail=code=>{throw new Error(code)};
 const plain=x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&[Object.prototype,null].includes(Object.getPrototypeOf(x));
-const token=x=>typeof x==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(x);
+const token=validReceiptToken;
 const revision=x=>Number.isSafeInteger(x)&&x>=0;
 const digest=x=>typeof x==="string"&&/^[0-9a-f]{64}$/.test(x);
 // Keys are supplied by server-only configuration, not the browser or stored with receipts.
 // Keep prior keys until the corresponding receipts expire under an approved retention policy.
 export function commandFingerprints({owner,requestId,command,activeKeyId,keys}){
- if(typeof owner!=="string"||!owner.trim()||owner.length>4096||!token(requestId)||!plain(command)||!token(activeKeyId)||!(keys instanceof Map)||keys.size<1||keys.size>8||!keys.has(activeKeyId))fail("R386_RECEIPT_INPUT");
+ if(!validIdentifier(owner)||!token(requestId)||!plain(command)||!token(activeKeyId)||!(keys instanceof Map)||keys.size<1||keys.size>8||!keys.has(activeKeyId))fail("R386_RECEIPT_INPUT");
  const encoded=canonicalJson({protocol:"noor-personal-command-v1",owner,requestId,command});
  if(Buffer.byteLength(encoded,"utf8")>262144)fail("R386_RECEIPT_TOO_LARGE");
  const fingerprints=new Map();

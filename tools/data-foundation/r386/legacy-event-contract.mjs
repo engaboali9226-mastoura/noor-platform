@@ -14,11 +14,15 @@ const types=Object.freeze({
 const required=["id","idempotencyKey","eventType","eventVersion","aggregateType","aggregateId","aggregateVersion","userId","occurredAt","correlationId","privacyClassification","payload","deliveryState"];
 const optional=["personalDayId","causationId"];
 const object=x=>x!==null&&typeof x==="object"&&!Array.isArray(x)&&[Object.prototype,null].includes(Object.getPrototypeOf(x));
-const text=x=>typeof x==="string"&&x.trim()!==""&&x.length<=4096;
+// Indexed identity is bounded by UTF-8 bytes, not UTF-16 code units. Reject
+// controls and malformed UTF-16 (PostgreSQL JSONB cannot represent these).
+export const validIdentifier=x=>typeof x==="string"&&x.trim()!==""&&!/[\u0000-\u001f\u007f]/u.test(x)&&!(/[\ud800-\udfff]/u.test(x))&&Buffer.byteLength(x,"utf8")<=512;
+export const validReceiptToken=x=>typeof x==="string"&&/^[A-Za-z0-9_-]{1,128}$/.test(x);
+const text=validIdentifier;
 const count=x=>Number.isSafeInteger(x)&&x>=0;
-const date=x=>typeof x==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x+"T00:00:00.000Z"))&&new Date(x+"T00:00:00.000Z").toISOString().slice(0,10)===x;
-const instant=x=>typeof x==="string"&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString()===x.replace(/:(\d{2})Z$/,":$1.000Z");
-const zone=x=>{if(!text(x))return false;try{new Intl.DateTimeFormat("en",{timeZone:x});return true;}catch{return false;}};
+const date=x=>typeof x==="string"&& !x.startsWith("0000")&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x+"T00:00:00.000Z"))&&new Date(x+"T00:00:00.000Z").toISOString().slice(0,10)===x;
+const instant=x=>typeof x==="string"&& !x.startsWith("0000")&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString()===x.replace(/:(\d{2})Z$/,":$1.000Z");
+const zone=x=>{if(!text(x)||!(/^(?:[A-Za-z0-9_+\-]+\/)+[A-Za-z0-9_+\-]+$|^(?:UTC|GMT)$/i.test(x)))return false;try{new Intl.DateTimeFormat("en",{timeZone:x});return true;}catch{return false;}};
 const statuses=["Planned","InProgress","Pending","Completed","Deferred","Cancelled","Skipped","Missed","Suppressed"];
 const validators={text,count,date,timezone:zone,status:x=>statuses.includes(x)};
 const exact=(value,keys)=>object(value)&&Object.keys(value).length===keys.length&&keys.every(k=>Object.hasOwn(value,k));
