@@ -81,11 +81,14 @@ BEGIN
  IF noor_r386_candidate.erase_references(a,ARRAY['d1'])<>1 THEN RAISE EXCEPTION 'R386_ERASURE_COUNT'; END IF;
  IF EXISTS(SELECT 1 FROM noor_r386_candidate.event_history WHERE owner_id=a) OR EXISTS(SELECT 1 FROM noor_r386_candidate.delivery_outbox WHERE owner_id=a) OR EXISTS(SELECT 1 FROM noor_r386_candidate.checkpoint WHERE owner_id=a) OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>2 THEN RAISE EXCEPTION 'R386_ERASURE_INCOMPLETE'; END IF;
  IF (SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id=b)<>1 OR (SELECT state FROM noor_r386_candidate.delivery_outbox WHERE owner_id=b)<>'Failed' OR (SELECT count(*) FROM noor_r386_candidate.checkpoint WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_CROSS_OWNER_ERASURE'; END IF;
- IF noor_r386_candidate.expire_receipts(a,'2026-01-03T00:00:00Z')<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_RETENTION'; END IF;
+ IF noor_r386_candidate.expire_receipts(a,'2026-01-03T00:00:00Z')<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_EXPIRY_COUNT'; END IF;
+ IF (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_RETENTION'; END IF;
  BEGIN
   PERFORM noor_r386_candidate.expire_receipts(a,'infinity'); RAISE EXCEPTION 'invalid cutoff accepted';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'R386_RETENTION_SCOPE' THEN RAISE; END IF; END;
- IF NOT noor_r386_candidate.erase_owner(a) OR NOT noor_r386_candidate.erase_owner(c) OR EXISTS(SELECT 1 FROM noor_r386_candidate.command_receipt WHERE owner_id IN(a,c)) THEN RAISE EXCEPTION 'R386_OWNER_ERASURE'; END IF;
+ IF NOT noor_r386_candidate.erase_owner(a) THEN RAISE EXCEPTION 'R386_OWNER_ERASURE_A'; END IF;
+ IF NOT noor_r386_candidate.erase_owner(c) THEN RAISE EXCEPTION 'R386_OWNER_ERASURE_C'; END IF;
+ IF EXISTS(SELECT 1 FROM noor_r386_candidate.command_receipt WHERE owner_id IN(a,c)) THEN RAISE EXCEPTION 'R386_OWNER_ERASURE'; END IF;
 END $$;
 COMMIT;
 -- Separate transaction: prove surviving candidate rows are durable and isolated.
