@@ -1614,3 +1614,27 @@ button[aria-label^="إغلاق"] {
   .np-page[data-appearance] .np-r331-board-grid{--noor-board-tile-height:118px}
   .np-page[data-appearance] .np-r331-board-grid .np-r369-prayer-countdown{padding:3px 4px}
 }
+
+/* R381: bounded public history dialog; no layout changes outside this sheet. */
+.np-r381-history-sheet{display:flex!important;flex-direction:column;gap:10px;min-height:0;overflow:hidden!important;max-height:100%}
+.np-r381-history-sheet>header,.np-r381-history-sheet>.np-r331-options{flex:none}
+.np-r381-history-heading{display:flex;align-items:center;gap:10px;min-width:0}
+.np-r381-history-heading>svg{width:28px;height:28px;color:var(--ng-accent,#446b92)}
+.np-r381-history-heading h2{font-size:clamp(16px,4vw,22px);margin:0}
+.np-r381-history-heading small{color:var(--ng-muted)}
+.np-r381-history-content{min-height:0;overflow:auto;overscroll-behavior:contain;display:grid;gap:10px}
+.np-r381-history-event{margin:0!important;padding:12px!important;min-width:0;border-radius:16px;background:var(--ng-card);border:1px solid var(--ng-line)}
+.np-r381-history-event-head{display:flex;align-items:flex-start;gap:10px}
+.np-r381-history-event-head>div{min-width:0}
+.np-r381-history-icon{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:12px;background:#b88b4430;color:var(--ng-ink)}
+.np-r381-history-icon>svg{width:24px;height:24px}
+.np-r381-history-event-head small{display:block}
+.np-r381-history-event h3{font-size:16px;line-height:1.45;overflow-wrap:anywhere;margin:3px 0!important}
+.np-r381-history-event p{line-height:1.7;overflow-wrap:anywhere;margin:8px 0!important}
+.np-r381-history-event .np-r381-history-date{font-weight:700;color:var(--ng-accent)}
+.np-r381-history-links{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;margin-top:10px;border-top:1px solid var(--ng-line);padding-top:8px}
+.np-r381-history-links a{color:var(--ng-accent2,var(--ng-ink));text-decoration:underline}
+.np-r381-history-event summary{cursor:pointer;color:var(--ng-accent)}
+
+.np-r381-history-image{width:84px;height:92px;border-radius:12px;overflow:hidden;flex:none;display:block}
+.np-r381-history-image img{width:100%;height:100%;object-fit:cover;display:block}

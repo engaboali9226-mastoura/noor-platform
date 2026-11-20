@@ -35,7 +35,7 @@ try{
  'const fixtureDay=fixtureParams.get("daylight")==="day";',
  'const thursday=fixtureParams.get("friday-preview")==="1";',
  'Date.now=()=>Date.parse(thursday?"2026-11-05T12:10:00Z":fixtureDay?"2026-11-06T08:02:00Z":"2026-11-06T18:02:00Z");',
- 'window.fetch=async()=>new Response(JSON.stringify({current:{temperature_2m:22,uv_index:3,wind_speed_10m:8,wind_direction_10m:140,precipitation:0,weather_code:fixtureParams.get("weather")==="unknown"?undefined:({partly:2,cloudy:3,fog:45,precipitation:61} as Record<string,number>)[fixtureParams.get("weather")??""]??0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});'
+ 'window.fetch=async(input)=>{const u=new URL(String(input),location.origin);if(u.pathname==="/api/noor/public-history/day"){const calendar=u.searchParams.get("calendar"),month=Number(u.searchParams.get("month")),day=Number(u.searchParams.get("day"));return Response.json({status:"ok",events:[{id:calendar+month+day,calendar,month,day,year:calendar==="hijri"?36:1917,title:calendar==="hijri"?"حدث هجري تجريبي":"معركة تاريخية تجريبية",details:"نص اختباري من مصدر التاريخ العام فقط",category:"الحروب والمعارك",rank:calendar==="hijri"?8:9,source:"ويكيبيديا العربية",sourceUrl:"https://ar.wikipedia.org/wiki/Fixture",articleUrl:null,license:"CC BY-SA 4.0"}]});}return new Response(JSON.stringify({current:{temperature_2m:22,uv_index:3,wind_speed_10m:8,wind_direction_10m:140,precipitation:0,weather_code:fixtureParams.get("weather")==="unknown"?undefined:({partly:2,cloudy:3,fog:45,precipitation:61} as Record<string,number>)[fixtureParams.get("weather")??""]??0,is_day:fixtureDay?1:0}}),{status:200,headers:{"Content-Type":"application/json"}});};'
  ].join("\n");
  const render=[
  'const fridayPreview={localDate:"2026-11-06",sunrise:"2026-11-06T03:30:00Z",dhuhr:"2026-11-06T08:40:00Z",city:"الرياض"};',
@@ -501,6 +501,16 @@ try{
   await expect("Array.from(document.querySelectorAll('.np-r324-bottom-nav button')).map(b=>b.dataset.testid).join(',')==='r324-nav-home,r324-nav-habits,r324-nav-plus,r324-nav-tasks,r324-nav-grid'","Approved RTL navigation order");
   await expect("(()=>{const ring=document.querySelector('.np-category-progress[aria-valuenow=\\\"100\\\"]'),label=ring?.querySelector(':scope > span');if(!ring||!label)return false;const range=document.createRange();range.selectNodeContents(label);const r=ring.getBoundingClientRect(),t=range.getBoundingClientRect();return t.width<=r.width*.7&&t.height<=r.height*.6&&Math.abs((t.left+t.right-r.left-r.right)/2)<2})()","R333 100 percent habit label fits inside the ring");
   await snap(screen.name+"-personal");
+  await expect("document.querySelector('.np-r331-board-grid > :nth-child(6)').textContent.includes('معركة تاريخية تجريبية')","R381 public events appear on board");
+  await run("document.querySelector('.np-r331-board-grid > :nth-child(6)').click()");
+  await expect("document.querySelectorAll('.np-r381-history-event').length===2 && document.querySelector('.np-r381-history-event a').hostname==='ar.wikipedia.org'","R381 both calendars display sourced events");
+  await snap(screen.name+"-public-history");
+  await run("Array.from(document.querySelectorAll('.np-r381-history-sheet button')).find(b=>b.textContent==='هجري').click()");
+  await expect("document.querySelectorAll('.np-r381-history-event').length===1&&document.querySelector('.np-r381-history-event').textContent.includes('حدث هجري تجريبي')","R381 calendar filtering");
+  await run("Array.from(document.querySelectorAll('.np-r381-history-sheet button')).find(b=>b.textContent==='الأيام السبعة القادمة').click()");
+  await expect("document.querySelectorAll('.np-r381-history-event').length===7","R381 seven-day public history");
+  await run("document.querySelector('[aria-label=\"إغلاق الأحداث التاريخية\"]').click()");
+
   await run(`Object.defineProperty(navigator,"clipboard",{configurable:true,value:{async write(items){
     const png=await items[0].getType("image/png");
     const image=await createImageBitmap(png);
