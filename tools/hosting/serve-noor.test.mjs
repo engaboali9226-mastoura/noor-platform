@@ -10,7 +10,7 @@ async function close(server){await new Promise(resolve=>server.close(resolve));}
 function request(port,url,{method='GET',headers={},body}={}){return new Promise((resolve,reject)=>{
  const outgoing=http.request({hostname:'127.0.0.1',port,path:url,method,headers},incoming=>{const chunks=[];incoming.on('data',chunk=>chunks.push(chunk));incoming.on('error',reject);incoming.on('end',()=>resolve({status:incoming.statusCode,headers:incoming.headers,body:Buffer.concat(chunks).toString()}));});outgoing.on('error',reject);outgoing.end(body);
 });}
-async function fixture(fn){
+async function fixture(fn,options={}){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'noor-hosting-fixture-')),site=path.join(dir,'site');await fs.mkdir(path.join(site,'assets'),{recursive:true});
  await fs.writeFile(path.join(site,'index.html'),'<html>NOOR synthetic shell</html>');await fs.writeFile(path.join(site,'assets/app-fixture.js'),'console.log("fixture");');
  const observed=[];
@@ -19,7 +19,7 @@ async function fixture(fn){
   if(req.url==='/api/noor/session'){res.writeHead(204,{'Set-Cookie':'noor_session=fixture; HttpOnly; Secure; SameSite=Lax; Path=/api/noor'});res.end();}
   else{res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end('{"fixture":true}');}
  });});
- const apiPort=await listen(api),server=await createHostedWebServer({staticDirectory:site,apiOrigin:`http://127.0.0.1:${apiPort}`,publicOrigin:'https://noor.example',releaseCommit:'A'.repeat(40)}),port=await listen(server);
+ const apiPort=await listen(api),server=await createHostedWebServer({staticDirectory:site,apiOrigin:`http://127.0.0.1:${apiPort}`,publicOrigin:'https://noor.example',releaseCommit:'A'.repeat(40),...options}),port=await listen(server);
  try{await fn({dir,site,api,port,observed});}finally{await close(server);if(api.listening)await close(api);await fs.rm(dir,{recursive:true,force:true});}
 }
 test('R291 healthz includes only validated commit fingerprint, no secrets or user data',()=>fixture(async({port,observed})=>{
@@ -112,4 +112,42 @@ test('unknown username receives the same invalid result and still goes through p
  });
  assert.deepEqual(await authenticate('missing','fixture-password'),{status:401});
  assert.match(attemptedEmail,/@invalid\.example$/u);
+});
+
+test('R381 public history route isolates account traffic and validates methods',()=>fixture(async({port,observed})=>{
+ const good=await request(port,'/api/noor/public-history/day?calendar=gregorian&month=11&day=20',{headers:{cookie:'noor_session=fixture'}});
+ assert.equal(good.status,200);assert.deepEqual(JSON.parse(good.body),{status:'ok',events:[]});
+ assert.equal(good.headers['cache-control'],'public, max-age=3600');
+ assert.equal(good.headers['set-cookie'],undefined);
+ assert.equal((await request(port,'/api/noor/public-history/day?calendar=gregorian&month=2&day=30')).status,400);
+ assert.equal((await request(port,'/api/noor/public-history/day?calendar=hijri&month=1&day=1',{method:'POST'})).status,405);
+ assert.deepEqual(observed,[]);
+},{historyDay:async(calendar,month,day)=>({status:calendar==='gregorian'&&month===11&&day===20?'ok':'invalid',events:[]})}));
+
+test('R381 Arabic calendar parser excludes births and ordinary personal events, preserves source date and deduplicates',async()=>{
+ const {parseHistoryDay,validHistoryDay}=await import('./noor-history-r381.mjs');
+ const wikitext='== أحداث ==\n* [[1917]] - [[معركة كامبراي]] تبدأ في فرنسا.\n* [[1917]] - [[معركة كامبراي]] تبدأ في فرنسا.\n* [[1945]] - بدء [[محاكمات نورمبرغ]] بعد الحرب العالمية الثانية.\n* [[1947]] - حفل زفاف في لندن.\n== مواليد ==\n* 1901 - عالم اكتشف قانونا.\n== وفيات ==\n* 1910 - قائد حرب.';
+ const rows=parseHistoryDay({calendar:'gregorian',month:11,day:20,wikitext,revision:123});
+ assert.equal(rows.length,2);assert.equal(rows[0].title,'معركة كامبراي');assert.equal(rows[0].year,1917);assert.match(rows[0].sourceUrl,/oldid=123/);
+ assert.equal(rows[0].license,'CC BY-SA 4.0');
+ const hijri=parseHistoryDay({calendar:'hijri',month:6,day:10,wikitext:'== أحداث ==\n* [[٣٦ هـ]] - وقعت [[معركة الجمل]] في البصرة.\n* [[١٣٣١ هـ]] -\n** توقيع [[معاهدة سلام]] بين دولتين.\n== وفيات ==\n* 900 هـ - وفاة قائد حرب.'});
+ assert.deepEqual(hijri.map(r=>[r.calendar,r.year,r.month,r.day]),[['hijri',36,6,10],['hijri',1331,6,10]]);
+ assert.equal(validHistoryDay('gregorian',2,30),false);assert.equal(validHistoryDay('hijri',12,30),true);
+});
+test('R381 public history coalesces requests, enriches Wikidata IDs, and retains stale data on upstream failure',async()=>{
+ const {createHistoryEngine}=await import('./noor-history-r381.mjs');
+ let calls=0,at=0,fail=false;
+ const get=createHistoryEngine({now:()=>at,request:async(url,options)=>{
+  calls++;assert.equal(url.hostname,'ar.wikipedia.org');assert.match(options.headers['User-Agent'],/NOOR/);
+  if(fail)return new Response('{}',{status:503});
+  if(url.searchParams.get('action')==='parse')return Response.json({parse:{revid:1,wikitext:'== أحداث ==\n* 1917 - [[معركة كامبراي]] تبدأ في فرنسا.'}});
+  return Response.json({query:{pages:[{title:'معركة كامبراي',pageprops:{wikibase_item:'Q123'}}]}});
+ }});
+ const [a,b]=await Promise.all([get('gregorian',11,20),get('gregorian',11,20)]);
+ assert.equal(calls,2);assert.deepEqual(a,b);assert.equal(a.events[0].wikidataUrl,'https://www.wikidata.org/wiki/Q123');
+ await get('gregorian',11,20);assert.equal(calls,2);
+ at+=25*3600000;fail=true;
+ const stale=await get('gregorian',11,20);assert.equal(stale.status,'stale');assert.deepEqual(stale.events,a.events);
+ assert.equal((await get('gregorian',11,21)).status,'unavailable');
+ assert.equal((await get('x',1,1)).status,'invalid');
 });
