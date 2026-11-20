@@ -28,8 +28,11 @@ BEGIN
  IF (SELECT count(*) FROM pg_class r JOIN pg_namespace n ON n.oid=r.relnamespace WHERE n.nspname='noor_r386_candidate' AND r.relkind='r' AND r.relrowsecurity AND r.relforcerowsecurity)<>5 THEN RAISE EXCEPTION 'R386_RLS_MISSING'; END IF;
  INSERT INTO noor_r386_candidate.owner_scope VALUES(a),(b),(c);
  INSERT INTO noor_r386_candidate.event_history VALUES(a,e->>'id',e->>'idempotencyKey',0,e),(b,e->>'id',e->>'idempotencyKey',0,e||jsonb_build_object('userId',b));
- INSERT INTO noor_r386_candidate.delivery_outbox VALUES(a,e->>'id','Pending'),(b,e->>'id','Failed');
- INSERT INTO noor_r386_candidate.checkpoint VALUES(a,0,1,1,true),(b,0,1,1,true);
+ INSERT INTO noor_r386_candidate.event_history VALUES
+ (a,'unrelated','k-unrelated',0,e||'{"id":"unrelated","idempotencyKey":"k-unrelated","aggregateId":"x-unrelated","payload":{"definitionId":"d2","executionStatus":"Completed"}}'),
+ (a,'aggregate-ref','k-aggregate',0,e||'{"id":"aggregate-ref","idempotencyKey":"k-aggregate","aggregateId":"x-ref","payload":{"definitionId":"d3","executionStatus":"Completed"}}');
+ INSERT INTO noor_r386_candidate.delivery_outbox VALUES(a,e->>'id','Pending'),(b,e->>'id','Failed'),(a,'unrelated','Pending'),(a,'aggregate-ref','Pending');
+ INSERT INTO noor_r386_candidate.checkpoint VALUES(a,0,3,3,true),(b,0,1,1,true);
  INSERT INTO noor_r386_candidate.command_receipt VALUES
  (a,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01T00:00:00Z','2026-01-02T00:00:00Z'),
  (b,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01T00:00:00Z','2026-01-02T00:00:00Z'),
@@ -72,14 +75,14 @@ BEGIN
  BEGIN
   INSERT INTO noor_r386_candidate.command_receipt VALUES(a,'bad','k',decode('ab','hex'),0,now(),now()+interval '1 day'); RAISE EXCEPTION 'invalid digest';
  EXCEPTION WHEN check_violation THEN NULL; END;
- UPDATE noor_r386_candidate.delivery_outbox SET state='Delivered' WHERE owner_id=a;
- IF (SELECT record FROM noor_r386_candidate.event_history WHERE owner_id=a) IS DISTINCT FROM e THEN RAISE EXCEPTION 'R386_DELIVERY_MUTATED_HISTORY'; END IF;
+ UPDATE noor_r386_candidate.delivery_outbox SET state='Delivered' WHERE owner_id=a AND event_id=e->>'id';
+ IF (SELECT record FROM noor_r386_candidate.event_history WHERE owner_id=a AND event_id=e->>'id') IS DISTINCT FROM e THEN RAISE EXCEPTION 'R386_DELIVERY_MUTATED_HISTORY'; END IF;
  BEGIN
-  PERFORM noor_r386_candidate.erase_references(a,ARRAY['d1']); RAISE EXCEPTION 'R386_SIMULATED_ROLLBACK';
+  PERFORM noor_r386_candidate.erase_references(a,ARRAY['d1','x-ref']); RAISE EXCEPTION 'R386_SIMULATED_ROLLBACK';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'R386_SIMULATED_ROLLBACK' THEN RAISE; END IF; END;
- IF (SELECT count(*) FROM noor_r386_candidate.event_history)<>2 OR (SELECT count(*) FROM noor_r386_candidate.checkpoint)<>2 THEN RAISE EXCEPTION 'R386_ERASURE_ROLLBACK'; END IF;
- IF noor_r386_candidate.erase_references(a,ARRAY['d1'])<>1 THEN RAISE EXCEPTION 'R386_ERASURE_COUNT'; END IF;
- IF EXISTS(SELECT 1 FROM noor_r386_candidate.event_history WHERE owner_id=a) OR EXISTS(SELECT 1 FROM noor_r386_candidate.delivery_outbox WHERE owner_id=a) OR EXISTS(SELECT 1 FROM noor_r386_candidate.checkpoint WHERE owner_id=a) OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>2 THEN RAISE EXCEPTION 'R386_ERASURE_INCOMPLETE'; END IF;
+ IF (SELECT count(*) FROM noor_r386_candidate.event_history)<>4 OR (SELECT count(*) FROM noor_r386_candidate.checkpoint)<>2 THEN RAISE EXCEPTION 'R386_ERASURE_ROLLBACK'; END IF;
+ IF noor_r386_candidate.erase_references(a,ARRAY['d1','x-ref'])<>2 THEN RAISE EXCEPTION 'R386_ERASURE_COUNT'; END IF;
+ IF (SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id=a)<>1 OR NOT EXISTS(SELECT 1 FROM noor_r386_candidate.event_history WHERE owner_id=a AND event_id='unrelated') OR (SELECT count(*) FROM noor_r386_candidate.delivery_outbox WHERE owner_id=a)<>1 OR NOT EXISTS(SELECT 1 FROM noor_r386_candidate.delivery_outbox WHERE owner_id=a AND event_id='unrelated' AND state='Pending') OR EXISTS(SELECT 1 FROM noor_r386_candidate.checkpoint WHERE owner_id=a) OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>2 THEN RAISE EXCEPTION 'R386_ERASURE_INCOMPLETE'; END IF;
  IF (SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id=b)<>1 OR (SELECT state FROM noor_r386_candidate.delivery_outbox WHERE owner_id=b)<>'Failed' OR (SELECT count(*) FROM noor_r386_candidate.checkpoint WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_CROSS_OWNER_ERASURE'; END IF;
  IF noor_r386_candidate.expire_receipts(a,'2026-01-03T00:00:00Z')<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_EXPIRY_COUNT'; END IF;
  IF (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_RETENTION'; END IF;
