@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {useState,type ReactElement,type FormEvent} from "react";
 import type {NoorPersonalCommandInput} from "./noor-personal-today-client.js";
 import {NOOR_REMINDER_DEFAULT_R314,parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../../noor-personal/src/domain/reminder-plan-r314.js";
@@ -65,12 +66,12 @@ export function NoorReminderSettingsR314({definitions,onCommand,busy}:{definitio
  const visible=definitions.filter(d=>d.state!=="Archived"&&d.state!=="Stopped"
    &&(kind==="all"||d.kind===kind)&&(!search.trim()||d.title.includes(search.trim())||d.category.includes(search.trim())));
  return <section className="nr314-settings" data-testid="reminder-settings-r314" aria-label="تنبيهات العادات والمهام">
-  <header><div><h2>تنبيهات العادات والمهام</h2><p>حدد موعد كل نشاط ومهلة التأخير وساعات الهدوء. عند عدم الإتمام، يمكن أن يتكرر تذكير النشاط الأساسي أو الذي وزنه 14 فأكثر بعد ساعة وساعتين من نهاية المهلة.</p></div><span aria-hidden="true">◷</span></header>
+  <header><div><h2>تنبيهات العادات والمهام</h2><NoorContextHelp label="مساعدة: حدد موعد كل نشاط">حدد موعد كل نشاط ومهلة التأخير وساعات الهدوء. عند عدم الإتمام، يمكن أن يتكرر تذكير النشاط الأساسي أو الذي وزنه 14 فأكثر بعد ساعة وساعتين من نهاية المهلة.</NoorContextHelp></div><span aria-hidden="true">◷</span></header>
   <div className="nr314-filters"><input type="search" aria-label="ابحث عن نشاط للتذكير" placeholder="ابحث عن عادة أو مهمة…" value={search} onChange={e=>setSearch(e.target.value)}/>
   <select value={kind} onChange={e=>setKind(e.target.value)} aria-label="تصفية أنواع التنبيهات"><option value="all">الكل</option><option value="Habit">العادات</option><option value="Task">المهام</option></select></div>
   {visible.length?<div className="nr314-list">{visible.map(d=><ReminderTile key={`${d.id}:${d.revisionId}`} definition={d} busy={busy} onCommand={onCommand}/>)}</div>
    :<p className="nr314-empty">لا توجد أنشطة مطابقة. أضف عادة أو مهمة من مركز التحكم لتظهر هنا.</p>}
-  <p className="nr314-disclaimer">هذه تنبيهات داخل التطبيق فقط، وليست إشعارات Push. لن نرسل بيانات أنشطتك إلى خدمات خارجية.</p>
+  <NoorContextHelp label="مساعدة: هذه تنبيهات داخل التطبيق فقط">هذه تنبيهات داخل التطبيق فقط، وليست إشعارات Push. لن نرسل بيانات أنشطتك إلى خدمات خارجية.</NoorContextHelp>
  </section>;
 }
 export function NoorReminderRibbonR314({rows,definitions,todayDate,nowMs,timeZone}:{
