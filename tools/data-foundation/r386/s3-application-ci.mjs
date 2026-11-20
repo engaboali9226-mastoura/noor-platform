@@ -10,7 +10,7 @@ import {PersonalTodayOperation} from "../../../apps/noor-runtime/dist/personal-t
 import {PersonalDailyMaterializationScheduler} from "../../../apps/noor-runtime/dist/personal-daily-materialization-scheduler.js";
 import {createRouteAccessHttpServer,PERSONAL_COMMAND_HTTP_PATH,PERSONAL_WORKSPACE_HTTP_PATH,PERSONAL_TODAY_HTTP_PATH} from "../../../apps/noor-runtime/dist/route-access-http-server.js";
 import {CryptographicIdGenerator,IntlTimeZoneAdapter,AdhanPrayerTimeCalculator,IntlUmmAlQuraHijriDateCalculator,VersionedApprovedIslamicHistoryCatalog} from "../../../apps/noor-personal/dist/index.js";
-import {prepareR386NoorPersonalCommand} from "../../../apps/web/src/noor-personal-today-client.ts";
+import {prepareR386NoorPersonalCommand,sendNoorPersonalCommandDetailed,createR386CommandIntent,sendR386CommandIntent} from "../../../apps/web/src/noor-personal-today-client.ts";
 const {database,psql,literal}=createS3CiPostgres(process.argv[2]);
 const a="synthetic-r386-s3-app-a",b="synthetic-r386-s3-app-b";
 let now="2026-11-20T12:00:00.000Z";
@@ -128,6 +128,44 @@ try{
  assert.equal(workspace.status,200);
  assert.ok(!(await workspace.json()).definitions.some(row=>row.id===definitionId));
  console.log("R386_S3_FRESH_AUTHORITATIVE_WORKSPACE_PASS");
+
+ // Real application path after a deliberate operator rollback. Same HMAC
+ // receipt identity, old JSONB authority, no new shadow event writes.
+ const beforeRollback=await database.load(a);
+ const historyCount=await psql("SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id="+literal(a));
+ assert.equal(await psql("SELECT noor_r386_candidate.s3_enter_rollback("+literal(a)+")"),"t");
+ assert.equal(await psql("SELECT noor_r386_candidate.s3_enter_rollback("+literal(a)+")"),"f");
+ await assert.rejects(()=>psql("UPDATE noor_r386_candidate.s3_enrollment SET rollback_only=false,shadow_enabled=true WHERE owner_id="+literal(a)),/R386_S3_ROLLBACK_RECONCILIATION_REQUIRED/);
+ assert.equal((await prepared.send()).kind,"success"); // late retry, no re-execution
+ assert.deepEqual(await database.load(a),beforeRollback);
+ const rollbackCreate={...create,requestId:"22222222-2222-4222-8222-222222222222",title:"Rollback habit",startDate:"2026-11-21"};
+ const intent=createR386CommandIntent(rollbackCreate);
+ const lostTransport=transport("fixture-a",true);
+ assert.equal((await sendR386CommandIntent(intent,lostTransport)).kind,"unavailable");
+ assert.equal((await sendR386CommandIntent(intent,lostTransport)).kind,"success");
+ const rollbackState=await database.load(a);
+ assert.equal(rollbackState.revision,beforeRollback.revision+1);
+ assert.equal(rollbackState.state.definitions.length,1);
+ assert.equal((await database.lookup(a,intent.requestId)).revision,rollbackState.revision);
+ assert.equal((await getToday()).status,200);
+ const afterRollbackToday=await database.load(a);
+ assert.ok(afterRollbackToday.state.outbox.length>beforeRollback.state.outbox.length);
+ assert.equal(await psql("SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id="+literal(a)),historyCount);
+ assert.equal((await database.lookup(a,intent.requestId)).revision,rollbackState.revision);
+ assert.equal((await database.load(b)).revision,1);
+ console.log("R386_S3_REAL_ROLLBACK_AND_RECEIPT_FENCE_PASS");
+ // Existing normal command sender must carry a new identity for each separate
+ // intent and use a stable identity on explicit retry of the same object.
+ const ordinary={...create,requestId:"33333333-3333-4333-8333-333333333333",title:"Ordinary sender",startDate:"2026-11-21"};
+ const ordinaryTransport=transport("fixture-a",true);
+ assert.equal((await sendNoorPersonalCommandDetailed(ordinary,ordinaryTransport)).kind,"unavailable");
+ assert.equal((await sendNoorPersonalCommandDetailed(ordinary,ordinaryTransport)).kind,"success");
+ assert.deepEqual(seen.at(-1),seen.at(-2));
+ const previousRequest=seen.at(-1)[1];
+ assert.equal((await sendNoorPersonalCommandDetailed({...ordinary},ordinaryTransport)).kind,"success");
+ assert.notEqual(seen.at(-1)[1],previousRequest);
+ assert.equal((await database.load(a)).state.definitions.length,2);
+ console.log("R386_S3_EXISTING_BROWSER_SENDER_INTENT_PASS");
 }finally{
  await scheduler.stop();
  await server.close();

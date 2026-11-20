@@ -306,9 +306,18 @@ export function fetchLatestNoorPersonalWorkspaceAfterConflict(fetcher:typeof fet
   return fetchNoorPersonalWorkspace(fetcher);
 }
 export type NoorPersonalCommandReply = Readonly<{kind:NoorPersonalCommandResult;workspace?:unknown;executions?:unknown;personalDayId?:string|null;materializationRequired?:boolean}>;
-async function sendEncodedNoorPersonalCommand(body:string,fetcher:typeof fetch,requestId?:string):Promise<NoorPersonalCommandReply>{
+export type R386CommandIntent=Readonly<{requestId:string|null;body:string}>;
+// Prepare once per explicit logical intent, not per fetch. Crypto is available
+// on secure origins; preserve compatibility for legacy insecure test origins.
+export function createR386CommandIntent(command:NoorPersonalCommandInput):R386CommandIntent{
+ return Object.freeze({requestId:typeof globalThis.crypto?.randomUUID==="function"?"client-"+globalThis.crypto.randomUUID():null,body:JSON.stringify(command)});
+}
+export function sendR386CommandIntentRaw(intent:R386CommandIntent,fetcher:typeof fetch=fetch):Promise<Response>{
+ return fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(intent.requestId?{"X-Noor-Request-Id":intent.requestId}:{})},body:intent.body});
+}
+export async function sendR386CommandIntent(intent:R386CommandIntent,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandReply>{
  try{
-  const response=await fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(requestId?{"X-Noor-Request-Id":requestId}:{})},body});
+  const response=await sendR386CommandIntentRaw(intent,fetcher);
   if(response.status===204){invalidateNoorPersonalReads(fetcher);return {kind:"success"};}
   if(response.status===200){
    invalidateNoorPersonalReads(fetcher);
@@ -319,16 +328,26 @@ async function sendEncodedNoorPersonalCommand(body:string,fetcher:typeof fetch,r
   return {kind:response.status===409?"conflict":"unavailable"};
  }catch{return {kind:"unavailable"};}
 }
+// Existing callers pass a new command object for a new user intent. Retain
+// identity on ambiguous results only while that exact object remains alive.
+// Never deduplicate by serialized content, never auto-retry, never use storage.
+const pendingR386Intents=new WeakMap<typeof fetch,WeakMap<NoorPersonalCommandInput,R386CommandIntent>>();
 export async function sendNoorPersonalCommandDetailed(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandReply>{
- try{return await sendEncodedNoorPersonalCommand(JSON.stringify(command),fetcher);}
- catch{return {kind:"unavailable"};}
+ try{
+  let pending=pendingR386Intents.get(fetcher);
+  if(!pending){pending=new WeakMap();pendingR386Intents.set(fetcher,pending);}
+  let intent=pending.get(command);
+  if(!intent){intent=createR386CommandIntent(command);pending.set(command,intent);}
+  else if(JSON.stringify(command)!==intent.body)return {kind:"conflict"};
+  const result=await sendR386CommandIntent(intent,fetcher);
+  if(result.kind!=="unavailable"&&pending.get(command)===intent)pending.delete(command);
+  return result;
+ }catch{return {kind:"unavailable"};}
 }
-// Prepare once per logical intent. Explicit retry of the same object sends
-// the exact original bytes and ID; never auto-retry an ambiguous legacy write.
 export function prepareR386NoorPersonalCommand(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch){
- const requestId="client-"+crypto.randomUUID();
- const body=JSON.stringify(command);
- return Object.freeze({requestId,send:()=>sendEncodedNoorPersonalCommand(body,fetcher,requestId)});
+ const intent=createR386CommandIntent(command);
+ if(!intent.requestId)throw Error("R386_SECURE_RANDOM_REQUIRED");
+ return Object.freeze({requestId:intent.requestId,send:()=>sendR386CommandIntent(intent,fetcher)});
 }
 export async function sendNoorPersonalCommand(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandResult>{return (await sendNoorPersonalCommandDetailed(command,fetcher)).kind;}
 
