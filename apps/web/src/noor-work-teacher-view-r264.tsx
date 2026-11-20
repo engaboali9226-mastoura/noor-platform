@@ -319,7 +319,7 @@ export function NoorWorkTeacherViewR264(){
      <div className="nw-meter"><span style={{width:percent+"%"}}/></div></div>
    </section>
    <div className="nw-duo">
-    <Panel title="حصص اليوم" description={schoolClockR267(now).gregorian}>
+    <Panel title="حصص اليوم"><p>{schoolClockR267(now).gregorian}</p>
      {todaySlots.length?<div className="nw-lesson-stack">{todaySlots.map(slot=><LessonCard key={slot.id} slot={slot} date={today} now={now}
       check={checked(slot.id,today)} onChange={(k,value)=>updateLesson(slot.id,today,k,value)}/>)}</div>
      :<Empty>لا توجد حصص لهذا اليوم في جدولك.</Empty>}
@@ -383,7 +383,7 @@ export function NoorWorkTeacherViewR264(){
    </Panel>
   </div>:null}
   {tab==="clock"?<div className="nw-duo">
-   <Panel title="متابعة الحضور والانصراف" description={"دوامك الشخصي · "+dayLabelR267(today)}>
+   <Panel title="متابعة الحضور والانصراف"><p>{dayLabelR267(today)}</p>
     <p className="nw-shift-hint">الدوام المعتاد: 6:30 صباحًا — 12:30 ظهرًا</p>
     <div className="nw-staff-attendance">
      <div className="nw-staff-attendance-line">
