@@ -855,7 +855,14 @@ try{
        Math.abs((r.left+r.right)/2-innerWidth/2)<2&&wordmark.getBoundingClientRect().bottom<note.getBoundingClientRect().top&&
        getComputedStyle(phrase).animationName==="noor-dhikr"&&document.documentElement.scrollWidth<=innerWidth;
    })()`,"Self-contained waiting page fits "+viewport.width);
-   await expect("document.querySelector('#dhikr')?.textContent==='الحمد لله'","Waiting page advances to the next phrase");
+   await expect(`(() => {
+     const d=document.querySelector('#dhikr'), s=getComputedStyle(d), r=d.getBoundingClientRect();
+     return document.querySelectorAll('#dhikr').length===1&&s.animationDuration==="1.6s"&&s.backgroundImage.startsWith('url("data:image/webp;base64,')&&s.borderRadius==="50%"&&Math.abs(r.width-r.height)<1&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;
+   })()`,"R383 one embedded circular medallion, faster transition and viewport bounds");
+   const before=await run("JSON.stringify([document.querySelector('#dhikr').dataset.phrase,document.querySelector('#dhikr').style.left,document.querySelector('#dhikr').style.top])");
+   const previous=JSON.parse(before);
+   await expect(`(()=>{const d=document.querySelector('#dhikr');return d.dataset.phrase!==${JSON.stringify(previous[0])}&&(d.style.left!==${JSON.stringify(previous[1])}||d.style.top!==${JSON.stringify(previous[2])});})()`,"R383 next phrase and position change");
+   assert.equal(await run(`(async()=>{const img=new Image();img.src=getComputedStyle(document.querySelector('#dhikr')).backgroundImage.slice(5,-2);await img.decode();return img.naturalWidth===416&&img.naturalHeight===208;})()`),true);
    await snap(viewport.width+"-platform-waiting");
  }
  await writeFile(resolve(output,"report.json"),JSON.stringify(report,null,2));
