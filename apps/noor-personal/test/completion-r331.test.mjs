@@ -38,7 +38,7 @@ test("R331 recovery persists once with server date, applies decayed score to wor
  assert.equal(store.snapshot().dailyExecution[0].recoveredOnR331,undefined);
 });
 
-test("R367 awards selected-day recovery once and keeps its civil date distinct from recording",async()=>{
+test("R380 awards due-day recovery once and keeps performance date distinct from recording",async()=>{
  const now="2026-11-19T12:00:00.000Z",due="2026-11-16",performedOn="2026-11-18";
  const dates=["2026-11-16","2026-11-17","2026-11-18","2026-11-19","2026-11-20"];
  assert.deepEqual(dates.map(day=>recoveryCreditR367(due,day)),[1,.7,.4,.3,.3]);
@@ -60,9 +60,42 @@ test("R367 awards selected-day recovery once and keeps its civil date distinct f
  await service.execute("u",command);
  const workspace=buildPersonalWorkspace("u",{listDefinitions:()=>[def],listPersonalDays:()=>[day],listDailyExecutionForUser:()=>snapshot.dailyExecution});
  assert.deepEqual(workspace.statistics.rows.map(row=>[row.date,row.credit,row.recoveryBonus??false,row.recoveredWeight]),[
-  [due,0,false,4],[performedOn,.4,true,4],
+  [due,.4,false,4],
  ]);
  await assert.rejects(()=>service.execute("u",{...command,performedOn:"2026-11-17"}));
+});
+
+test("R380 reprojects previously saved dated recoveries on their due day without moving current-day weight",()=>{
+ const due="2026-11-16",today="2026-11-19",now=today+"T12:00:00Z";
+ for(const kind of ["Habit","Task"])for(const [offset,expected] of [[0,1],[1,.7],[2,.4],[3,.3]]){
+  const performedOn="2026-11-"+(16+offset);
+  const def={id:"d",userId:"u",kind,revisionId:"r",title:"نشاط",state:"Active",schedule:{kind:"Daily"},effectiveFromDate:due,importance:"Essential",weight:100,gatePolicy:"NonBlocking",targets:{}};
+  const execution=(date,id,status,metadata={})=>({id,userId:"u",personalDayId:date,definitionId:"d",definitionRevisionId:"r",kind,title:def.title,materializationKey:id,scheduleOccurrenceKey:date,status,eligibility:{definitionRevisionId:"r",importance:"Essential",weight:100,gatePolicy:"NonBlocking",targets:{}},version:1,createdAt:now,updatedAt:now,...metadata});
+  const days=[due,today].map(date=>({id:date,userId:"u",boundary:{localDate:date},state:date===today?"Open":"Closed"}));
+  const rows=[execution(due,"past","Completed",{completionDateR367:performedOn,recoveredOnR331:performedOn}),execution(today,"current","Pending")];
+  const w=buildPersonalWorkspace("u",{listDefinitions:()=>[def],listPersonalDays:()=>days,listDailyExecutionForUser:()=>rows});
+  assert.deepEqual(w.statistics.rows.map(r=>[r.date,r.credit,r.recoveryBonus??false]),[[due,expected,false],[today,0,false]]);
+  assert.equal(w.statistics.rows[0].completionDate,performedOn);
+  assert.equal(w.statistics.rows[0].recoveredWeight,100*expected);
+  assert.equal(w.insights.periods.week.completionRate,Math.round(expected*50));
+ }
+});
+test("R380 partially recovered scheduled session retains discounted increments on its own day",()=>{
+ const due="2026-11-16",today="2026-11-19",now=today+"T12:00:00Z";
+ const session={id:"s",title:"قراءة",target:10,scheduledDate:due,completedAt:now};
+ const log=[
+  {id:"a",executionId:"past",taskSessionId:"s",localDate:due,at:due+"T12:00:00Z",amount:4,note:"",endReason:null,sessionAchievementShare:.4,sessionDayCredit:.4},
+  {id:"b",executionId:"past",taskSessionId:"s",localDate:due,performedOnR331:today,achievementDateR367:today,at:now,amount:6,note:"",endReason:null,sessionAchievementShare:.18,sessionDayCredit:.18}
+ ];
+ const def={id:"d",userId:"u",kind:"Task",revisionId:"r",title:"قراءة",state:"Active",schedule:{kind:"Daily"},effectiveFromDate:due,importance:"Essential",weight:10,gatePolicy:"NonBlocking",targets:{},sessionPlan:{distribution:"custom",sessions:[session]},activityLog:log};
+ const e={id:"past",userId:"u",personalDayId:due,definitionId:"d",definitionRevisionId:"r",kind:"Task",title:def.title,materializationKey:"past",scheduleOccurrenceKey:due,status:"Missed",eligibility:{definitionRevisionId:"r",importance:"Essential",weight:10,gatePolicy:"NonBlocking",targets:{}},version:1,createdAt:now,updatedAt:now};
+ const days=[due,today].map(date=>({id:date,userId:"u",boundary:{localDate:date},state:date===today?"Open":"Closed"}));
+ const w=buildPersonalWorkspace("u",{listDefinitions:()=>[def],listPersonalDays:()=>days,listDailyExecutionForUser:()=>[e]});
+ assert.equal(w.statistics.rows.length,1);
+ assert.equal(w.statistics.rows[0].date,due);
+ assert.ok(Math.abs(w.statistics.rows[0].credit-.58)<1e-9);
+ assert.equal(w.statistics.rows[0].completionDate,today);
+ assert.equal(w.insights.periods.week.completionRate,58);
 });
 
 test("R367 mixed measured plans still credit unmeasured sessions",()=>{
