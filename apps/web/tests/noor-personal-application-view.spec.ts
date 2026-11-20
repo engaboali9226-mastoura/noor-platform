@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "../src/noor-context-help-r382.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { JSDOM } from "jsdom";
@@ -829,5 +830,17 @@ test("profile is visible on home before its save replies and rolls back on failu
   await act(async()=>resolve(new Response(null,{status:503})));
   assert.match(t.container.querySelector('.np-greeting-text')?.textContent??'',/اسم سابق/);
   assert.match(t.container.querySelector('.np-failed-save')?.textContent??'',/الملف الشخصي/);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("R382 contextual help is collapsed, accessible, and does not submit forms",async()=>{
+ const t=installDom(),root=createRoot(t.container);let submits=0;
+ try{
+  await act(async()=>root.render(createElement("form",{onSubmit:e=>{e.preventDefault();submits++;}},createElement(NoorContextHelp,{label:"مساعدة الاختبار"},"شرح اختباري"))));
+  const button=t.container.querySelector<HTMLButtonElement>(".noor-help-trigger-r382")!,copy=t.container.querySelector<HTMLElement>(".noor-help-copy-r382")!;
+  assert.equal(button.type,"button");assert.equal(button.getAttribute("aria-expanded"),"false");assert.equal(copy.hidden,true);assert.equal(button.getAttribute("aria-controls"),copy.id);
+  await act(async()=>button.click());assert.equal(copy.hidden,false);assert.equal(button.getAttribute("aria-expanded"),"true");assert.equal(submits,0);
+  await act(async()=>button.dispatchEvent(new t.dom.window.KeyboardEvent("keydown",{key:"Escape",bubbles:true})));assert.equal(copy.hidden,true);
+  await act(async()=>button.click());await act(async()=>button.click());assert.equal(copy.hidden,true);assert.equal(submits,0);
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
