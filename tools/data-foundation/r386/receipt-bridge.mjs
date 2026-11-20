@@ -53,7 +53,7 @@ export async function executeReceiptCandidate({owner,requestId,command,activeKey
   if(!revision(nextRevision))fail("R386_RECEIPT_REVISION_OVERFLOW");
   let result;
   try{
-   result=await adapter.commitAtomic({owner,requestId,expectedRevision:loaded.revision,existed:loaded.existed,candidate,changed,receipt:{...active,revision:nextRevision},fingerprints});
+   result=await adapter.commitAtomic({owner,requestId,expectedRevision:loaded.revision,existed:loaded.existed,before:loaded.state,candidate,changed,receipt:{...active,revision:nextRevision},fingerprints});
   }catch{
    // Never retry a business mutation automatically on ambiguous commit outcome.
    // A successful authoritative receipt lookup is sufficient to acknowledge it.

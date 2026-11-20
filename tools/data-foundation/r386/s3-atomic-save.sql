@@ -34,7 +34,7 @@ DECLARE enrollment noor_r386_candidate.s3_enrollment%ROWTYPE;
  prior noor_r386_candidate.command_receipt%ROWTYPE;
  cp noor_r386_candidate.checkpoint%ROWTYPE;
  v_exists boolean; v_revision bigint; v_state jsonb; v_next bigint;
- v_empty constant jsonb:='{"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
+ v_empty constant jsonb:='{"historicalEvents":[],"notificationHistory":[],"fridayMosqueVisits":[],"locations":[],"prayerPolicies":[],"personalDays":[],"islamicContexts":[],"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
  v_changed boolean; v_time timestamptz;
 BEGIN
  IF NOT noor_r386_candidate.valid_id(p_owner) OR p_owner !~ '^synthetic-r386-s3-[a-z0-9-]+$'
@@ -142,5 +142,32 @@ BEGIN
  PERFORM noor_r386_candidate.erase_owner(p_owner);
  DELETE FROM noor_r386_candidate.s3_enrollment WHERE owner_id=p_owner;
  RETURN true;
+END $$;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA noor_r386_candidate FROM PUBLIC,anon,authenticated,service_role;
+
+-- Server-only authoritative reads. No anonymous/managed RPC exposure.
+CREATE FUNCTION noor_r386_candidate.s3_lookup(p_owner text,p_request text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
+DECLARE receipt noor_r386_candidate.command_receipt%ROWTYPE;
+BEGIN
+ IF NOT EXISTS(SELECT 1 FROM noor_r386_candidate.s3_enrollment WHERE owner_id=p_owner)
+ THEN RAISE EXCEPTION 'R386_S3_NOT_ENROLLED'; END IF;
+ SELECT * INTO receipt FROM noor_r386_candidate.command_receipt WHERE owner_id=p_owner AND request_id=p_request;
+ IF NOT FOUND THEN RETURN 'null'::jsonb; END IF;
+ RETURN jsonb_build_object('keyId',receipt.key_id,'digest',encode(receipt.digest,'hex'),'revision',receipt.committed_revision);
+END $$;
+
+CREATE FUNCTION noor_r386_candidate.s3_load(p_owner text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
+DECLARE v_enabled boolean; v_revision bigint; v_state jsonb;
+BEGIN
+ SELECT shadow_enabled INTO v_enabled FROM noor_r386_candidate.s3_enrollment WHERE owner_id=p_owner;
+ IF NOT FOUND THEN RAISE EXCEPTION 'R386_S3_NOT_ENROLLED'; END IF;
+ IF NOT v_enabled THEN RAISE EXCEPTION 'R386_S3_SHADOW_DISABLED'; END IF;
+ SELECT revision,state INTO v_revision,v_state FROM noor_r386_lab.synthetic_source WHERE owner_id=p_owner;
+ IF NOT FOUND THEN
+  RETURN jsonb_build_object('existed',false,'revision',0,'state','{"historicalEvents":[],"notificationHistory":[],"fridayMosqueVisits":[],"locations":[],"prayerPolicies":[],"personalDays":[],"islamicContexts":[],"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb);
+ END IF;
+ RETURN jsonb_build_object('existed',true,'revision',v_revision,'state',v_state);
 END $$;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA noor_r386_candidate FROM PUBLIC,anon,authenticated,service_role;

@@ -219,3 +219,8 @@ for role in anon authenticated service_role; do
  grep -q 'permission denied' "$tmp/s3-role"
 done
 echo R386_S3_ISOLATED_SQL_PASS
+
+# Execute the existing HMAC/receipt coordinator through the permanent SQL adapter.
+node tools/data-foundation/r386/s3-persistent-adapter-ci.mjs "$name"
+test "$(sql -c 'SELECT (SELECT count(*) FROM noor_r386_candidate.s3_enrollment)+(SELECT count(*) FROM noor_r386_candidate.owner_scope)+(SELECT count(*) FROM noor_r386_candidate.event_history)+(SELECT count(*) FROM noor_r386_candidate.delivery_outbox)+(SELECT count(*) FROM noor_r386_candidate.checkpoint)+(SELECT count(*) FROM noor_r386_candidate.command_receipt)')" = 0
+echo R386_S3_COMMITTED_ADAPTER_PASS

@@ -4,7 +4,7 @@ BEGIN;
 INSERT INTO noor_r386_candidate.s3_enrollment(owner_id) VALUES('synthetic-r386-s3-a'),('synthetic-r386-s3-b');
 DO $$
 DECLARE a text:='synthetic-r386-s3-a'; b text:='synthetic-r386-s3-b';
- empty jsonb:='{"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
+ empty jsonb:='{"historicalEvents":[],"notificationHistory":[],"fridayMosqueVisits":[],"locations":[],"prayerPolicies":[],"personalDays":[],"islamicContexts":[],"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
  candidate jsonb; changed jsonb; result jsonb;
  hash text:=repeat('a',64); hashes jsonb:=jsonb_build_object('k1',repeat('a',64));
 BEGIN
@@ -18,7 +18,7 @@ BEGIN
 END $$;
 DO $$
 DECLARE a text:='synthetic-r386-s3-a'; b text:='synthetic-r386-s3-b';
- empty jsonb:='{"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
+ empty jsonb:='{"historicalEvents":[],"notificationHistory":[],"fridayMosqueVisits":[],"locations":[],"prayerPolicies":[],"personalDays":[],"islamicContexts":[],"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
  old_state jsonb; changed jsonb; result jsonb;
  hash text:=repeat('a',64); hashes jsonb:=jsonb_build_object('k1',repeat('a',64));
 BEGIN
