@@ -30,7 +30,7 @@ jobs:
         run: bash tools/data-foundation/r386/run-isolated-ci.sh
       - name: R386 offline legacy event contract
         if: startsWith(github.head_ref, 'foundation/r386-')
-        run: node --test tools/data-foundation/r386/legacy-event-contract.test.mjs tools/data-foundation/r386/shadow-transition.test.mjs
+        run: node --test tools/data-foundation/r386/*.test.mjs
       - name: Run canonical architecture validation
         run: bash tools/ci/run-architecture-validation.sh
       - name: Build workspace
