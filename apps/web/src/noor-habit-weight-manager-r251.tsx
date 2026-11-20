@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {useState,type ReactElement} from "react";
 import {R331_PRAYERS,parsePrayerScoreApprovalR334,prayerHabitCandidateR334,type PrayerScoreSnapshotR334,type PrayerModeR331,type PrayerTimingR331,type PrayerKeyR331} from "../../noor-personal/src/domain/completion-r331.js";
 import type {NoorPersonalCommandInput} from "./noor-personal-today-client.js";
@@ -68,8 +69,8 @@ export function NoorPrayerScoreApprovalR334({definitions,policy,busy,onCommand}:
  <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.1fr) repeat(2,minmax(0,1fr))",gap:6,alignItems:"center"}}><small>طريقة الأداء</small><small>في وقتها %</small><small>بعد الوقت %</small>
  {MODES_R334.flatMap(([mode,label])=>[<span key={mode}>{label}</span>,...TIMINGS_R334.map(([timing,description])=><input key={mode+timing} data-testid={"r334-share-"+mode+"-"+timing} aria-label={label+" "+description+" %"} className="np-input" style={{minWidth:0,width:"100%"}} type="number" min={0} max={100} step={0.01} placeholder="—" value={shares[mode][timing]} readOnly={mode==="group"&&timing==="ontime"} disabled={busy||saving} onChange={e=>{const value=e.currentTarget.value;setShares(old=>({...old,[mode]:{...old[mode],[timing]:value}}));setConfirmed(false);}}/>)])}
  </div>
- <p className="np-cc-help">100% هي الدرجة المرجعية للأداء في جماعة وفي الوقت. أدخل بقية المعاملات بنفسك؛ لا تزيد درجة التأخير عن الأداء في الوقت، ولا تزيد درجة الانفراد دون عذر عن الانفراد بعذر.</p>
- <strong>ربط العادات القديمة</strong><p className="np-cc-help">حدّد العادات التي تمثل الصلاة نفسها فقط. تبقى سجلاتها القديمة محفوظة، ويُستبعد وزنها من الإنجاز الموحد بعد بدء السياسة. المطابقات بالاسم تتطلب اختيارًا صريحًا.</p>
+ <NoorContextHelp label="مساعدة: 100% هي الدرجة المرجعية">100% هي الدرجة المرجعية للأداء في جماعة وفي الوقت. أدخل بقية المعاملات بنفسك؛ لا تزيد درجة التأخير عن الأداء في الوقت، ولا تزيد درجة الانفراد دون عذر عن الانفراد بعذر.</NoorContextHelp>
+ <strong>ربط العادات القديمة</strong><NoorContextHelp label="مساعدة: حدّد العادات التي تمثل الصلاة">حدّد العادات التي تمثل الصلاة نفسها فقط. تبقى سجلاتها القديمة محفوظة، ويُستبعد وزنها من الإنجاز الموحد بعد بدء السياسة. المطابقات بالاسم تتطلب اختيارًا صريحًا.</NoorContextHelp>
  {habits.map(d=><label key={d.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:8,alignItems:"center"}}><span>{d.title} <small>({d.weight})</small>{prayerHabitCandidateR334(d.title)?<small style={{display:"block"}}>مطابقة محتملة — راجعها</small>:null}</span><select data-testid={"r334-prayer-mapping-"+d.id} aria-label={"ربط "+d.title} className="np-select" value={choices[d.id]??""} disabled={busy||saving} onChange={e=>{const value=e.currentTarget.value;setChoices(old=>({...old,[d.id]:value}));setConfirmed(false);}}><option value="">{prayerHabitCandidateR334(d.title)?"اختر صراحة":"غير محدد"}</option><option value="none">ليست الصلاة نفسها</option>{R331_PRAYERS.map(p=><option key={p} value={p}>{PRAYER_NAMES_R334[p]}</option>)}</select></label>)}
  <label style={{display:"flex",gap:8,alignItems:"flex-start"}}><input data-testid="r334-policy-confirm" type="checkbox" checked={confirmed} disabled={busy||saving} onChange={e=>setConfirmed(e.currentTarget.checked)}/><span>راجعت الأوزان والمعاملات والربط، وأوافق على تطبيقها من اليوم التالي فقط.</span></label>
  <button data-testid="r334-policy-save" type="button" className="np-cc-button primary" disabled={!ready||busy||saving} onClick={()=>{void save();}}>{saving?"جارٍ الاعتماد…":"اعتماد سياسة الصلوات"}</button>
@@ -104,20 +105,20 @@ export function NoorHabitWeightManagerR251({definitions,executions,busy,onComman
   else setFeedback("تعذر تأكيد الحفظ. حدّث الصفحة وراجع الأوزان قبل إعادة المحاولة.");
  };
  return <section data-testid="noor-habit-weight-manager-r251" style={{display:"grid",gap:12}}>
-  <div className="np-cc-title"><div><h2>أوزان العادات</h2><p>الإنجاز الحقيقي حسب الأهمية، وليس عدد علامات الصح.</p></div></div>
+  <div className="np-cc-title"><div><h2>أوزان العادات</h2><NoorContextHelp label="مساعدة: الإنجاز الحقيقي حسب الأهمية">الإنجاز الحقيقي حسب الأهمية، وليس عدد علامات الصح.</NoorContextHelp></div></div>
   <details data-testid="r334-prayer-weight-audit" style={{border:"1px solid var(--border)",borderRadius:12,padding:10}}>
    <summary>مراجعة أوزان الصلوات قبل الربط</summary>
-   <p className="np-cc-help">معاينة من أوزان حسابك الحالية فقط. لا تحفظ أي تغيير ولا تُفعّل احتساب الصلاة.</p>
+   <NoorContextHelp label="مساعدة: معاينة من أوزان حسابك">معاينة من أوزان حسابك الحالية فقط. لا تحفظ أي تغيير ولا تُفعّل احتساب الصلاة.</NoorContextHelp>
    <p>أعلى وزن محفوظ للعادات والمهام النشطة أو الموقوفة مؤقتًا: <strong>{prayerAudit.highestConfiguredWeight}</strong></p>
    <p>أعلى وزن خارج عادات الصلاة المحتملة: <strong>{prayerAudit.highestOtherWeight}</strong></p>
-   <p className="np-cc-help">هذه المطابقات بالاسم للمراجعة فقط، ولا تُستبعد من الحساب تلقائيًا.</p>
+   <NoorContextHelp label="مساعدة: هذه المطابقات بالاسم للمراجعة">هذه المطابقات بالاسم للمراجعة فقط، ولا تُستبعد من الحساب تلقائيًا.</NoorContextHelp>
    {prayerAudit.candidates.length?<div style={{display:"grid",gap:4}}>{prayerAudit.candidates.map(d=><div key={d.id} style={{display:"flex",justifyContent:"space-between",gap:8}}><span>{d.title}</span><strong>{d.weight}</strong></div>)}</div>:<p>لم تُكتشف مطابقة صريحة بأسماء الصلوات؛ يلزم مراجعة العادات الأخرى عند اعتماد الربط.</p>}
   </details>
   <NoorPrayerScoreApprovalR334 key={prayerPolicy?.policyId??"unapproved"} definitions={definitions} policy={prayerPolicy} busy={busy} onCommand={onCommand}/>
-  <p className="np-cc-help">الاقتراح: الصلوات الخمس 25 لكل صلاة، القرآن 12، الأذكار 10، ثم الأساسيات والصحة والتعلم. راجع كل وزن ويمكنك تعديله قبل الحفظ.</p>
+  <NoorContextHelp label="مساعدة: الاقتراح: الصلوات الخمس">الاقتراح: الصلوات الخمس 25 لكل صلاة، القرآن 12، الأذكار 10، ثم الأساسيات والصحة والتعلم. راجع كل وزن ويمكنك تعديله قبل الحفظ.</NoorContextHelp>
   <div style={{display:"flex",flexWrap:"wrap",gap:12,padding:12,borderRadius:12,background:"var(--panel-soft)",border:"1px solid var(--border)"}}>
    <strong>إنجاز العادات الحالي: {percent(currentDone,currentTotal)}٪</strong><strong>بعد التطبيق: {percent(proposedDone,proposedTotal)}٪</strong>
-   <small style={{flexBasis:"100%",color:"var(--muted)"}}>تخص المعاينة العادات المستحقة اليوم؛ نسبة اليوم الكاملة تضم المهام أيضًا.</small>
+   <NoorContextHelp label="مساعدة: تخص المعاينة العادات المستحقة اليوم">تخص المعاينة العادات المستحقة اليوم؛ نسبة اليوم الكاملة تضم المهام أيضًا.</NoorContextHelp>
   </div>
   <div style={{display:"grid",gap:7}}>{rows.map(d=><label key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:10,border:"1px solid var(--border)",borderRadius:12}}>
    <span style={{minWidth:0}}><strong>{d.title}</strong><small style={{display:"block",color:"var(--muted)"}}>{d.category} · الوزن الحالي: {d.weight}</small></span>
