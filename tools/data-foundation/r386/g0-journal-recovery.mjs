@@ -10,9 +10,11 @@ const LAB = '/Volumes/NOOR-R386-Recovery/restore-lab-Z6qmld';
 const SOCKET = LAB + '/socket';
 const PORT = '55486';
 const DATABASE = 'noor_recovery';
+let stage = 'START';
 function requireProof(condition) {
   if (!condition) throw new Error('R386_JOURNAL_RECOVERY_REJECTED');
 }
+function checkpoint(name) { stage = name; }
 function operation(owner, rows, ring, storeOverride) {
   return new NoorPrivateJournalOperationR185({
     trust: { resolveAuthorizedUser: async () => ({status: 200, userId: owner}) },
@@ -25,8 +27,10 @@ function operation(owner, rows, ring, storeOverride) {
   });
 }
 export async function verifyJournalRows(rows, ring, expectedCount) {
+  checkpoint('ROW_COUNT');
   requireProof(Array.isArray(rows) && rows.length === expectedCount && expectedCount > 0);
   const groups = new Map(), versions = new Map();
+  checkpoint('ROW_METADATA_AND_KEY_COVERAGE');
   for (const row of rows) {
     requireProof(row && typeof row.ownerUserId === 'string' &&
       /^[A-Za-z0-9_-]{3,128}$/u.test(row.ownerUserId) &&
@@ -36,12 +40,14 @@ export async function verifyJournalRows(rows, ring, expectedCount) {
     groups.get(row.ownerUserId).push(row);
     versions.set(row.keyVersion, (versions.get(row.keyVersion) || 0) + 1);
   }
+  checkpoint('AUTHENTICATED_DECRYPTION_AND_NOTE_VALIDATION');
   let decrypted = 0;
   for (const [owner, owned] of groups) {
     const result = await operation(owner, owned, ring).list('r386-local-proof');
     requireProof(result.status === 200 && result.body?.entries?.length === owned.length);
     decrypted += owned.length; // plaintext remains in memory only
   }
+  checkpoint('NEGATIVE_CRYPTO_CASES');
   const first = rows[0], own = first.ownerUserId;
   const altered = Buffer.from(ring.keys.get(first.keyVersion));
   altered[0] ^= 1;
@@ -66,10 +72,13 @@ export async function verifyJournalRows(rows, ring, expectedCount) {
 }
 
 function readLocalRows() {
+  checkpoint('MAC_PLATFORM');
   requireProof(process.platform === 'darwin');
+  checkpoint('PRIVATE_SOCKET_DIRECTORY');
   const root = realpathSync(LAB);
-  requireProof(realpathSync(SOCKET) === root + '/socket' &&
-    (statSync(SOCKET).mode & 0o077) === 0 && statSync(SOCKET + '/.s.PGSQL.' + PORT).isSocket());
+  requireProof(realpathSync(SOCKET) === root + '/socket' && (statSync(SOCKET).mode & 0o077) === 0);
+  checkpoint('PRIVATE_SOCKET_FILE');
+  requireProof(statSync(SOCKET + '/.s.PGSQL.' + PORT).isSocket());
   // Deliberately ignore inherited database credentials/PGHOST/PGSERVICE.
   const environment = { PATH: process.env.PATH || '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C',
     PGPASSFILE: '/dev/null', PGCONNECT_TIMEOUT: '5',
@@ -81,21 +90,31 @@ function readLocalRows() {
     "THEN (SELECT coalesce(json_agg(json_build_object('ownerUserId',owner_user_id,'id',id,'createdAt',created_at," +
     "'keyVersion',key_version,'nonce',nonce,'tag',tag,'ciphertext',ciphertext)), '[]'::json) " +
     "FROM public.noor_private_journal_entries_r221) ELSE NULL END;";
+  checkpoint('LOCAL_PSQL');
   const p = spawnSync('psql', ['-X','-w','-qAt','-v','ON_ERROR_STOP=1','-h',SOCKET,'-p',PORT,'-d',DATABASE,'-c',sql],
     {env: environment, encoding:'utf8', timeout:15000, maxBuffer:16*1024*1024});
   requireProof(p.status === 0 && typeof p.stdout === 'string' && p.stdout.trim().length > 0);
+  checkpoint('LOCAL_JSON_OR_ISOLATION_GUARD');
   const rows = JSON.parse(p.stdout);
+  checkpoint('LOCAL_ROW_INVENTORY');
   requireProof(Array.isArray(rows) && rows.length === 8 && rows.every(r => r.keyVersion === 1));
   return rows;
 }
 
 async function runLocal() {
-  requireProof(process.argv.length === 3 && process.argv[2] === '--operator-local');
+  checkpoint('MODE');
+  requireProof(process.argv.length === 3 && ['--operator-local','--preflight'].includes(process.argv[2]));
   const rows = readLocalRows();
+  if (process.argv[2] === '--preflight') {
+    console.log('R386_JOURNAL_LOCAL_PREFLIGHT_PASS: rows=8 key_version=1');
+    return;
+  }
+  checkpoint('SECRET_INPUT_SHAPE');
   // stdin only: active version and the exact escrowed versioned key ring on separate lines.
   // Never pass a key as a command argument or export it to the environment.
   const input = readFileSync(0, 'utf8').replace(/\r?\n$/u,'').split(/\r?\n/u);
   requireProof(input.length === 2);
+  checkpoint('KEY_RING_CONFIGURATION');
   const ring = parseJournalServerKeyRingR198({
     NOOR_PRIVATE_JOURNAL_ACTIVE_KEY_VERSION: input[0],
     NOOR_PRIVATE_JOURNAL_VERSIONED_KEYS_B64: input[1],
@@ -110,5 +129,5 @@ async function runLocal() {
   }
 }
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(new URL(import.meta.url))) {
-  runLocal().catch(() => { console.error('R386_JOURNAL_RECOVERY_BLOCKED'); process.exitCode = 1; });
+  runLocal().catch(() => { console.error('R386_JOURNAL_RECOVERY_BLOCKED: ' + stage); process.exitCode = 1; });
 }
