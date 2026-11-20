@@ -1635,3 +1635,6 @@ button[aria-label^="إغلاق"] {
 .np-r381-history-links{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;margin-top:10px;border-top:1px solid var(--ng-line);padding-top:8px}
 .np-r381-history-links a{color:var(--ng-accent2,var(--ng-ink));text-decoration:underline}
 .np-r381-history-event summary{cursor:pointer;color:var(--ng-accent)}
+
+.np-r381-history-image{width:84px;height:92px;border-radius:12px;overflow:hidden;flex:none;display:block}
+.np-r381-history-image img{width:100%;height:100%;object-fit:cover;display:block}
