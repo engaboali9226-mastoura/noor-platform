@@ -42,6 +42,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/staging-lab-v2.sql
       - name: Atomic CAS and request receipt proof
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-atomic.sql
+      - name: Bounded logical command receipt proof
+        run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-logical-receipt.sql
       - name: Regression, privilege and rollback proof
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/staging-lab-regression.sql
       - name: Representative synthetic volume
