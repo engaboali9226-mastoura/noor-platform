@@ -4586,8 +4586,9 @@ export function NoorPersonalApplicationView({ initialResult, initialWorkspace }:
           ok=await dispatchFast(change,change.atomicAttempt.command);
         }else if(change.command.type==="adjust-beverage-serving"&&change.command.executionId.startsWith("pending:")){
           const command=confirmedBeverageCommand(change,change.command);
-          if(command)ok=await dispatchFast(change,command);
-        }else ok=await dispatchFast(change,change.command);
+          if(command)ok=supportsR386AtomicSave()?await dispatchFast(change,command):await runCommand(command,true);
+        }else if(supportsR386AtomicSave())ok=await dispatchFast(change,change.command);
+        else ok=await runCommand(change.command,true);
       }catch{ok=false;}
       fastQueue.current.shift();if(!alive.current)break;
       if(!ok&&change.command.type==='edit-activity-note'){const failed=change.command;fastQueue.current=fastQueue.current.filter(c=>c.command.type!=='edit-activity-note'||c.command.entryId!==failed.entryId);}
