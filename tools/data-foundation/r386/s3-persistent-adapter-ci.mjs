@@ -5,7 +5,7 @@ import {createS3CiPostgres} from "./s3-ci-postgres.mjs";
 import {executeReceiptCandidate} from "./receipt-bridge.mjs";
 import {createPersistentSaveAdapter} from "./s3-persistent-adapter.mjs";
 const {database,psql,literal}=createS3CiPostgres(process.argv[2]);
-const a="synthetic-r386-s3-node-a",b="synthetic-r386-s3-node-b";
+const a="synthetic-r386-s3-node-a",b="synthetic-r386-s3-node-b",c="synthetic-r386-s3-node-c";
 const keys=new Map([["k1",Buffer.alloc(32,71)],["k2",Buffer.alloc(32,72)]]);
 const activeKeyId="k2";
 function run(owner,requestId,command,evaluate,db=database,deletedDefinitionId=null){
@@ -20,7 +20,7 @@ function event(owner,id){
 }
 function increment(owner,id){return state=>({...state,counter:(state.counter??0)+1,outbox:[...state.outbox,event(owner,id)]});}
 function gate(n){let count=0;let open;const ready=new Promise(resolve=>open=resolve);return async()=>{count++;if(count===n)open();await ready;};}
-await psql("INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES ("+literal(a)+",true),("+literal(b)+",true)");
+await psql("INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES ("+literal(a)+",true),("+literal(b)+",true),("+literal(c)+",true)");
 try{
  assert.deepEqual(await run(a,"noop",{type:"noop"},s=>s),{kind:"acknowledged",status:204,revision:0});
  assert.equal((await database.load(a)).existed,false);
@@ -52,6 +52,34 @@ try{
  assert.equal(await psql("SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id="+literal(a)),"5");
  console.log("R386_S3_CONCURRENT_CAS_AND_DUPLICATE_PASS");
 
+ // Competing first creates share the enrollment lock even before a source
+ // or a receipt exists. Both logical commands must survive exactly once.
+ const firstBarrier=gate(2);
+ let ec=0,ed=0;
+ assert.equal((await database.load(c)).existed,false);
+ const firstResults=await Promise.all([
+  run(c,"first-c",{type:"increment"},async s=>{if(++ec===1)await firstBarrier();return increment(c,"first-c")(s);}),
+  run(c,"first-d",{type:"increment"},async s=>{if(++ed===1)await firstBarrier();return increment(c,"first-d")(s);})
+ ]);
+ assert.deepEqual(firstResults.map(x=>x.revision).sort((x,y)=>x-y),[1,2]);
+ assert.equal(ec+ed,3);
+ assert.equal((await database.load(c)).state.counter,2);
+ assert.equal((await database.load(c)).state.outbox.length,2);
+ assert.equal(await psql("SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id="+literal(c)),"2");
+ console.log("R386_S3_CONCURRENT_FIRST_INSERT_PASS");
+
+ // Simulate shadow-only drift. Rollback reads/writes the old authoritative
+ // state and retains receipts even when the shadow no longer matches it.
+ await psql("UPDATE noor_r386_candidate.delivery_outbox SET state='Failed' WHERE owner_id="+literal(c)+" AND event_id='event-first-c'");
+ const priorSource=await database.load(c);
+ assert.equal(await psql("SELECT noor_r386_candidate.s3_enter_rollback("+literal(c)+")"),"t");
+ assert.deepEqual(await database.load(c),priorSource);
+ assert.equal((await run(c,"first-c",{type:"increment"},()=>{throw Error("REPLAY_EVALUATED");})).revision,firstResults[0].revision);
+ assert.equal((await run(c,"post-rollback",{type:"increment"},increment(c,"post-rollback"))).revision,3);
+ assert.equal((await database.load(c)).state.counter,3);
+ assert.equal(await psql("SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id="+literal(c)),"2");
+ console.log("R386_S3_ROLLBACK_ON_SHADOW_DRIFT_PASS");
+
  // Old authority remains readable and writable after disabling shadow. Replay
  // still resolves its receipt, but new requests are refused by this adapter.
  await psql("UPDATE noor_r386_candidate.s3_enrollment SET shadow_enabled=false WHERE owner_id="+literal(a));
@@ -69,5 +97,5 @@ try{
  assert.equal((await database.lookup(b,"first")).revision,0);
  console.log("R386_S3_ACCOUNT_ERASURE_AND_OWNER_SCOPE_PASS");
 }finally{
- await psql("SELECT noor_r386_candidate.s3_erase_owner("+literal(a)+"); SELECT noor_r386_candidate.s3_erase_owner("+literal(b)+")");
+ await psql("SELECT noor_r386_candidate.s3_erase_owner("+literal(a)+"); SELECT noor_r386_candidate.s3_erase_owner("+literal(b)+"); SELECT noor_r386_candidate.s3_erase_owner("+literal(c)+")");
 }

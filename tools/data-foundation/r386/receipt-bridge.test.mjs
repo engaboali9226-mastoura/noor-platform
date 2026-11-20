@@ -75,3 +75,24 @@ test("bad receipt or wrong acknowledged revision fails closed",async()=>{
  await assert.rejects(f.execute(),/R386_RECEIPT_REVISION_MISMATCH/);
  const g=fixture();g.adapter.lookup=async()=>({keyId:"k1",digest:"bad",revision:1});await assert.rejects(g.execute(),/R386_RECEIPT_CORRUPT/);assert.equal(g.evaluations(),0);
 });
+
+
+test("a concurrent receipt wins over an obsolete initialization/deletion precondition",async()=>{
+ const f=fixture();
+ let completed=false;
+ const originalLoad=f.adapter.load;
+ f.adapter.load=async owner=>{
+  if(!completed){completed=true;await f.execute();}
+  return originalLoad(owner);
+ };
+ const result=await f.execute({},()=>{throw Error("PRECONDITION_ALREADY_CONSUMED");});
+ assert.deepEqual(result,{kind:"acknowledged",status:204,revision:1});
+ assert.equal(f.states.get("synthetic-a").state.counter,1);
+ assert.equal(f.receipts.size,1);
+});
+test("a genuine failed precondition without a durable receipt stays failed",async()=>{
+ const f=fixture();
+ await assert.rejects(f.execute({},()=>{throw Error("PRECONDITION_FAILED");}),/PRECONDITION_FAILED/);
+ assert.equal(f.receipts.size,0);
+ assert.equal(f.states.size,0);
+});

@@ -188,6 +188,8 @@ REVOKE ALL ON ALL FUNCTIONS IN SCHEMA noor_r386_candidate FROM PUBLIC,anon,authe
 
 -- Explicit operator rollback: serialize with writes, verify old authority,
 -- leave historical shadow copies inaccessible/stale, retain replay fence.
+-- Shadow parity is deliberately NOT a rollback prerequisite: a broken shadow
+-- must not stop use of the validated old source and durable receipts.
 -- This is a one-way switch in S3. Re-enablement needs a later approved
 -- reconciliation protocol; flipping an ordinary flag cannot restart shadow.
 CREATE FUNCTION noor_r386_candidate.s3_guard_rollback()
@@ -218,7 +220,7 @@ BEGIN
  END IF;
  PERFORM 1 FROM noor_r386_candidate.owner_scope WHERE owner_id=p_owner FOR UPDATE;
  IF NOT FOUND OR enrollment.last_revision<>v_revision THEN RAISE EXCEPTION 'R386_S3_LEGACY_DRIFT'; END IF;
- PERFORM noor_r386_candidate.s3_matches(p_owner,v_state->'outbox');
+ PERFORM noor_r386_candidate.s2_validate(p_owner,v_state->'outbox');
  DELETE FROM noor_r386_candidate.checkpoint WHERE owner_id=p_owner;
  UPDATE noor_r386_candidate.s3_enrollment SET shadow_enabled=false,rollback_only=true WHERE owner_id=p_owner;
  RETURN true;

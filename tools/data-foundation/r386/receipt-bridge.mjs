@@ -43,14 +43,24 @@ export async function executeReceiptCandidate({owner,requestId,command,activeKey
  for(let attempt=0;attempt<2;attempt++){
   const prior=await adapter.lookup(owner,requestId);
   if(prior!==null)return checked(prior);
-  const loaded=await adapter.load(owner);
-  if(!plain(loaded)||typeof loaded.existed!=="boolean"||!revision(loaded.revision)||(!loaded.existed&&loaded.revision!==0)||!plain(loaded.state))fail("R386_RECEIPT_SOURCE");
-  const before=canonicalJson(loaded.state);
-  const candidate=await evaluate(structuredClone(loaded.state));
-  if(!plain(candidate))fail("R386_RECEIPT_CANDIDATE");
-  const changed=before!==canonicalJson(candidate);
-  const nextRevision=loaded.revision+(changed?1:0);
-  if(!revision(nextRevision))fail("R386_RECEIPT_REVISION_OVERFLOW");
+  let loaded,candidate,changed,nextRevision;
+  try{
+   loaded=await adapter.load(owner);
+   if(!plain(loaded)||typeof loaded.existed!=="boolean"||!revision(loaded.revision)||(!loaded.existed&&loaded.revision!==0)||!plain(loaded.state))fail("R386_RECEIPT_SOURCE");
+   const before=canonicalJson(loaded.state);
+   candidate=await evaluate(structuredClone(loaded.state));
+   if(!plain(candidate))fail("R386_RECEIPT_CANDIDATE");
+   changed=before!==canonicalJson(candidate);
+   nextRevision=loaded.revision+(changed?1:0);
+   if(!revision(nextRevision))fail("R386_RECEIPT_REVISION_OVERFLOW");
+  }catch(error){
+   // A competing identical command may commit between lookup and evaluation;
+   // its now-obsolete business precondition must not hide a durable receipt.
+   let raced;
+   try{raced=await adapter.lookup(owner,requestId)}catch{throw error;}
+   if(raced!==null)return checked(raced);
+   throw error;
+  }
   let result;
   try{
    result=await adapter.commitAtomic({owner,requestId,expectedRevision:loaded.revision,existed:loaded.existed,before:loaded.state,candidate,changed,receipt:{...active,revision:nextRevision},fingerprints});
