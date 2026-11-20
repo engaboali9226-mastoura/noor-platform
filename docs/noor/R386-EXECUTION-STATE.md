@@ -2,6 +2,10 @@
 
 Updated 2026-11-20. Release work remains in [draft PR #236](https://github.com/engaboali9226-mastoura/work-tracker_OS/pull/236) on `foundation/r386-data-reliability`. The production branch is `product/noor-personal-mvp`. Render reported R385 at `12dca76212a8cd48f8aaf34307fb26d08902eeee`, deploy `dep-dbvvkmbm8hqs7394utg0`, live and API-triggered. The public browser check reached the expected Arabic sign-in page.
 
+## Current controlling credential status — operator correction, 2026-11-20
+
+The operator explicitly states the production database password was not disclosed and directs continuation on that basis. The prior assistant-authored disclosure claim is unsupported by direct evidence available to this session. Retracted as a factual assertion; historical references to a disclosure, compromise or mandatory incident-related rotation below are superseded by this correction. Do not require a password reset on that basis, and do not change the existing password or API keys. This is an operator clarification, not an independent forensic finding. Independent encrypted journal key custody, positive RPC and linked NOOR session/owner proof, and actual managed recovery/configuration verification remain required. No G0 closure, production mutation, R219 reuse, merge or deployment authorized by this correction.
+
 ## Verified resumption
 
 - The inherited candidate was `4fab796e678529c269459a3df5e662821d79aaaf`. Architecture Validation [44736526637](https://github.com/engaboali9226-mastoura/work-tracker_OS/actions/runs/44736526637) passed on that exact head. Use Git history for the changes in this update and PR checks for its exact candidate SHA.
@@ -63,7 +67,7 @@ First complete G0 with authenticated Render service-settings access and the secu
 
 Operator-reported Mac terminal evidence: Supabase CLI 3.2.0, PostgreSQL client/dump/restore 17.12, Docker 29.9.3, FileVault enabled. Created AES-256 encrypted APFS sparsebundle outside repository, verified detached encryption status, reopened with ownership and private backup directory. Production SSL verify-full connection succeeded with PostgreSQL 17.11 after operator-approved database-password reset. Operator ran a single pg_dump custom-format archive for public, noor_admin_internal, auth, storage and supabase_migrations, then pg_restore --list, full archive decoding to /dev/null and SHA-256 verification. Terminal reported R386_BACKUP_ARCHIVE_OK and 776 KiB. Archive remains on operator machine; no archive or content was transferred into repository or verified independently by Chat. This is scoped logical database evidence, not full recovery proof.
 
-Credential incident: operator inadvertently disclosed a database credential in conversation and shell input. Treat it as compromised; rotate via official dashboard, verify platform and new authenticated connection, and keep new credential in approved private password manager. No credential is recorded here. Do not use disclosed credential. Pending: operator confirmation of rotation, local archive coverage/role and extension inventory, managed schema and external settings coverage, separately protected journal key custody, isolated restore and auth/runtime verification. No restore to production or R219. No G0 closure or runtime integration yet.
+Historical credential assessment (corrected): a previous assistant asserted disclosure without direct supporting evidence available to this session. Operator explicitly denies disclosure. The incident-specific rotation requirement is withdrawn; retain standard confidential credential handling. See controlling credential status above. Remaining recovery requirements are unchanged.
 
 ## G0 operator archive coverage and roles evidence
 
@@ -246,3 +250,8 @@ Production catalog inspection found eight RLS-enabled public tables without poli
 ## G0 masked Render environment review — operator screenshots
 
 Operator supplied three masked screenshots covering the visible environment list. Visible prefixes are consistent with NOOR Auth/admin/reviewer/friends/journal configuration, SUPABASE_URL, service-role API key and VITE frontend settings; no obvious DATABASE_URL, DIRECT_URL, PGPASSWORD or POSTGRES-prefixed variable shown. Names are truncated and linked groups/secret files/other services are not established; do not infer full dependency inventory. Pinned production journal guard independently confirms exact key names NOOR_PRIVATE_JOURNAL_ACTIVE_KEY_VERSION and NOOR_PRIVATE_JOURNAL_VERSIONED_KEYS_B64. Preserve original values unchanged in independent encrypted password manager; do not send to chat. Official Supabase role/password guidance confirms managed services update automatically on DB password rotation; external direct PostgreSQL consumers require manual credential updates. Operator to check such consumers, rotate through official Database Settings, verify NOOR sign-in/read and new TLS connection; no API key or journal key rotation. G0 remains OPEN. No secrets retrieved, no production or R219 writes, no merge/deploy.
+
+
+## G0 operator correction — password retained
+
+Operator explicitly denies password disclosure. No independently established credential incident; incident-specific rotation removed from active release criteria. Prior historical notes about a second rotation are superseded. Preserve existing credential, journal keys, production and R219 configuration. Independent escrow still unconfirmed. Positive RPC/linked sessions and actual managed recovery/config remain unverified. Continue only approved isolated work; do not bypass blocked fixture mechanism or repeat completed proof without new purpose.
