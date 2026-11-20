@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import { NoorBrandHeader } from "./noor-brand-r329.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {useEffect,useRef,useState} from "react";
@@ -62,14 +63,14 @@ function Clock({now}:{now:Date}){
 }
 function Panel({title,children,description,className=""}:{title:string;children:ReactNode;description?:string;className?:string}){
  return <section className={"nw-panel nw-panel-r267 "+className}>
-  <div className="nw-panel-head"><h2>{title}</h2>{description?<p>{description}</p>:null}</div>{children}
+  <div className="nw-panel-head"><h2>{title}</h2>{description?<NoorContextHelp>{description}</NoorContextHelp>:null}</div>{children}
  </section>;
 }
 function Empty({children}:{children:ReactNode}){return <p className="nw-empty">{children}</p>;}
 function RequiredText({name,label,placeholder=""}:{name:string;label:string;placeholder?:string}){
  return <label className="nw-field"><span>{label}</span><input name={name} required maxLength={90} placeholder={placeholder}/></label>;
 }
-function DraftHint(){return <p className="nw-help">علامات المتابعة تخص نور فقط؛ سجل الحضور والتحضير الرسمي يظل على منصة المدرسة.</p>;}
+function DraftHint(){return <NoorContextHelp label="مساعدة: علامات المتابعة تخص نور فقط">علامات المتابعة تخص نور فقط؛ سجل الحضور والتحضير الرسمي يظل على منصة المدرسة.</NoorContextHelp>;}
 const completed=(check:LessonCheck|undefined)=>Number(Boolean(check?.prepared))+Number(Boolean(check?.attendanceRecorded));
 function LessonCard({slot,date,now,check,onChange}:{slot:Slot;date:string;now:Date;check:LessonCheck|undefined;
  onChange:(key:"prepared"|"attendanceRecorded",value:boolean)=>void}){
@@ -255,7 +256,7 @@ export function NoorWorkTeacherViewR264(){
  if(loading)return <main dir="rtl" className="nw-root nw-r267"><NoorBrandHeader scope="work" /><Panel title="نور ورك">جارٍ تحميل مساحة المعلم الآمنة…</Panel></main>;
  if(status!==200)return <main dir="rtl" className="nw-root nw-r267">
   <NoorBrandHeader scope="work" />
-  <header className="nw-hero nw-hero-error"><div><span className="nw-kicker"><NoorWordmark /> WORK / EDUCATION</span><h1>مساحة المعلم</h1><p>تنظيم التزاماتك الدراسية ومتابعتها.</p></div>
+  <header className="nw-hero nw-hero-error"><div><span className="nw-kicker"><NoorWordmark /> WORK / EDUCATION</span><h1>مساحة المعلم</h1><NoorContextHelp label="مساعدة: تنظيم التزاماتك الدراسية">تنظيم التزاماتك الدراسية ومتابعتها.</NoorContextHelp></div>
    <a href="/" className="nw-light-button">العودة لاختيار التطبيقات</a></header>
   <Panel title={status===403?"صلاحية نور ورك غير مفعّلة":status===401?"تسجيل الدخول مطلوب":"تعذر تحميل مساحة المعلم"}>
    <p role="alert">{message}</p><div className="nw-actions"><button className="nw-primary" onClick={()=>void reload()}>إعادة المحاولة</button><a href="/" className="nw-light-button">العودة للبوابة</a></div>
@@ -266,7 +267,7 @@ export function NoorWorkTeacherViewR264(){
    <div className="nw-hero-main">
     <span className="nw-kicker"><span className="nw-kicker-mark">✦</span> <NoorWordmark /> WORK / EDUCATION</span>
     <h1>مساحة المعلم</h1>
-    <p>لوحة هادئة لمتابعة إنجازك على منصة المدرسة، دون تكرار تسجيل بيانات الطلاب.</p>
+    <NoorContextHelp label="مساعدة: لوحة هادئة لمتابعة">لوحة هادئة لمتابعة إنجازك على منصة المدرسة، دون تكرار تسجيل بيانات الطلاب.</NoorContextHelp>
     <div className="nw-hero-links"><a href="/" className="nw-return">← العودة لمنصة نور</a><span className="nw-privacy">متابعتك خاصة بحسابك</span></div>
    </div>
    <Clock now={now}/>
@@ -318,7 +319,7 @@ export function NoorWorkTeacherViewR264(){
      <div className="nw-meter"><span style={{width:percent+"%"}}/></div></div>
    </section>
    <div className="nw-duo">
-    <Panel title="حصص اليوم" description={schoolClockR267(now).gregorian}>
+    <Panel title="حصص اليوم"><p>{schoolClockR267(now).gregorian}</p>
      {todaySlots.length?<div className="nw-lesson-stack">{todaySlots.map(slot=><LessonCard key={slot.id} slot={slot} date={today} now={now}
       check={checked(slot.id,today)} onChange={(k,value)=>updateLesson(slot.id,today,k,value)}/>)}</div>
      :<Empty>لا توجد حصص لهذا اليوم في جدولك.</Empty>}
@@ -382,7 +383,7 @@ export function NoorWorkTeacherViewR264(){
    </Panel>
   </div>:null}
   {tab==="clock"?<div className="nw-duo">
-   <Panel title="متابعة الحضور والانصراف" description={"دوامك الشخصي · "+dayLabelR267(today)}>
+   <Panel title="متابعة الحضور والانصراف"><p>{dayLabelR267(today)}</p>
     <p className="nw-shift-hint">الدوام المعتاد: 6:30 صباحًا — 12:30 ظهرًا</p>
     <div className="nw-staff-attendance">
      <div className="nw-staff-attendance-line">
@@ -412,7 +413,7 @@ export function NoorWorkTeacherViewR264(){
         }}/></label>
      </div>
     </div>
-    <p className="nw-help">حدد وقت الحضور أو الانصراف بنفسك، ثم اختر «تم». لا نستخدم وقت الضغط، ولا نرسل بياناتك إلى نظام المدرسة. يحفظ نور التغيير تلقائيًا.</p>
+    <NoorContextHelp label="مساعدة: حدد وقت الحضور أو الانصراف بنفسك">حدد وقت الحضور أو الانصراف بنفسك، ثم اختر «تم». لا نستخدم وقت الضغط، ولا نرسل بياناتك إلى نظام المدرسة. يحفظ نور التغيير تلقائيًا.</NoorContextHelp>
    </Panel>
    <Panel title="سجل الأيام السابقة">{work.workdays.length?<ul className="nw-list">{[...work.workdays].reverse().filter(x=>x.checkIn||x.checkOut).slice(0,90).map(x=><li key={x.id}>
     <b>{x.date}</b><span>{x.checkIn?new Date(x.checkIn).toLocaleTimeString("ar-SA-u-nu-latn",{timeZone:"Asia/Riyadh",hour:"2-digit",minute:"2-digit"}):"—"} — {x.checkOut?new Date(x.checkOut).toLocaleTimeString("ar-SA-u-nu-latn",{timeZone:"Asia/Riyadh",hour:"2-digit",minute:"2-digit"}):"—"}</span>
@@ -440,7 +441,7 @@ export function NoorWorkTeacherViewR264(){
         <label key={key} className="nw-check-item"><input type="checkbox" checked={ck?.[key]??false} onChange={e=>updateExam(a.id,key,e.target.checked)}/><span>{label}</span></label>
        )}</div></article>;
     })}</div>:<Empty>لا توجد اختبارات للمتابعة بعد.</Empty>}
-    <p className="nw-help">احتفظنا بالسجلات التفصيلية السابقة في قاعدة البيانات، لكن لوحة المتابعة الجديدة لا تطلب أسماء الطلاب أو درجاتهم.</p>
+    <NoorContextHelp label="مساعدة: احتفظنا بالسجلات التفصيلية السابقة">احتفظنا بالسجلات التفصيلية السابقة في قاعدة البيانات، لكن لوحة المتابعة الجديدة لا تطلب أسماء الطلاب أو درجاتهم.</NoorContextHelp>
    </Panel>
   </div>:null}
   {saveError&&dirty?<div className="nw-save-dock" role="alert">

@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import { useEffect, useRef, useState, type FormEvent, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import { createNoorDeveloperGitHubIssueUrlR282, NOOR_DEVELOPER_GITHUB_ISSUES_R282 } from './noor-developer-github-issues-r282.js';
@@ -448,7 +449,7 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
    {((closed&&!journalChecking)||storageError)&&<div className="nr171-error"><p role="alert">تعذّر فتح السجل الآمن. أعد المحاولة.</p><button type="button" onClick={()=>setReadAttempt(value=>value+1)}>إعادة المحاولة</button></div>}
    {!r202Production&&!trustedJournal?<p className="nr171-info" role="note">التدوينات التجريبية تُحفظ في هذا المتصفح دون تشفير أو مزامنة، ولا تُرسل إلى المطوّر.</p>:null}
    {!r202Production&&trustedJournal?<p className="nr171-info" role="note">التدوين التجريبي يُحفظ في خادم المختبر المصرّح به.</p>:null}
-   {legacyFeelingsArchiveR285?<p className="nr171-info" role="note">هذا سجل تأملي سابق. اكتب تدوينات المشاعر الجديدة من «مساحتي».</p>:null}
+   {legacyFeelingsArchiveR285?<NoorContextHelp label="مساعدة: هذا سجل تأملي سابق">هذا سجل تأملي سابق. اكتب تدوينات المشاعر الجديدة من «مساحتي».</NoorContextHelp>:null}
    {error&&<p className="nr171-error" role="alert">{error}</p>}{status&&<p className="nr171-status" role="status">{status}</p>}
    {view==='add'?(closed?null:legacyFeelingsArchiveR285?<p className="nr171-info" role="status">التدوين الجديد عبر «مساحتي» فقط؛ السجل القديم لم يُحذف.</p>:<form id={formId} className="nr171-form" dir="rtl" key={active} onSubmit={save} data-testid={`r171-form-${active}`}>
     <label>{active==='ideas'?'عنوان الفكرة':active==='developer'?'عنوان المقترح':'العنوان'} *<input name="title" maxLength={100} placeholder={active==='feelings'?'مثلًا: شعور بالراحة بعد الصلاة':active==='ideas'?'عنوان الفكرة':'ملخص المقترح'} required/></label>
@@ -460,11 +461,11 @@ export function NoorThreeSpacesR171({personalDate,storage=indexedNotesR173,trust
       <p role="note"><strong>تطوير نور عبر GitHub Issues:</strong> مستودع نور عام؛ لا ترسل كلمات مرور أو بيانات شخصية أو تدوينات خاصة. لن تُرسل الملاحظة تلقائيًا عند الحفظ في نور.</p>
       <label className="nr171-check"><input type="checkbox" name="githubPublicConsent"/><span>أفهم أن العنوان والوصف سيصبحان عامّين عند إنشاء Issue في GitHub، وأوافق على نشر هذا المقترح فقط.</span></label>
       <div className="nr171-action"><button type="button" onClick={composeGitHubFromForm}>فتح مسودة GitHub</button><a href={NOOR_DEVELOPER_GITHUB_ISSUES_R282} target="_blank" rel="noopener noreferrer">سجل مشكلات التطوير على GitHub</a></div>
-      <small>يفتح GitHub النموذج جاهزًا. يجب تسجيل الدخول والضغط على Create issue هناك لتأكيد النشر. بيانات المشاعر والأفكار لا تُنقل.</small>
+      <NoorContextHelp label="مساعدة: يفتح GitHub النموذج جاهزًا">يفتح GitHub النموذج جاهزًا. يجب تسجيل الدخول والضغط على Create issue هناك لتأكيد النشر. بيانات المشاعر والأفكار لا تُنقل.</NoorContextHelp>
      </section></details>}
     </>}
 
-   </form>):<div><div className="nr171-action" style={{marginBottom:12}}>{!legacyFeelingsArchiveR285?<button type="button" onClick={()=>{setView('add');setConfirmDelete(null);}}>+ إضافة جديدة</button>:<p role="note">للتدوين الجديد استخدم «مساحتي» في الشريط العلوي.</p>}{active==='developer'&&<button type="button" onClick={exportDeveloper}>تصدير المقترحات الموافق عليها للمطوّر</button>}</div>
+   </form>):<div><div className="nr171-action" style={{marginBottom:12}}>{!legacyFeelingsArchiveR285?<button type="button" onClick={()=>{setView('add');setConfirmDelete(null);}}>+ إضافة جديدة</button>:<NoorContextHelp label="مساعدة: للتدوين الجديد استخدم «مساحتي»">للتدوين الجديد استخدم «مساحتي» في الشريط العلوي.</NoorContextHelp>}{active==='developer'&&<button type="button" onClick={exportDeveloper}>تصدير المقترحات الموافق عليها للمطوّر</button>}</div>
     {closed?<p className="nr171-info" role="status">السجل غير متاح حتى اعتماد خدمة التدوينات الآمنة؛ البيانات المحلية السابقة لم تُمس.</p>:current.length===0?<p className="nr171-empty">لا توجد تدوينات سابقة في هذه المساحة.</p>:current.map(n=><article className="nr171-record" key={n.id} data-testid={`r171-record-${n.kind}`}><h3>{n.title}</h3><time dateTime={n.createdAt}>{n.localDate}</time>{active==='feelings'&&<p className="nr171-record-meta">تقييم الشعور: {n.mood}/5</p>}{n.precedingEvent&&<p><strong>الحدث الذي سبق الشعور:</strong> {n.precedingEvent}</p>}<p>{n.body}</p>{n.helpful&&<p><strong>ما يساعدني:</strong> {n.helpful}</p>}{active==='developer'&&<p className="nr171-record-meta">{n.shareApproved?'موافقة محلية على التصدير — لم يُرسل':'خاص — غير مخصص للمشاركة'}</p>}<div className="nr171-action"><button type="button" onClick={()=>{void remove(n.id);}} disabled={saving}>{confirmDelete===n.id?'تأكيد الحذف':'حذف التدوينة'}</button>{confirmDelete===n.id&&<button type="button" onClick={()=>setConfirmDelete(null)}>إلغاء الحذف</button>}{active==='developer'&&<button type="button" onClick={()=>{if(window.confirm('تنبيه: سيتم نشر عنوان ووصف هذه الملاحظة للعامة في GitHub بعد تأكيدك النهائي هناك. هل تريد المتابعة؟'))openDeveloperGitHub(n as NoteR171 & {kind:'developer'},true);}}>فتح في GitHub (عام)</button>}</div></article>)}
    </div>}
    </div>

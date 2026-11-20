@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {createNoorAccountSelfServiceR312,noorRecoveryRedirectR312} from "./noor-account-self-service-r312.js";
 import {readBrowserPublicAuthenticationConfiguration} from "./public-authentication-environment.js";
 import {requestNoorAdminAccountR316} from "./noor-admin-account-client-r316.js";
@@ -125,7 +126,7 @@ export function NoorAdminAccountsPanelR316({token}:{token:()=>Promise<string|nul
  }
  return <section className="na316-area" aria-label="إدارة حسابات نور">
   <h2>إدارة حسابات نور</h2>
-  <p>يمكن إضافة الحسابات، تعديل الأسماء وصلاحيات التطبيقات، إرسال رابط استعادة كلمة المرور، أو إغلاق حساب. بيانات كل مستخدم مستقلة؛ حذف الحساب لا يمحو تدويناته نهائيًا.</p>
+  <NoorContextHelp label="مساعدة: يمكن إضافة الحسابات، تعديل الأسماء">يمكن إضافة الحسابات، تعديل الأسماء وصلاحيات التطبيقات، إرسال رابط استعادة كلمة المرور، أو إغلاق حساب. بيانات كل مستخدم مستقلة؛ حذف الحساب لا يمحو تدويناته نهائيًا.</NoorContextHelp>
   {error?<p className="na315-error" role="alert">{error}</p>:null}
   {notice?<p className="na315-notice" role="status">{notice}</p>:null}
   {ready?<><h3>الحسابات</h3>

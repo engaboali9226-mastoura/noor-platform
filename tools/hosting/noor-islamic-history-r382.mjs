@@ -1,0 +1,19 @@
+// R382: manually reviewed source references and original summaries, not harvested text.
+// Only exact sourced dates are admitted. No invented Gregorian conversions.
+const authorities=Object.freeze({"dorar.net":"الدرر السنية","binbaz.org.sa":"ابن باز","binothaimeen.net":"ابن عثيمين","shamela.ws":"المكتبة الشاملة"});
+export function approvedIslamicSource(url){
+ try{const u=new URL(url);return u.protocol==='https:'&&!u.username&&!u.password&&Object.hasOwn(authorities,u.hostname)&&u.pathname!=='/';}catch{return false;}
+}
+const reviewed=Object.freeze([
+ {id:'islamic:badr',calendar:'hijri',month:9,day:17,year:2,title:'غزوة بدر الكبرى',details:'خرج المسلمون لاعتراض قافلة قريش، ثم التقوا بجيشها عند بدر. انتهت المعركة بانتصار المسلمين، وكانت من الأحداث الفاصلة في السيرة النبوية. حدد الشيخ ابن باز تاريخ الغزوة بالسابع عشر من رمضان في السنة الثانية للهجرة، وتورد الموسوعة التاريخية سياقها ونتائجها.',category:'الغزوات والفتوحات',rank:10,sourceUrl:'https://binbaz.org.sa/fatwas/13015/%D8%AD%D9%83%D9%85-%D8%A7%D9%84%D8%AA%D9%81%D8%B1%D8%BA-%D9%84%D9%84%D8%B9%D8%A8%D8%A7%D8%AF%D8%A9-%D9%81%D9%8A-%D8%B1%D9%85%D8%B6%D8%A7%D9%86',articleUrl:'https://dorar.net/history/event/59'},
+ {id:'islamic:alnasir-752',calendar:'hijri',month:6,day:17,year:752,title:'عزل السلطان الناصر حسن',details:'تآمر عدد من أمراء المماليك على السلطان الناصر حسن بن محمد بن قلاوون بعد خلافهم معه، فانتهى الأمر بتنازله عن السلطنة. وفي اليوم التالي تولى أخوه الصالح صلاح الدين صالح الحكم. تورد الموسوعة التاريخية تفاصيل التحرك في السابع عشر من جمادى الآخرة وتولية الصالح في الثامن عشر.',category:'الدول والسياسة',rank:8,sourceUrl:'https://dorar.net/history/event/3057',articleUrl:null},
+ {id:'islamic:alsalih-752',calendar:'hijri',month:6,day:18,year:752,title:'تولية السلطان الصالح صلاح الدين',details:'عقب عزل الناصر حسن، اجتمع الأمراء والقضاة وأهل الدولة في قلعة القاهرة ونصبوا أخاه صلاح الدين صالح سلطانًا. كان في الرابعة عشرة بحسب رواية الموسوعة التاريخية، التي تعين يوم الثامن عشر من جمادى الآخرة لتوليه.',category:'الدول والسياسة',rank:8,sourceUrl:'https://dorar.net/history/event/3057',articleUrl:null}
+]);
+export function reviewedIslamicDay(calendar,month,day){
+ return reviewed.filter(r=>r.calendar===calendar&&r.month===month&&r.day===day&&approvedIslamicSource(r.sourceUrl)&&(!r.articleUrl||approvedIslamicSource(r.articleUrl))).map(r=>({...r,scope:'islamic',source:authorities[new URL(r.sourceUrl).hostname],license:'ملخص تحريري'}));
+}
+// Conservative gate: do not automatically publish uncertain Gregorian topics as world history.
+// This is lexical screening, not independent semantic verification of all historical events.
+const islamic=/إسلام|اسلام|[م]سلم|خلافة|خليفة|راشد|أموي|اموي|عباسي|عثمان[يية]|مملوك|مماليك|أندلس|اندلس|قرطبة|غرناطة|قسطنطينية|صليبي|صلاح الدين|غزو[ةه]|فتوح|فتح مكة|معركة (?:بدر|أحد|احد|الجمل|صفين|اليرموك|القادسية|عين جالوت|حطين|الزلاقة)|هجري|الهجرة النبوية|محمد (?:رسول الله|النبي)|قريش|مكة|المدينة المنورة|الحجاز|كعبة|المسجد|القدس|فلسطين|إسرائيل|اسرائيل|عرب|السعود|مصر|سوريا|سورية|العراق|بغداد|دمشق|الأردن|الاردن|لبنان|اليمن|عمان|قطر|البحرين|الكويت|الإمارات|الامارات|تركيا|إيران|ايران|فارس|أفغان|افغان|باكستان|بنغلادش|إندونيس|اندونيس|ماليزيا|المغرب|الجزائر|تونس|ليبيا|السودان|الصومال|موريتانيا|البوسنة|كوسوفو|الشيشان/u;
+const world=/الحرب العالمية|فرنسا|فرنسي|ألمانيا|المانيا|ألماني|الماني|بريطانيا|بريطاني|إنجلترا|انجلترا|لندن|روسيا|روسي|الاتحاد السوفيتي|الولايات المتحدة|أمريك|امريك|كندا|اليابان|يابان|الصين|صيني|أستراليا|استراليا|إيطاليا|ايطاليا|إسبانيا|اسبانيا|البرتغال|هولندا|بلجيكا|سويسرا|النمسا|السويد|النرويج|الدنمارك|فنلندا|بولندا|أوكرانيا|اوكرانيا|كوريا|البرازيل|الأرجنتين|الارجنتين|المكسيك|تشيلي|بيرو|نيوزيلندا|نورمبرغ|الأمم المتحدة|الامم المتحدة|ناسا|أبولو|ابولو|تلسكوب هابل|كامبراي/u;
+export function eligibleWorldHistory(text){return typeof text==='string'&&!islamic.test(text)&&world.test(text);}

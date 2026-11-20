@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import { NoorBrandHeader } from "./noor-brand-r329.js";
 import { NoorWordmark } from "./noor-wordmark.js";
 import {useState,type FormEvent,type ReactElement} from "react";
@@ -67,7 +68,7 @@ export function NoorPersonalInitialSetupR321({onConfigured}:{
   </header>
   <form onSubmit={e=>{void submit(e);}}>
    <fieldset><legend><span className="np-r321-step">١</span> اختر مدينتك</legend>
-    <p>نستخدم مركز المدينة لحساب الأوقات، ولا نحتاج موقع GPS الدقيق.</p>
+    <NoorContextHelp label="مساعدة: نستخدم مركز المدينة">نستخدم مركز المدينة لحساب الأوقات، ولا نحتاج موقع GPS الدقيق.</NoorContextHelp>
     <div className="np-r321-city-grid">
      {cities.map(c=><label key={c.key} className={city===c.key?"np-r321-selected":""}>
       <input type="radio" name="city" value={c.key} checked={city===c.key}
@@ -77,7 +78,7 @@ export function NoorPersonalInitialSetupR321({onConfigured}:{
     </div>
    </fieldset>
    <fieldset><legend><span className="np-r321-step">٢</span> طريقة حساب مواقيت الصلاة</legend>
-    <p>اختر المرجع المناسب لمنطقتك؛ يمكنك ضبط المدينة لاحقًا من مركز التحكم.</p>
+    <NoorContextHelp label="مساعدة: اختر المرجع المناسب لمنطقتك">اختر المرجع المناسب لمنطقتك؛ يمكنك ضبط المدينة لاحقًا من مركز التحكم.</NoorContextHelp>
     <select required aria-label="طريقة حساب الصلاة" disabled={busy} value={method}
       onChange={e=>{setMethod(e.target.value as PrayerMethod);setConfirmed(false);}}>
      <option value="">اختر طريقة الحساب…</option>

@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {useDashboardDialog} from "./noor-dashboard-dialog.js";
 import {useEffect,useState,type ReactElement} from "react";
 import {createPortal} from "react-dom";
@@ -78,12 +79,12 @@ export function UnifiedUpcomingR324({definitions,religiousEvents,nowMs,timeZone,
  const show=()=>{setFilter(personalDefault?"personal":"all");setOpen(true);};
  const overlay=<div className="np-r322-appointments-overlay np-r324-schedule-overlay np-r332-schedule-overlay" style={viewport} data-open={open} aria-hidden={!open} onMouseDown={e=>{if(e.target===e.currentTarget)setOpen(false);}}>
  <section className="np-r322-appointments-sheet np-r324-schedule-sheet np-r332-schedule-sheet" onKeyDown={event=>{if(event.key!=="Tab")return;const controls=Array.from(event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled)"));const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}}} role="dialog" aria-modal={open} aria-label="جميع المواقيت القادمة" dir="rtl">
- <header className="np-r322-sheet-head"><div><h2>{personalDefault?"المواعيد":"المواقيت القادمة"}</h2><p>مرتبة زمنيًا حسب موقعك وسياسة الصلاة</p></div><button type="button" data-r324-close-upcoming aria-label="إغلاق المواعيد" onClick={()=>setOpen(false)}>×</button></header>
+ <header className="np-r322-sheet-head"><div><h2>{personalDefault?"المواعيد":"المواقيت القادمة"}</h2><NoorContextHelp label="مساعدة: مرتبة زمنيًا حسب موقعك">مرتبة زمنيًا حسب موقعك وسياسة الصلاة</NoorContextHelp></div><button type="button" data-r324-close-upcoming aria-label="إغلاق المواعيد" onClick={()=>setOpen(false)}>×</button></header>
  <div className="np-r324-schedule-filters">{([["all","الكل"],["religious","الصلوات والليل"],["personal","مواعيدي"]] as const).map(([id,label])=><button type="button" key={id} aria-pressed={filter===id} onClick={()=>setFilter(id)}>{label}</button>)}</div>
  {filtered[0]?<div className="np-r324-schedule-hero"><span>الموعد الأقرب</span><strong>{filtered[0].title}</strong><b dir="auto" role="timer">{eventRemaining(filtered[0],nowMs)}</b><small>{dateLabel(filtered[0].atMs,timeZone)} · {clock(filtered[0].atMs,timeZone)}</small></div>:null}
  <div className="np-r324-schedule-list">{filtered.map((e,i)=><div key={e.id}>{(i===0||localParts(e.atMs,timeZone).slice(0,10)!==localParts(filtered[i-1]!.atMs,timeZone).slice(0,10))?<h3>{dateLabel(e.atMs,timeZone)}</h3>:null}<article className="np-r324-event-row" data-testid={"r324-event-"+e.kind}><span className="np-r332-event-icon" aria-hidden="true"><NoorR323Icon name={e.kind==="prayer"?"mosque":e.kind==="personal"?"check":"bars"}/></span><div className="np-r332-event-copy"><strong>{e.title}</strong><small>{e.detail} · <time dateTime={new Date(e.atMs).toISOString()}>{clock(e.atMs,timeZone)}</time></small></div><div className="np-r332-event-countdown"><small>المتبقي</small><b dir="auto" role="timer" aria-label={"المتبقي على "+e.title}>{eventRemaining(e,nowMs)}</b></div></article></div>)}</div>
  {!filtered.length?<p role="status">لا توجد مواقيت في هذا القسم.</p>:null}
- <p className="np-r324-schedule-note">يظهر كل توقيت مستقبلي متاح من مصدر نور المعتمد. لا تُقدّر المواقيت غير المتوفرة من أوقات يوم آخر.</p>
+ <NoorContextHelp label="مساعدة: يظهر كل توقيت مستقبلي متاح">يظهر كل توقيت مستقبلي متاح من مصدر نور المعتمد. لا تُقدّر المواقيت غير المتوفرة من أوقات يوم آخر.</NoorContextHelp>
  {onAdd?<button type="button" className="np-r324-add-event" data-testid="r302-add-countdown" onClick={()=>{setOpen(false);onAdd();}}>+ إضافة موعد شخصي</button>:null}
  </section></div>;
  return <section className="np-card np-upcoming-r301 np-upcoming-r303 np-r324-upcoming" data-testid="r301-upcoming-countdowns" data-countdown-empty={!events.length} aria-label="المواقيت القادمة">
