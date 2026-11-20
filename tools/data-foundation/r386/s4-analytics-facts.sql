@@ -2,7 +2,7 @@
 -- Immutable observations plus correction revisions, never historic inference.
 CREATE TABLE noor_r386_candidate.s4_fact(
  owner_id noor_r386_candidate.identifier NOT NULL REFERENCES noor_r386_candidate.owner_scope ON DELETE CASCADE,
- fact_kind text NOT NULL CHECK(fact_kind IN ('execution','activity','session','prayer-policy','prayer-record','prayer-alias')),
+ fact_kind text NOT NULL CHECK(fact_kind IN ('execution','execution-transition','activity','session','prayer-policy','prayer-record','prayer-alias')),
  entity_id noor_r386_candidate.identifier NOT NULL,
  sub_id noor_r386_candidate.identifier NOT NULL,
  definition_id noor_r386_candidate.identifier,
@@ -79,7 +79,7 @@ RETURNS TABLE(fact_kind text,entity_id text,sub_id text,definition_id text,recor
 LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
 DECLARE e jsonb; d jsonb; day jsonb; a jsonb; session jsonb; pol jsonb; prayer jsonb; context jsonb; mapping record; k text;
  due text; zone text; performed text; recovery text; kind text; status text; w numeric; ver numeric; mode text; timing text;
- policy_id text; share_matrix jsonb; idx jsonb; due_at text;
+ policy_id text; share_matrix jsonb; idx jsonb;
 BEGIN
  IF jsonb_typeof(p_state->'definitions') IS DISTINCT FROM 'array'
  OR jsonb_typeof(p_state->'dailyExecution') IS DISTINCT FROM 'array'
@@ -119,7 +119,7 @@ BEGIN
    'performedDate',performed,'performedTimeZone',NULL,'legacyRecoveryDate',recovery,
    'performanceSource',CASE WHEN performed IS NOT NULL THEN 'completionDateR367' ELSE 'Unknown' END,
    'observedEligibilityWeight',w,'weightSource',CASE WHEN w IS NULL THEN 'Unknown' ELSE 'ExecutionEligibilityObserved' END,
-   'historicalWeight',NULL,'scoringPolicyVersion',CASE WHEN d?'sessionPlan' THEN 'SessionR285R286' WHEN performed IS NOT NULL THEN 'R367' WHEN recovery IS NOT NULL THEN 'R331' ELSE 'R331Normal' END,
+   'historicalWeight',NULL,'historicalPolicyVersion',NULL,'policySource','CurrentEvaluatorObserved','scoringPolicyVersion',CASE WHEN d?'sessionPlan' THEN 'SessionR285R286' WHEN performed IS NOT NULL THEN 'R367' WHEN recovery IS NOT NULL THEN 'R331' ELSE 'R331Normal' END,
    'nonAchievement',d?'beveragePlan' OR coalesce(d->'countdownPlan'->>'kind','task') IN ('event','appointment'),
    'sessionPlanObserved',d?'sessionPlan');
   RETURN NEXT;
@@ -213,12 +213,13 @@ END $$;
 -- Run only under the actual existing S3 trusted transaction role.
 CREATE FUNCTION noor_r386_candidate.s4_capture()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
-DECLARE enabled boolean; rolled boolean; facts jsonb;
+DECLARE enabled boolean; rolled boolean; facts jsonb; prior_events jsonb:='[]'::jsonb;
 BEGIN
  IF current_user<>'noor_r386_s3_tx' THEN RETURN NEW; END IF;
  SELECT shadow_enabled,rollback_only INTO enabled,rolled FROM noor_r386_candidate.s3_enrollment WHERE owner_id=NEW.owner_id;
  IF NOT FOUND OR (NOT enabled AND NOT rolled) THEN RAISE EXCEPTION 'R386_S4_SCOPE'; END IF;
  IF TG_OP='UPDATE' THEN
+  prior_events:=OLD.state->'outbox';
   IF NEW.owner_id IS DISTINCT FROM OLD.owner_id OR NEW.revision<>OLD.revision+1 THEN RAISE EXCEPTION 'R386_S4_REVISION'; END IF;
  ELSIF NEW.revision<>1 THEN RAISE EXCEPTION 'R386_S4_REVISION'; END IF;
  -- In rollback do not capture or validate analytics. Still erase all historical
@@ -227,10 +228,11 @@ BEGIN
  IF rolled THEN
   DELETE FROM noor_r386_candidate.s4_fact f WHERE f.owner_id=NEW.owner_id AND (
    (f.definition_id IS NOT NULL AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'definitions') d WHERE d->>'id'=f.definition_id))
-   OR (f.fact_kind='execution' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'dailyExecution') e WHERE e->>'id'=f.entity_id))
+   OR (f.fact_kind IN ('execution','execution-transition') AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'dailyExecution') e WHERE e->>'id'=f.entity_id))
    OR (f.fact_kind='activity' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'definitions') d CROSS JOIN LATERAL jsonb_array_elements(coalesce(d->'activityLog','[]'::jsonb)) a WHERE d->>'id'=f.definition_id AND a->>'id'=f.entity_id))
    OR (f.fact_kind='session' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'definitions') d CROSS JOIN LATERAL jsonb_array_elements(coalesce(d->'sessionPlan'->'sessions','[]'::jsonb)) s WHERE d->>'id'=f.definition_id AND s->>'id'=f.entity_id))
    OR (f.fact_kind LIKE 'prayer-%' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'personalDays') d WHERE d->>'id'=f.entity_id))
+   OR (f.fact_kind='execution-transition' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'outbox') e WHERE e->>'id'=f.sub_id))
    OR (f.fact_kind='prayer-record' AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'personalDays') d CROSS JOIN LATERAL jsonb_array_elements(coalesce(d->'prayerRecordsR331','[]'::jsonb)) p WHERE d->>'id'=f.entity_id AND p->>'key'=f.sub_id))
   );
   RETURN NEW;
@@ -240,9 +242,15 @@ BEGIN
  THEN RAISE EXCEPTION 'R386_S4_DUPLICATE'; END IF;
  -- A removed entity erases all its fact versions, including derived policy
  -- aliases. Changed retained entities receive a new correction observation.
- DELETE FROM noor_r386_candidate.s4_fact f WHERE f.owner_id=NEW.owner_id AND NOT EXISTS(
-  SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,sub_id text)
-  WHERE (x.fact_kind,x.entity_id,x.sub_id)=(f.fact_kind,f.entity_id,f.sub_id));
+ DELETE FROM noor_r386_candidate.s4_fact f WHERE f.owner_id=NEW.owner_id AND (
+  (f.fact_kind<>'execution-transition' AND NOT EXISTS(
+   SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,sub_id text)
+   WHERE (x.fact_kind,x.entity_id,x.sub_id)=(f.fact_kind,f.entity_id,f.sub_id)))
+  OR (f.fact_kind='execution-transition' AND (
+   NOT EXISTS(SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text) WHERE x.fact_kind='execution' AND x.entity_id=f.entity_id)
+   OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'outbox') e WHERE e->>'id'=f.sub_id)
+  ))
+ );
  INSERT INTO noor_r386_candidate.s4_fact(owner_id,fact_kind,entity_id,sub_id,definition_id,source_revision,observation,record)
  SELECT NEW.owner_id,x.fact_kind,x.entity_id,x.sub_id,x.definition_id,NEW.revision,
   CASE WHEN prior.source_revision IS NULL THEN 'FirstObserved' ELSE 'Revised' END,x.record
@@ -251,6 +259,29 @@ BEGIN
   WHERE f.owner_id=NEW.owner_id AND (f.fact_kind,f.entity_id,f.sub_id)=(x.fact_kind,x.entity_id,x.sub_id)
   ORDER BY f.source_revision DESC LIMIT 1) prior ON true
  WHERE prior.source_revision IS NULL OR prior.record IS DISTINCT FROM x.record OR prior.definition_id IS DISTINCT FROM x.definition_id;
+ -- Capture recording evidence only for NEW execution events in this observed
+ -- transaction, tied to the exact final execution version and day. Old events
+ -- do not establish the historic weight or actual performed date. A recording
+ -- within the due-day boundary identifies the registration civil day only.
+ INSERT INTO noor_r386_candidate.s4_fact(owner_id,fact_kind,entity_id,sub_id,definition_id,source_revision,observation,record)
+ SELECT NEW.owner_id,'execution-transition',x.entity_id,e->>'id',x.definition_id,NEW.revision,'FirstObserved',
+  jsonb_build_object('eventType',e->>'eventType','executionVersion',x.record->'executionVersion',
+   'recordedAt',e->>'occurredAt','dueDate',x.record->'dueDate','dueTimeZone',x.record->'dueTimeZone',
+   'recordedOnDueDate',CASE WHEN (e->>'occurredAt')::timestamptz>=noor_r386_candidate.s4_instant(d->'boundary'->'startAt')::timestamptz
+    AND (e->>'occurredAt')::timestamptz<noor_r386_candidate.s4_instant(d->'boundary'->'endAt')::timestamptz
+    THEN x.record->'dueDate' ELSE NULL END,
+   'performedDate',x.record->'performedDate','performedTimeZone',NULL,'performanceSource',x.record->'performanceSource',
+   'legacyRecoveryDate',x.record->'legacyRecoveryDate','weightAtObservedTransition',x.record->'observedEligibilityWeight',
+   'scoringRuleAtObservedTransition',x.record->'scoringPolicyVersion','status',x.record->'status')
+ FROM jsonb_array_elements(NEW.state->'outbox') q(e)
+ JOIN jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,definition_id text,record jsonb)
+ ON x.fact_kind='execution' AND x.entity_id=e->>'aggregateId'
+ AND x.record->'executionVersion'=e->'aggregateVersion'
+ AND x.record->>'dayId'=e->>'personalDayId'
+ AND x.definition_id=e->'payload'->>'definitionId' AND x.record->>'status'=e->'payload'->>'executionStatus'
+ JOIN jsonb_array_elements(NEW.state->'personalDays') z(d) ON d->>'id'=x.record->>'dayId'
+ WHERE e->>'eventType' IN ('ExecutionCompleted','ExecutionMissed','ExecutionCancelled','ExecutionReopened')
+ AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(prior_events) old WHERE old->>'id'=e->>'id');
  RETURN NEW;
 END $$;
 CREATE TRIGGER r386_s4_capture AFTER INSERT OR UPDATE OF state ON noor_r386_lab.synthetic_source

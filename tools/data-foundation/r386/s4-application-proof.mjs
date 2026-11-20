@@ -38,6 +38,12 @@ export async function proveS4Application({database,psql,literal,owner,otherOwner
  assert.equal(recent("execution",firstExecution.id).record.status,"Completed");
  assert.equal(recent("execution",firstExecution.id).record.performedDate,null);
  assert.equal(recent("execution",firstExecution.id).record.historicalWeight,null);
+ const transition=recent("execution-transition",firstExecution.id);
+ assert.equal(transition.record.eventType,"ExecutionCompleted");
+ assert.equal(transition.record.recordedAt,at);
+ assert.equal(transition.record.recordedOnDueDate,day20);
+ assert.equal(transition.record.weightAtObservedTransition,7);
+ assert.equal(transition.record.performedDate,null);
  assert.equal(recent("activity","88888888-8888-4888-8888-888888888888").record.recordedSessionAchievementShare,1);
  assert.equal(recent("activity","88888888-8888-4888-8888-888888888888").record.recordedSessionDayCredit,0.5);
  assert.equal(recent("session","s4-session-a").record.scheduledDate,day20);
@@ -47,6 +53,7 @@ export async function proveS4Application({database,psql,literal,owner,otherOwner
  captured=await readFacts();
  assert.equal(recent("execution",firstExecution.id).record.observedEligibilityWeight,9);
  assert.equal(recent("execution",firstExecution.id).observation,"Revised");
+ assert.equal(recent("execution-transition",firstExecution.id).record.weightAtObservedTransition,7);
  assert.ok(captured.some(f=>f.fact_kind==="execution"&&f.entity_id===firstExecution.id&&f.record.observedEligibilityWeight===7));
  assert.equal(await count("fact_kind='execution' AND entity_id="+literal(firstExecution.id)),beforeWeight+1);
  // A private note-only edit changes source revision, not the facts.
@@ -65,6 +72,9 @@ export async function proveS4Application({database,psql,literal,owner,otherOwner
  assert.equal(recent("execution",old.id).record.performedDate,day21);
  assert.equal(recent("execution",old.id).record.legacyRecoveryDate,day21);
  assert.equal(recent("execution",old.id).record.scoringPolicyVersion,"R367");
+ assert.equal(recent("execution-transition",old.id).record.recordedOnDueDate,null);
+ assert.equal(recent("execution-transition",old.id).record.performedDate,day21);
+ assert.equal(recent("execution-transition",old.id).record.weightAtObservedTransition,3);
  assert.equal(recent("execution",old.id).record.dueTimeZone,"Asia/Riyadh");
  const afterRecovery=await state();
  const projected=await projectS4Analytics({owner,sourceRevision:afterRecovery.revision,state:afterRecovery.state,evaluatedAt:at});

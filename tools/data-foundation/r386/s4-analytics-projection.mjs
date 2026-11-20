@@ -38,7 +38,15 @@ export async function projectS4Analytics({owner,sourceRevision,state,evaluatedAt
   ...(r.kind==="Prayer"?{prayerKey:r.prayerKey}:{}),
   title:"",amount:0,unit:""
  }));
- const scoreRows=rows.map(({title,amount,unit,...row})=>row);
+ const execById=new Map(state.dailyExecution.map(row=>[row.id,row]));
+ const scoreRows=rows.map(({title,amount,unit,...row})=>{
+  const stored=execById.get(row.id)?.eligibility?.weight;
+  return {...row,projectionWeightBasis:row.kind==="Prayer"?"ApprovedDayPrayerSnapshot":
+   typeof stored==="number"&&Number.isFinite(stored)&&stored>0
+     ?row.sessionWeight!==undefined?"ObservedEligibilityExpandedBySessions":"ObservedExecutionEligibility"
+     :"LegacyScoringFallbackOnly",
+   observedEligibilityWeight:row.kind==="Prayer"?null:typeof stored==="number"&&Number.isFinite(stored)&&stored>0?stored:null};
+ });
  const observedDates=new Set([...rows.map(r=>r.date),...facts.executions.map(r=>r.dueDate)]);
  const daily=[...observedDates].filter(d=>validStatisticDate(d)&&currentDate!==null&&d<=currentDate).sort().map(date=>({date,...cleanTotal(summarizeProgress(rows.filter(r=>r.date===date)))}));
  const periods=statisticPeriods(rows,currentDate).map(({key,start,end,unlockDate,ready,...totals})=>({key,start,end,unlockDate,ready,...cleanTotal(totals)}));
