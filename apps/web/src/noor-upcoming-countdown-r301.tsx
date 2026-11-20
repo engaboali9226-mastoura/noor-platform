@@ -123,7 +123,7 @@ function PersonalUpcomingR301({definitions,nowMs,timeZone,onAdd}:{definitions:re
     <div className="np-r322-appointments-overlay" data-open={detailOpen} role="presentation" aria-hidden={!detailOpen}
       onMouseDown={e=>{if(e.target===e.currentTarget)setDetailOpen(false);}}>
      <div className="np-r322-appointments-sheet" role="dialog" aria-modal={detailOpen} aria-label="جميع المواعيد القادمة" dir="rtl">
-       <header className="np-r322-sheet-head"><div><h2>جميع المواعيد القادمة</h2><NoorContextHelp label="مساعدة: المواعيد المسجلة لحسابك، مرتبة">المواعيد المسجلة لحسابك، مرتبة حسب التاريخ والوقت</NoorContextHelp></div>
+       <header className="np-r322-sheet-head"><div><h2>جميع المواعيد القادمة<NoorContextHelp label="مساعدة: المواعيد المسجلة لحسابك، مرتبة">المواعيد المسجلة لحسابك، مرتبة حسب التاريخ والوقت</NoorContextHelp></h2></div>
        <button type="button" onClick={()=>setDetailOpen(false)} aria-label="إغلاق المواعيد">✕</button></header>
        <p className="np-r322-featured-modal">الموعد الأقرب: <strong>{featured.title}</strong> · {shortDateR303(featured.plan.date)} · {featured.plan.time}</p>
     {additional.length?<div className="np-upcoming-following-r303">

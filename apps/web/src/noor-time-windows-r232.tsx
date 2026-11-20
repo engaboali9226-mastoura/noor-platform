@@ -166,7 +166,7 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
 
  <div className="np-r322-modal" style={viewport} data-open={detailsOpen} role="presentation" aria-hidden={!detailsOpen} onMouseDown={event=>{if(event.target===event.currentTarget)setDetailsOpen(false);}}>
   <div role="dialog" aria-modal={detailsOpen} aria-label="إيقاع اليوم الكامل وساعات الجمعة" className="np-r322-sheet" dir="rtl">
-   <span className="np-r323-sheet-handle" aria-hidden="true"/><header className="np-r322-sheet-head"><div><h2>إيقاع اليوم الكامل</h2><NoorContextHelp label="مساعدة: كل المواقيت والتفاصيل كما حُسبت">كل المواقيت والتفاصيل كما حُسبت من مصدر نور</NoorContextHelp></div>
+   <span className="np-r323-sheet-handle" aria-hidden="true"/><header className="np-r322-sheet-head"><div><h2>إيقاع اليوم الكامل<NoorContextHelp label="مساعدة: كل المواقيت والتفاصيل كما حُسبت">كل المواقيت والتفاصيل كما حُسبت من مصدر نور</NoorContextHelp></h2></div>
    <button type="button" onClick={()=>setDetailsOpen(false)} aria-label="إغلاق مؤقتات اليوم">✕</button></header>
  {currentTimer?<div className="np-r340-rhythm-feature">
    <span className="np-r340-rhythm-feature-icon" aria-hidden="true"><NoorR323Icon name={nightPreview?"moon":"sun"}/></span>
@@ -176,7 +176,7 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
  <section className="np-card np-r232-section np-r246-rhythm-card np-r247-rhythm-card np-r248-reference-card" data-rhythm-layout="three-visible-columns-r246" data-reference-design="preview-r248" data-rhythm-visual="digital-contrast-r247" data-testid="noor-day-night-friday-r232"
    aria-label="ساعات النهار والليل والضحى والجمعة">
    <div className="np-r232-heading">
-    <div className="np-r234-heading-label"><span className="np-r234-orbit" aria-hidden="true">◐</span><div><h2>إيقاع اليوم</h2><NoorContextHelp label="مساعدة: الضحى، النهار، الليل وفق">الضحى، النهار، الليل وفق مواقيت نور المعتمدة</NoorContextHelp></div></div>
+    <div className="np-r234-heading-label"><span className="np-r234-orbit" aria-hidden="true">◐</span><div><h2>إيقاع اليوم<NoorContextHelp label="مساعدة: الضحى، النهار، الليل وفق">الضحى، النهار، الليل وفق مواقيت نور المعتمدة</NoorContextHelp></h2></div></div>
     <span className="np-r234-basis">من مواقيت الصلاة المعتمدة</span>
    </div>
    <div className="np-r232-grid np-r234-grid np-r235-unified-rows np-r237-horizontal-strip np-r238-time-order np-r246-three-up np-r247-rhythm-strip np-r248-reference-strip" role="group" aria-label="الضحى والنهار والليل وساعات الجمعة في صف واحد">

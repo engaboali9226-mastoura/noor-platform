@@ -6,7 +6,7 @@ import {resolve} from "node:path";
 import assert from "node:assert/strict";
 import {runInNewContext} from "node:vm";
 const web=resolve("apps/web"),htmlFile=resolve(web,"__r323_visual_fixture.html"),scriptFile=resolve(web,"__r323_visual_fixture.tsx");
-const waitingFile=resolve(web,"__r371_waiting_fixture.html");
+const waitingFile=resolve(web,"__r371_waiting_fixture.html"),entryFile=resolve(web,"__r384_entry_fixture.html");
 const output=resolve("r323-visual-evidence"),profile=await mkdtemp(resolve(tmpdir(),"noor-visual-"));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let vite,chrome,socket;
@@ -25,6 +25,7 @@ try{
  assert.match(fixture,/const workspace=/);
  const html=original.replace(/<script\b[^>]*type=["']module["'][^>]*>[\s\S]*?<\/script>/g,"").replace("</body>",'<script type="module" src="/__r323_visual_fixture.tsx"></script></body>');
  await writeFile(htmlFile,html);
+ await writeFile(entryFile,original.replace(/<script\b[^>]*type=["\x27]module["\x27][^>]*>[\s\S]*?<\/script>/g,""));
  const setup=[
  'import React from "react";',
  'import {createRoot} from "react-dom/client";',
@@ -849,6 +850,9 @@ try{
  }
  for(const viewport of [{width:320,height:568,mobile:true},{width:1440,height:900,mobile:false}]){
    await cdp("Emulation.setDeviceMetricsOverride",{...viewport,deviceScaleFactor:1});
+   await cdp("Page.navigate",{url:"http://127.0.0.1:5179/__r384_entry_fixture.html"});
+   await expect(`(()=>{const root=document.querySelector('#root');return root&&!root.children.length&&getComputedStyle(root,'::before').backgroundImage.includes('/brand/icon-r369-192.png')&&!getComputedStyle(root,'::before').backgroundImage.includes('platform-logo.webp');})()`,"R384 first paint uses the current brand before React");
+   await snap(viewport.width+"-r384-prelogin");
    await cdp("Page.navigate",{url:"http://127.0.0.1:5179/__r371_waiting_fixture.html"});
    await expect(`(() => {
      const logo=document.querySelector('main h1 img'),note=document.querySelector('#message');
@@ -872,5 +876,5 @@ try{
  await writeFile(resolve(output,"report.json"),JSON.stringify(report,null,2));
  console.log("R323_BROWSER_SMOKE_PASS "+JSON.stringify(report));
 }finally{
- socket?.close();chrome?.kill();vite?.kill();await rm(htmlFile,{force:true});await rm(scriptFile,{force:true});await rm(waitingFile,{force:true});await rm(profile,{recursive:true,force:true}).catch(()=>{});
+ socket?.close();chrome?.kill();vite?.kill();await rm(htmlFile,{force:true});await rm(scriptFile,{force:true});await rm(waitingFile,{force:true});await rm(entryFile,{force:true});await rm(profile,{recursive:true,force:true}).catch(()=>{});
 }

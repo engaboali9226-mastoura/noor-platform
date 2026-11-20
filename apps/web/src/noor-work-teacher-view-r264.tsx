@@ -63,7 +63,7 @@ function Clock({now}:{now:Date}){
 }
 function Panel({title,children,description,className=""}:{title:string;children:ReactNode;description?:string;className?:string}){
  return <section className={"nw-panel nw-panel-r267 "+className}>
-  <div className="nw-panel-head"><h2>{title}</h2>{description?<NoorContextHelp>{description}</NoorContextHelp>:null}</div>{children}
+  <div className="nw-panel-head"><h2>{title}{description?<NoorContextHelp>{description}</NoorContextHelp>:null}</h2></div>{children}
  </section>;
 }
 function Empty({children}:{children:ReactNode}){return <p className="nw-empty">{children}</p>;}
@@ -256,7 +256,7 @@ export function NoorWorkTeacherViewR264(){
  if(loading)return <main dir="rtl" className="nw-root nw-r267"><NoorBrandHeader scope="work" /><Panel title="نور ورك">جارٍ تحميل مساحة المعلم الآمنة…</Panel></main>;
  if(status!==200)return <main dir="rtl" className="nw-root nw-r267">
   <NoorBrandHeader scope="work" />
-  <header className="nw-hero nw-hero-error"><div><span className="nw-kicker"><NoorWordmark /> WORK / EDUCATION</span><h1>مساحة المعلم</h1><NoorContextHelp label="مساعدة: تنظيم التزاماتك الدراسية">تنظيم التزاماتك الدراسية ومتابعتها.</NoorContextHelp></div>
+  <header className="nw-hero nw-hero-error"><div><span className="nw-kicker"><NoorWordmark /> WORK / EDUCATION</span><h1>مساحة المعلم<NoorContextHelp label="مساعدة: تنظيم التزاماتك الدراسية">تنظيم التزاماتك الدراسية ومتابعتها.</NoorContextHelp></h1></div>
    <a href="/" className="nw-light-button">العودة لاختيار التطبيقات</a></header>
   <Panel title={status===403?"صلاحية نور ورك غير مفعّلة":status===401?"تسجيل الدخول مطلوب":"تعذر تحميل مساحة المعلم"}>
    <p role="alert">{message}</p><div className="nw-actions"><button className="nw-primary" onClick={()=>void reload()}>إعادة المحاولة</button><a href="/" className="nw-light-button">العودة للبوابة</a></div>
@@ -266,8 +266,7 @@ export function NoorWorkTeacherViewR264(){
   <header className="nw-hero">
    <div className="nw-hero-main">
     <span className="nw-kicker"><span className="nw-kicker-mark">✦</span> <NoorWordmark /> WORK / EDUCATION</span>
-    <h1>مساحة المعلم</h1>
-    <NoorContextHelp label="مساعدة: لوحة هادئة لمتابعة">لوحة هادئة لمتابعة إنجازك على منصة المدرسة، دون تكرار تسجيل بيانات الطلاب.</NoorContextHelp>
+    <h1>مساحة المعلم<NoorContextHelp label="مساعدة: لوحة هادئة لمتابعة">لوحة هادئة لمتابعة إنجازك على منصة المدرسة، دون تكرار تسجيل بيانات الطلاب.</NoorContextHelp></h1>
     <div className="nw-hero-links"><a href="/" className="nw-return">← العودة لمنصة نور</a><span className="nw-privacy">متابعتك خاصة بحسابك</span></div>
    </div>
    <Clock now={now}/>

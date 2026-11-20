@@ -125,8 +125,7 @@ export function NoorAdminAccountsPanelR316({token}:{token:()=>Promise<string|nul
   finally{setBusy(false);}
  }
  return <section className="na316-area" aria-label="إدارة حسابات نور">
-  <h2>إدارة حسابات نور</h2>
-  <NoorContextHelp label="مساعدة: يمكن إضافة الحسابات، تعديل الأسماء">يمكن إضافة الحسابات، تعديل الأسماء وصلاحيات التطبيقات، إرسال رابط استعادة كلمة المرور، أو إغلاق حساب. بيانات كل مستخدم مستقلة؛ حذف الحساب لا يمحو تدويناته نهائيًا.</NoorContextHelp>
+  <h2>إدارة حسابات نور<NoorContextHelp label="مساعدة: يمكن إضافة الحسابات، تعديل الأسماء">يمكن إضافة الحسابات، تعديل الأسماء وصلاحيات التطبيقات، إرسال رابط استعادة كلمة المرور، أو إغلاق حساب. بيانات كل مستخدم مستقلة؛ حذف الحساب لا يمحو تدويناته نهائيًا.</NoorContextHelp></h2>
   {error?<p className="na315-error" role="alert">{error}</p>:null}
   {notice?<p className="na315-notice" role="status">{notice}</p>:null}
   {ready?<><h3>الحسابات</h3>
