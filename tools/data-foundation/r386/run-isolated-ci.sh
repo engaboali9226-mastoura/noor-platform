@@ -21,6 +21,7 @@ sql -1 < tools/data-foundation/r386/staging-lab-v2.sql
 sql < tools/data-foundation/r386/staging-lab-regression.sql
 sql < tools/data-foundation/r386/staging-lab-atomic.sql
 sql < tools/data-foundation/r386/staging-lab-scale.sql
+sql < tools/data-foundation/r386/structural-mirror.sql
 for role in anon authenticated service_role; do
  if sql -c "SET ROLE $role; SELECT * FROM noor_r386_lab.event_history" >"$tmp/role" 2>&1; then echo "R386_ROLE_ACCESS_LEAK"; exit 1; fi
  grep -q 'permission denied' "$tmp/role"
