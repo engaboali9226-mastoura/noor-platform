@@ -109,3 +109,28 @@ test("Friday image uses verified Friday hours and unlocks at the exact Thursday 
    ...upcomingFriday,sunrise:"2026-10-30T03:30:00Z",dhuhr:"2026-10-30T08:40:00Z",
  }),/نسخ الصورة/);
 });
+
+test("R385 rhythm tile shows only the active Friday hour and returns to ordinary rhythm at Dhuhr",()=>{
+ const start=at("2026-11-06T03:21:00Z"),end=at("2026-11-06T08:40:00Z");
+ const names=["الأولى","الثانية","الثالثة","الرابعة","الخامسة"];
+ const tile=(ms:number,prayers=fridayPrayers)=>render(ms,prayers).querySelector('[data-testid="r322-premium-timer-hub"]')!;
+ assert.equal(tile(start-1000).getAttribute("data-friday-hour"),null);
+ for(let i=0;i<5;i++){
+  const a=Math.round(start+(end-start)*i/5), b=Math.round(start+(end-start)*(i+1)/5);
+  for(const ms of [a,b-1000]){
+   const t=tile(ms);
+   assert.equal(t.getAttribute("data-friday-hour"),String(i+1));
+   assert.equal(t.querySelector("h2")?.textContent,"الجمعة · "+names[i]);
+   assert.ok(t.querySelector('[data-testid="r385-friday-hour-duration"]'));
+   assert.equal(t.querySelectorAll('[role="timer"]').length,1);
+   assert.equal(t.querySelector('[role="timer"]')?.textContent,[Math.floor(Math.ceil((b-ms)/1000)/3600),Math.floor(Math.ceil((b-ms)/1000)%3600/60),Math.ceil((b-ms)/1000)%60].map(n=>String(n).padStart(2,"0")).join(":"));
+  }
+ }
+ assert.equal(tile(end).querySelector("h2")?.textContent,"النهار");
+ assert.equal(tile(end).getAttribute("data-friday-hour"),null);
+ assert.equal(tile(at("2026-11-05T08:00:00Z"),thursdayPrayers).querySelector("h2")?.textContent,"الضحى");
+ assert.equal(tile(at("2026-11-05T12:15:00Z"),thursdayPrayers).getAttribute("data-friday-hour"),null);
+ const saturday=fridayPrayers.map(p=>({...p,at:p.at.replace("2026-11-06","2026-11-07")}));
+ assert.equal(tile(at("2026-11-07T08:00:00Z"),saturday).querySelector("h2")?.textContent,"الضحى");
+ assert.equal(tile(at("2026-11-06T08:00:00Z"),thursdayPrayers).getAttribute("data-friday-hour"),null,"never reuse Thursday schedule");
+});
