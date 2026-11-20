@@ -1858,25 +1858,8 @@ export function buildPersonalWorkspace(
             ...(projected?{sessionWeight:weight}:{}),
             ...(projected?.scheduled===0||definition?.beveragePlan||["event","appointment"].includes(definition?.countdownPlan?.kind??"task")?{nonAchievement:true}:{}),
             ...(metadataDate?{completionDate:metadataDate,recoveredWeight:weight*recoveredShare}:{}),
-            credit:projected?projected.scheduled?projected.earned/projected.scheduled:0:completionDate&&completionDate!==date?0:share};
-        const bonuses:PersonalStatisticRow[]=[];
-        if(completionDate&&completionDate!==date&&completionDate<=currentLocalDate&&share>0)
-            bonuses.push({...row,id:`recovery:${e.id}:${completionDate}`,date:completionDate,status:"Completed",amount:0,credit:share,recoveryBonus:true});
-        const sessionBonuses=new Map<string,{date:string;credit:number}>();
-        for(const entry of log){
-            const performed=entry.achievementDateR367;
-            const session=sessionPlan?.sessions.find(s=>s.id===entry.taskSessionId);
-            if(!performed||performed===date||performed>currentLocalDate||!session)continue;
-            const key=performed+":"+session.id;
-            const credit=(sessionBonuses.get(key)?.credit??0)+recordedSessionAchievement(session,entry);
-            sessionBonuses.set(key,{date:performed,credit:Math.min(1,credit)});
-        }
-        for(const [id,{date:performed,credit}] of sessionBonuses){
-            if(credit<=0)continue;
-            bonuses.push({...row,id:`recovery:${e.id}:${id}`,date:performed,status:"Completed",weight,amount:0,credit,
-                nonAchievement:false,recoveryBonus:true,completionDate:performed,recoveredWeight:weight*credit});
-        }
-        return [row,...bonuses];
+            credit:projected?projected.scheduled?projected.earned/projected.scheduled:0:share};
+        return [row];
     });
     // Only owner-scoped, explicitly issued day snapshots can contribute.
     const prayerAchievementR334: {date:LocalDate;score:PrayerDayScoreR334}[]=[];
@@ -1913,10 +1896,7 @@ export function buildPersonalWorkspace(
         const input=insightInputs.filter(day=>day.date>=startDate&&day.date<=currentLocalDate);
         const score=projectPrayerAchievementPeriodR334({startDate,endDate:currentLocalDate,currentDate:currentLocalDate,days:input});
         if(!score)return periodInsight(execution,currentLocalDate,windowDays,defs);
-        const baseWeights=new Map(score.days.map(day=>[day.date,day.weight] as const));
-        const bonuses=rows.filter(row=>row.recoveryBonus&&!row.nonAchievement&&row.date>=startDate&&row.date<=currentLocalDate);
-        const weight=score.weight+bonuses.reduce((total,row)=>total+(baseWeights.get(row.date)?0:row.weight),0);
-        const earned=score.earnedWeight+bonuses.reduce((total,row)=>total+row.weight*(row.credit??0),0);
+        const weight=score.weight,earned=score.earnedWeight;
         return {windowDays,scheduled:input.reduce((n,day)=>n+day.scheduled,0),completed:input.reduce((n,day)=>n+day.completed,0),
             completionRate:weight?Math.min(100,Math.round(100*earned/weight)):0,
             successfulDays:input.filter(day=>day.scheduled>0&&day.scheduled===day.completed).length};
