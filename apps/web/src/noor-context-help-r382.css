@@ -10,3 +10,6 @@
 .np-r382-history-detail>summary:after{content:"‹";margin-inline-start:auto;flex:none;font-size:22px}
 .np-r382-history-detail[open]>summary:after{transform:rotate(-90deg)}
 .np-r382-history-detail>summary:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+
+/* Closed native details can retain layout rectangles in some browsers; explicitly remove the content from layout until requested. */
+.np-r382-history-detail:not([open])>:not(summary){display:none!important}
