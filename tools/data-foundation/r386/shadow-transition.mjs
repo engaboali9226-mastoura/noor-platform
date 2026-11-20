@@ -31,10 +31,12 @@ function split(e){const {deliveryState,...history}=e;return {history,deliverySta
 const equal=(a,b)=>canonicalJson(a)===canonicalJson(b);
 const references=(value,ids)=>typeof value==="string"?ids.has(value):Array.isArray(value)?value.some(v=>references(v,ids)):record(value)?Object.values(value).some(v=>references(v,ids)):false;
 function stateShape(state,owner){
- if(!record(state)||!Array.isArray(state.definitions)||!Array.isArray(state.dailyExecution))fail("R386_SHADOW_STATE");
+ if(!specText(owner)||!record(state)||!Array.isArray(state.definitions)||!Array.isArray(state.dailyExecution))fail("R386_SHADOW_STATE");
  for(const def of state.definitions)if(!record(def)||def.userId!==owner||!specText(def.id)||!specText(def.revisionId))fail("R386_SHADOW_DEFINITION");
  for(const row of state.dailyExecution)if(!record(row)||row.userId!==owner||!specText(row.id)||!specText(row.definitionId)||!specText(row.definitionRevisionId))fail("R386_SHADOW_EXECUTION");
  if(new Set(state.definitions.map(d=>d.id)).size!==state.definitions.length||new Set(state.dailyExecution.map(d=>d.id)).size!==state.dailyExecution.length)fail("R386_SHADOW_DUPLICATE");
+ const definitions=new Set(state.definitions.map(d=>d.id));
+ if(state.dailyExecution.some(d=>!definitions.has(d.definitionId)))fail("R386_SHADOW_ORPHAN_EXECUTION");
  validateOwnerEvents(owner,state.outbox);
 }
 // deletedDefinitionId must come from the authorized, already validated server command.
@@ -51,6 +53,18 @@ export function planOwnerShadow({owner,oldRevision,newRevision,before,after,dele
   if(!def||after.definitions.some(d=>d.id===deletedDefinitionId)||after.dailyExecution.some(d=>d.definitionId===deletedDefinitionId))fail("R386_DELETE_SCOPE");
   ids.add(def.id);ids.add(def.revisionId);
   for(const row of before.dailyExecution.filter(r=>r.definitionId===deletedDefinitionId)){ids.add(row.id);ids.add(row.definitionRevisionId);}
+ }
+ // A deletion marker cannot authorize unrelated operational removals, even if
+ // the removed definition or execution has no historical event at all.
+ const nextDefinitions=new Set(after.definitions.map(d=>d.id));
+ const nextExecution=new Map(after.dailyExecution.map(d=>[d.id,d]));
+ for(const def of before.definitions){
+  if(!nextDefinitions.has(def.id)&&def.id!==deletedDefinitionId)fail("R386_UNAUTHORIZED_DEFINITION_REMOVAL");
+ }
+ for(const row of before.dailyExecution){
+  const next=nextExecution.get(row.id);
+  if(!next&&row.definitionId!==deletedDefinitionId)fail("R386_UNAUTHORIZED_EXECUTION_REMOVAL");
+  if(next&&next.definitionId!==row.definitionId)fail("R386_EXECUTION_REPARENTED");
  }
  // Permanent deletion and archival are different: match the actual foundation delete predicate.
  const relevant=e=>ids.size>0&&(references(e.aggregateId,ids)||references(e.payload,ids));
