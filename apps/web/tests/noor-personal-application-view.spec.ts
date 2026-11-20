@@ -247,9 +247,12 @@ test("a recovered session updates the selected day once, and retries the same sa
  };
  const tile=()=>t.container.querySelector<HTMLButtonElement>(".np-r339-recovery")!;
  const points=()=>t.container.querySelector('[data-testid="daily-recovery-points"]')?.textContent;
+ const currentRate=()=>t.container.querySelector(`[data-week-date="${currentDate}"]`)?.getAttribute("data-week-rate");
+ const dueRate=()=>t.container.querySelector(`[data-week-date="${date}"]`)?.getAttribute("data-week-rate");
  try{
   await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace})));
   assert.equal(tile().querySelector("strong")?.textContent,"1");
+  const before=currentRate();
   await act(async()=>tile().click());
   await act(async()=>document.querySelector<HTMLButtonElement>('.np-r331-recovery-row button')!.click());
   const editor=document.querySelector(".np-recovery-date-sheet")!;
@@ -257,13 +260,20 @@ test("a recovered session updates the selected day once, and retries the same sa
   await act(async()=>editor.querySelector("form")!.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
   assert.equal(document.querySelector(".np-recovery-date-sheet"),null);
   assert.equal(tile().querySelector("strong")?.textContent,"0");
+  assert.equal(points(),undefined,"Recovery must never be shown as today’s points");
+  assert.equal(currentRate(),before);
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('[data-testid="week-history-previous"]')!.click());
+  assert.equal(dueRate(),"70");
+  await act(async()=>t.container.querySelector<HTMLButtonElement>(`[data-week-date="${date}"]`)!.click());
   assert.match(points()??"",/7 نقطة/);
   await act(async()=>respond(new Response(null,{status:503})));
   assert.equal(points(),undefined);
+  assert.equal(dueRate(),"0");
   assert.equal(tile().querySelector("strong")?.textContent,"1");
   await act(async()=>t.container.querySelector<HTMLButtonElement>(".np-failed-save button")!.click());
   assert.equal(sent.length,2);
   assert.deepEqual(sent[0],sent[1]);
+  assert.equal(dueRate(),"70");
   assert.match(points()??"",/7 نقطة/);
   await act(async()=>respond(new Response(null,{status:503})));
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
