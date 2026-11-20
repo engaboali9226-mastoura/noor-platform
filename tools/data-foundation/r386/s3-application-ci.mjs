@@ -6,9 +6,10 @@ import assert from "node:assert/strict";
 import {createS3CiPostgres} from "./s3-ci-postgres.mjs";
 import {createR386RuntimeSaveCandidate,openR386CandidateReadScope} from "./s3-runtime-coordinator.mjs";
 import {PersonalControlOperation} from "../../../apps/noor-runtime/dist/personal-control-operation.js";
+import {PersonalTodayOperation} from "../../../apps/noor-runtime/dist/personal-today-operation.js";
 import {PersonalDailyMaterializationScheduler} from "../../../apps/noor-runtime/dist/personal-daily-materialization-scheduler.js";
-import {createRouteAccessHttpServer,PERSONAL_COMMAND_HTTP_PATH,PERSONAL_WORKSPACE_HTTP_PATH} from "../../../apps/noor-runtime/dist/route-access-http-server.js";
-import {CryptographicIdGenerator} from "../../../apps/noor-personal/dist/index.js";
+import {createRouteAccessHttpServer,PERSONAL_COMMAND_HTTP_PATH,PERSONAL_WORKSPACE_HTTP_PATH,PERSONAL_TODAY_HTTP_PATH} from "../../../apps/noor-runtime/dist/route-access-http-server.js";
+import {CryptographicIdGenerator,IntlTimeZoneAdapter,AdhanPrayerTimeCalculator,IntlUmmAlQuraHijriDateCalculator,VersionedApprovedIslamicHistoryCatalog} from "../../../apps/noor-personal/dist/index.js";
 import {prepareR386NoorPersonalCommand} from "../../../apps/web/src/noor-personal-today-client.ts";
 const {database,psql,literal}=createS3CiPostgres(process.argv[2]);
 const a="synthetic-r386-s3-app-a",b="synthetic-r386-s3-app-b";
@@ -20,15 +21,17 @@ const foundation={
  openOperation:owner=>openR386CandidateReadScope(database,owner),
  listKnownUserIds:async()=>[a],
 };
-const operation=new PersonalControlOperation({
+const dependencies={
  isRuntimeRunning:()=>true,
  resolveSession:{async execute({sessionId}){if(!["fixture-a","fixture-b"].includes(sessionId))throw Error("INVALID_FIXTURE");return{accountId:sessionId};}},
  authorize:{async execute({accountId,action,resourceType,resourceId}){assert.ok(["fixture-a","fixture-b"].includes(accountId));assert.equal(action,"access");assert.equal(resourceType,"application");assert.equal(resourceId,"noor-personal");}},
  accountUserResolver:{async resolve(accountId){return{toString:()=>accountId==="fixture-a"?a:b};}},
  foundation,clock,idGenerator,atomicSaveCandidate,
-});
+};
+const operation=new PersonalControlOperation(dependencies);
+const todayOperation=new PersonalTodayOperation({...dependencies,ensureToday:{clock,idGenerator,timeZone:new IntlTimeZoneAdapter(),prayerCalculator:new AdhanPrayerTimeCalculator(),hijriCalculator:new IntlUmmAlQuraHijriDateCalculator(),historyCatalog:new VersionedApprovedIslamicHistoryCatalog()}});
 const routeExecutor={async execute(){return{kind:"authentication-required",appKey:"noor-personal",pathname:"/personal"};}};
-const server=createRouteAccessHttpServer(routeExecutor,{personalControl:operation});
+const server=createRouteAccessHttpServer(routeExecutor,{personalControl:operation,personalToday:todayOperation});
 const scheduler=new PersonalDailyMaterializationScheduler({foundation,clock,idGenerator,atomicSaveCandidate});
 await psql("INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES ("+literal(a)+",true),("+literal(b)+",true)");
 await server.listen({host:"127.0.0.1",port:0});
@@ -94,6 +97,17 @@ try{
  assert.equal((await database.load(a)).revision,defined.revision);
  assert.equal((await database.lookup(a,noop.requestId)).revision,defined.revision);
  console.log("R386_S3_REAL_COMMAND_AND_NOOP_PASS");
+ const getToday=()=>fetch(origin+PERSONAL_TODAY_HTTP_PATH,{method:"POST",headers:{"Content-Type":"application/json",Cookie:"noor_session=fixture-a"},body:"{}"});
+ const todayReply=await getToday();
+ assert.equal(todayReply.status,200);
+ const todayBody=await todayReply.json();
+ assert.ok(todayBody.habits.some(row=>row.definitionId===definitionId));
+ const afterToday=await database.load(a);
+ assert.ok(afterToday.state.dailyExecution.some(row=>row.definitionId===definitionId));
+ assert.ok(afterToday.revision>defined.revision);
+ assert.equal((await getToday()).status,200);
+ assert.equal((await database.load(a)).revision,afterToday.revision);
+ console.log("R386_S3_REAL_TODAY_MATERIALIZATION_AND_FRESH_PROJECTION_PASS");
 
  now="2026-11-21T12:00:00.000Z";
  await scheduler.tick();

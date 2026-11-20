@@ -91,6 +91,10 @@ export interface R386AtomicSaveCandidate {
     evaluate(scope: PersonalFoundationOperation): Promise<void>;
     deletedDefinitionId?: string;
   }>): Promise<Readonly<{status:204|409|503}>>;
+  reconcile<T>(input: Readonly<{
+    ownerId:string; instant:string;
+    evaluate(scope:PersonalFoundationOperation):Promise<T>;
+  }>):Promise<Readonly<{status:200;value:T;scope:PersonalFoundationOperation}|{status:409|503}>>;
   initialize(input: Readonly<{
     ownerId:string; requestId:string;
     city:"riyadh"|"cairo"|"dubai"|"london";

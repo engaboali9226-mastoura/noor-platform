@@ -1,7 +1,7 @@
 // Isolated CI-only Docker transport. No managed credentials or remote target.
 import {spawn,execFileSync} from "node:child_process";
 export function createS3CiPostgres(name){
-const base="noor-r386-"+process.env.GITHUB_RUN_ID+"-"+process.env.GITHUB_RUN_ATTEMPT";
+const base="noor-r386-"+process.env.GITHUB_RUN_ID+"-"+process.env.GITHUB_RUN_ATTEMPT;
 if(process.env.GITHUB_ACTIONS!=="true"||!process.env.GITHUB_RUN_ID||
  ![base,base+"-runtime"].includes(name))throw Error("R386_S3_ISOLATION");
 if(execFileSync("docker",["inspect","--format","{{.HostConfig.NetworkMode}}",name],{encoding:"utf8"}).trim()!=="none")throw Error("R386_S3_NETWORK_ISOLATION");
