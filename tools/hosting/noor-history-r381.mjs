@@ -50,8 +50,8 @@ const ttl=24*60*60*1000,retry=5*60*1000;
 export function createHistoryEngine({request=fetch,now=Date.now}={}){
  const cache=new Map(),pending=new Map();
  let active=0;
- async function json(params){
-  const url=new URL('https://ar.wikipedia.org/w/api.php');
+ async function json(params,commons=false){
+  const url=new URL(commons?'https://commons.wikimedia.org/w/api.php':'https://ar.wikipedia.org/w/api.php');
   url.search=new URLSearchParams({...params,format:'json',formatversion:'2',maxlag:'5'}).toString();
   const response=await request(url,{headers:{'User-Agent':'NOOR-History/1.0 (https://noor-personal.onrender.com)','Accept':'application/json'},signal:AbortSignal.timeout(5000),redirect:'error'});
   if(!response.ok)throw Error('HISTORY_UPSTREAM');
@@ -66,13 +66,28 @@ export function createHistoryEngine({request=fetch,now=Date.now}={}){
   // This is identity enrichment, not independent historical corroboration.
   const titles=[...new Set(rows.map(e=>e.article).filter(Boolean))];
   if(titles.length)try{
-   const data=await json({action:'query',titles:titles.join('|'),prop:'pageprops',ppprop:'wikibase_item',redirects:'1'});
+   const data=await json({action:'query',titles:titles.join('|'),prop:'pageprops|pageimages',ppprop:'wikibase_item',piprop:'name',pilicense:'free',redirects:'1'});
    const alias=new Map([...(data.query?.normalized??[]),...(data.query?.redirects??[])].map(x=>[x.from,x.to]));
-   const ids=new Map((data.query?.pages??[]).map(p=>[p.title,p.pageprops?.wikibase_item]));
+   const pages=new Map((data.query?.pages??[]).map(p=>[p.title,p]));
+   const images=new Map();
    for(const row of rows){
-    const id=ids.get(alias.get(row.article)??row.article);
+    const p=pages.get(alias.get(row.article)??row.article),id=p?.pageprops?.wikibase_item;
     if(typeof id==='string'&&/^Q[1-9]\d*$/u.test(id))row.wikidataUrl='https://www.wikidata.org/wiki/'+id;
+    if(typeof p?.pageimage==='string'&&p.pageimage.length<200&&!/[\x00-\x1f|\[\]<>]/u.test(p.pageimage)&&/\.(?:jpe?g|png|webp)$/i.test(p.pageimage)&&images.size<3)images.set(row,'File:'+p.pageimage);
    }
+   if(images.size)try{
+    const media=await json({action:'query',titles:[...new Set(images.values())].join('|'),prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'240',iiextmetadatafilter:'LicenseShortName|Artist|LicenseUrl'},true);
+    const info=new Map((media.query?.pages??[]).filter(p=>p.imagerepository==='local').map(p=>[p.title,p.imageinfo?.[0]]));
+    for(const [row,title] of images){
+     const image=info.get(title),metadata=image?.extmetadata;
+     const license=metadata?.LicenseShortName?.value,artist=typeof metadata?.Artist?.value==='string'?plain(metadata.Artist.value).slice(0,180):'';
+     if(typeof license!=='string'||!/^(?:CC BY(?:-SA)? [1-4]\.0|CC0|Public domain)$/i.test(license)||!artist||typeof image?.thumburl!=='string')continue;
+     const url=new URL(image.thumburl);
+     if(url.origin!=='https://upload.wikimedia.org'||!url.pathname.startsWith('/wikipedia/commons/'))continue;
+     row.image={url:url.href,artist,license,sourceUrl:'https://commons.wikimedia.org/wiki/'+encodeURIComponent(title.replaceAll(' ','_'))};
+    }
+   }catch{/* never display an image without Commons attribution */}
+
   }catch{/* optional enrichment never blocks a valid anniversary */}
   const seen=new Set();
   return rows.filter(row=>{const key=row.wikidataUrl?row.year+':'+row.wikidataUrl:row.id;if(seen.has(key))return false;seen.add(key);return true;});
