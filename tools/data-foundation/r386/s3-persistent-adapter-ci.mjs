@@ -1,30 +1,10 @@
 // Actual PostgreSQL transaction + JS receipt protocol. Synthetic CI only.
 // No Supabase credentials, managed calls, linked-session fixture or auth bypass.
 import assert from "node:assert/strict";
-import {spawn} from "node:child_process";
+import {createS3CiPostgres} from "./s3-ci-postgres.mjs";
 import {executeReceiptCandidate} from "./receipt-bridge.mjs";
 import {createPersistentSaveAdapter} from "./s3-persistent-adapter.mjs";
-const name=process.argv[2];
-if(process.env.GITHUB_ACTIONS!=="true"||!process.env.GITHUB_RUN_ID||
- name!=="noor-r386-"+process.env.GITHUB_RUN_ID+"-"+process.env.GITHUB_RUN_ATTEMPT)throw Error("R386_S3_ISOLATION");
-const literal=v=>"convert_from(decode('"+Buffer.from(v,"utf8").toString("base64")+"','base64'),'UTF8')";
-const json=v=>literal(JSON.stringify(v))+"::jsonb";
-const list=v=>"ARRAY["+v.map(literal).join(",")+"]::text[]";
-const psql=sql=>new Promise((resolve,reject)=>{
- const child=spawn("docker",["exec","-i",name,"psql","-X","-qAt","-U","postgres","-d","postgres","-v","ON_ERROR_STOP=1"],{stdio:["pipe","pipe","pipe"]});
- let out="",err="";
- child.stdout.on("data",x=>out+=x);child.stderr.on("data",x=>err+=x);
- child.on("error",()=>reject(Error("R386_S3_SQL_TRANSPORT")));
- child.stdin.on("error",()=>{});
- child.on("close",code=>code===0?resolve(out.trim()):reject(Error("R386_S3_SQL_REJECTED:"+(err.match(/R386_[A-Z0-9_]+/)?.[0]??"UNKNOWN"))));
- child.stdin.end(sql+";\n");
-});
-const query=async sql=>JSON.parse(await psql(sql));
-const database={
- lookup:(owner,request)=>query("SELECT noor_r386_candidate.s3_lookup("+literal(owner)+","+literal(request)+")"),
- load:owner=>query("SELECT noor_r386_candidate.s3_load("+literal(owner)+")"),
- commit:x=>query("SELECT noor_r386_candidate.s3_commit("+[literal(x.owner),literal(x.requestId),x.existed?"true":"false",String(x.expectedRevision),json(x.before),json(x.after),literal(x.keyId),literal(x.digest),json(x.fingerprints),list(x.deleteRefs)].join(",")+")")
-};
+const {database,psql,literal}=createS3CiPostgres(process.argv[2]);
 const a="synthetic-r386-s3-node-a",b="synthetic-r386-s3-node-b";
 const keys=new Map([["k1",Buffer.alloc(32,71)],["k2",Buffer.alloc(32,72)]]);
 const activeKeyId="k2";

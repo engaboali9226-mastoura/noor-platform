@@ -813,7 +813,13 @@ async function handlePersonalCommand(
     return;
   }
 
+  const requestId=request.headers["x-noor-request-id"];
+  if(requestId!==undefined && typeof requestId!=="string"){
+    writeEmpty(response,400);
+    return;
+  }
   const result = await executor.executeCommand({
+    ...(requestId===undefined?{}:{requestId}),
     sessionId:
       sessionIdFromCookieHeader(
         request.headers.cookie,

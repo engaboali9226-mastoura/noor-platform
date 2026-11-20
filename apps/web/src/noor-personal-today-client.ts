@@ -27,6 +27,7 @@ export type NoorPersonalWorkspaceResult =
     };
 
 export type NoorPersonalCommandInput =
+  | Readonly<{type:"initialize-personal-profile-r321";city:"riyadh"|"cairo"|"dubai"|"london";calculationMethod:"UmmAlQura"|"Egyptian"|"MuslimWorldLeague"|"Karachi"|"NorthAmerica"}>
   | Readonly<{type:"set-personal-profile";expectedUpdatedAt:string|null;displayName:string;avatarUrl:string|null;birthDate:string|null}>
   | Readonly<{type:"create-historical-event";id:string;calendar:"gregorian"|"hijri";year:number|null;month:number;day:number;title:string;details:string;source:string;enabled:boolean}>
   | Readonly<{type:"update-historical-event";eventId:string;expectedUpdatedAt:string;calendar:"gregorian"|"hijri";year:number|null;month:number;day:number;title:string;details:string;source:string;enabled:boolean}>
@@ -305,9 +306,9 @@ export function fetchLatestNoorPersonalWorkspaceAfterConflict(fetcher:typeof fet
   return fetchNoorPersonalWorkspace(fetcher);
 }
 export type NoorPersonalCommandReply = Readonly<{kind:NoorPersonalCommandResult;workspace?:unknown;executions?:unknown;personalDayId?:string|null;materializationRequired?:boolean}>;
-export async function sendNoorPersonalCommandDetailed(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandReply>{
+async function sendEncodedNoorPersonalCommand(body:string,fetcher:typeof fetch,requestId?:string):Promise<NoorPersonalCommandReply>{
  try{
-  const response=await fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify(command)});
+  const response=await fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(requestId?{"X-Noor-Request-Id":requestId}:{})},body});
   if(response.status===204){invalidateNoorPersonalReads(fetcher);return {kind:"success"};}
   if(response.status===200){
    invalidateNoorPersonalReads(fetcher);
@@ -317,6 +318,17 @@ export async function sendNoorPersonalCommandDetailed(command:NoorPersonalComman
   }
   return {kind:response.status===409?"conflict":"unavailable"};
  }catch{return {kind:"unavailable"};}
+}
+export async function sendNoorPersonalCommandDetailed(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandReply>{
+ try{return await sendEncodedNoorPersonalCommand(JSON.stringify(command),fetcher);}
+ catch{return {kind:"unavailable"};}
+}
+// Prepare once per logical intent. Explicit retry of the same object sends
+// the exact original bytes and ID; never auto-retry an ambiguous legacy write.
+export function prepareR386NoorPersonalCommand(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch){
+ const requestId="client-"+crypto.randomUUID();
+ const body=JSON.stringify(command);
+ return Object.freeze({requestId,send:()=>sendEncodedNoorPersonalCommand(body,fetcher,requestId)});
 }
 export async function sendNoorPersonalCommand(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandResult>{return (await sendNoorPersonalCommandDetailed(command,fetcher)).kind;}
 
