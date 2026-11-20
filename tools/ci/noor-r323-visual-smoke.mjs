@@ -504,7 +504,11 @@ try{
   await expect("document.querySelector('.np-r331-board-grid > :nth-child(6)').textContent.includes('معركة تاريخية تجريبية')","R381 public events appear on board");
   await run("document.querySelector('.np-r331-board-grid > :nth-child(6)').click()");
   await expect("document.querySelectorAll('.np-r381-history-event').length===2 && document.querySelector('.np-r381-history-event a').hostname==='ar.wikipedia.org'","R381 both calendars display sourced events");
+  await expect("Array.from(document.querySelectorAll('.np-r382-history-detail')).every(d=>!d.open&&d.querySelector('p').getClientRects().length===0)","R382 event descriptions hidden until requested");
+  await run("document.querySelector('.np-r382-history-detail>summary').click()");
+  await expect("document.querySelector('.np-r382-history-detail').open&&document.querySelector('.np-r382-history-detail p').getClientRects().length>0","R382 event opens full available details");
   await snap(screen.name+"-public-history");
+  await run("document.querySelector('.np-r382-history-detail>summary').click()");
   await run("Array.from(document.querySelectorAll('.np-r381-history-sheet button')).find(b=>b.textContent==='هجري').click()");
   await expect("document.querySelectorAll('.np-r381-history-event').length===1&&document.querySelector('.np-r381-history-event').textContent.includes('حدث هجري تجريبي')","R381 calendar filtering");
   await run("Array.from(document.querySelectorAll('.np-r381-history-sheet button')).find(b=>b.textContent==='الأيام السبعة القادمة').click()");
