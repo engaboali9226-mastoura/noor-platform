@@ -143,12 +143,17 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
  const todayDay=windows.fastingDay?r232Countdown(windows.fastingDay,nowMs):null;
  const dayPreview=!nightPreview&&todayDay?.phase==="active";
  const duhaPreview=!nightPreview&&windows.duha!==null&&r232Countdown(windows.duha,nowMs).phase==="active";
- const currentTitle=nightPreview?"الليل":duhaPreview?"الضحى":dayPreview?"النهار":"إيقاع اليوم";
- const currentEnd=nightPreview?(nightCountdown?.phase==="active"?trustedNight!.endMs:nearestFajr):duhaPreview?windows.duha!.endMs:dayPreview?windows.fastingDay!.endMs:NaN;
+ // R385: on civil Friday, prioritize the active verified Friday hour in the
+ // existing rhythm tile. The fifth hour ends at Dhuhr, not at Duha's cutoff.
+ // Thursday's reminder and all five detailed intervals remain independent.
+ const activeFridayHour=!nightPreview&&friday?fridayHours?.find(hour=>nowMs>=hour.startMs&&nowMs<hour.endMs):undefined;
+ const fridayOrdinal=activeFridayHour?["الأولى","الثانية","الثالثة","الرابعة","الخامسة"][activeFridayHour.number-1]:null;
+ const currentTitle=activeFridayHour?`الجمعة · ${fridayOrdinal}`:nightPreview?"الليل":duhaPreview?"الضحى":dayPreview?"النهار":"إيقاع اليوم";
+ const currentEnd=activeFridayHour?activeFridayHour.endMs:nightPreview?(nightCountdown?.phase==="active"?trustedNight!.endMs:nearestFajr):duhaPreview?windows.duha!.endMs:dayPreview?windows.fastingDay!.endMs:NaN;
  const currentTimer=Number.isFinite(currentEnd)&&currentEnd>nowMs?remaining(currentEnd-nowMs):null;
- const currentWindow=nightPreview&&nightCountdown?.phase==="active"?trustedNight:dayPreview?windows.fastingDay:null;
+ const currentWindow=activeFridayHour??(nightPreview&&nightCountdown?.phase==="active"?trustedNight:dayPreview?windows.fastingDay:null);
  return <>
- <section className="np-card np-r322-timer-hub np-r323-rhythm" data-testid="r322-premium-timer-hub" dir="rtl" aria-label="إيقاع اليوم والمؤقت النشط">
+ <section className="np-card np-r322-timer-hub np-r323-rhythm" data-testid="r322-premium-timer-hub" data-friday-hour={activeFridayHour?.number} dir="rtl" aria-label="إيقاع اليوم والمؤقت النشط">
    <div className="np-r322-timer-head"><span className="np-r322-timer-icon" aria-hidden="true"><NoorR323Icon name={nightPreview?"moon":"sun"}/></span>
      <div><h2>{currentTitle}</h2><p>المؤقت النشط الآن</p></div>
    </div>
@@ -159,7 +164,7 @@ export function NoorR232TimeWindows({prayers,nowMs,timeZone,preferences,nextFajr
     {currentTimer?<><strong className="np-r322-main-countdown" dir="ltr" role="timer">{currentTimer}</strong><span className="np-r323-time-units" dir="ltr"><span>ساعة</span><span>دقيقة</span><span>ثانية</span></span></>
      :<span className="np-r322-time-unavailable">لا توجد فترة نشطة الآن</span>}
     <span className="np-r322-feature-subtitle">{currentTimer?"متبقٍ حتى نهاية الفترة":"اضغط لعرض مواقيت اليوم"}</span>
-    {currentWindow?<><span className="np-r328-total-duration" data-testid={nightPreview?"r328-night-total-duration":"r328-day-total-duration"}><span>إجمالي ساعات {nightPreview?"الليل":"النهار"}</span><strong>{duration(currentWindow.durationMs)}</strong></span><span className="np-r322-range">من {clock(currentWindow.startMs,timeZone)} إلى {clock(currentWindow.endMs,timeZone)}</span></>
+    {currentWindow?<><span className="np-r328-total-duration" data-testid={activeFridayHour?"r385-friday-hour-duration":nightPreview?"r328-night-total-duration":"r328-day-total-duration"}><span>{activeFridayHour?"مدة الساعة":`إجمالي ساعات ${nightPreview?"الليل":"النهار"}`}</span><strong>{duration(currentWindow.durationMs)}</strong></span><span className="np-r322-range">من {clock(currentWindow.startMs,timeZone)} إلى {clock(currentWindow.endMs,timeZone)}</span></>
      :fallbackToFajr?<span className="np-r322-range">حتى الفجر المؤكد · لم تتوفر بداية الليل لحساب مدته</span>:null}
     </button><button type="button" className="np-r322-expand np-r323-expand" onClick={()=>setDetailsOpen(true)}>اضغط لعرض جميع المؤقتات ‹</button>
  </section>
