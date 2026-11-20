@@ -4,3 +4,9 @@
 .noor-context-help-r382 .noor-help-trigger-r382:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 .noor-context-help-r382 .noor-help-copy-r382{display:block;flex-basis:100%;font-size:12px;font-weight:400;line-height:1.7;text-align:start;white-space:normal;overflow-wrap:anywhere;padding:8px;border:1px solid currentColor;border-radius:8px}
 .noor-context-help-r382 .noor-help-copy-r382[hidden]{display:none!important}
+
+.np-r382-history-detail>summary{display:flex;cursor:pointer;list-style:none;align-items:center;gap:10px;padding:0!important}
+.np-r382-history-detail>summary::-webkit-details-marker{display:none}
+.np-r382-history-detail>summary:after{content:"‹";margin-inline-start:auto;flex:none;font-size:22px}
+.np-r382-history-detail[open]>summary:after{transform:rotate(-90deg)}
+.np-r382-history-detail>summary:focus-visible{outline:2px solid currentColor;outline-offset:3px}
