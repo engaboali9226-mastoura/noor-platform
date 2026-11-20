@@ -100,6 +100,7 @@ try{
  const getToday=()=>fetch(origin+PERSONAL_TODAY_HTTP_PATH,{method:"POST",headers:{"Content-Type":"application/json",Cookie:"noor_session=fixture-a"},body:"{}"});
  const todayReply=await getToday();
  assert.equal(todayReply.status,200);
+ assert.equal(todayReply.headers.get("X-Noor-Atomic-Save"),"r386");
  const todayBody=await todayReply.json();
  assert.ok(todayBody.habits.some(row=>row.definitionId===definitionId));
  const afterToday=await database.load(a);
@@ -126,6 +127,7 @@ try{
  console.log("R386_S3_REAL_DEFINITION_ERASURE_PASS");
  const workspace=await fetch(origin+PERSONAL_WORKSPACE_HTTP_PATH,{method:"POST",headers:{"Content-Type":"application/json",Cookie:"noor_session=fixture-a"},body:"{}"});
  assert.equal(workspace.status,200);
+ assert.equal(workspace.headers.get("X-Noor-Atomic-Save"),"r386");
  assert.ok(!(await workspace.json()).definitions.some(row=>row.id===definitionId));
  console.log("R386_S3_FRESH_AUTHORITATIVE_WORKSPACE_PASS");
 
@@ -166,6 +168,26 @@ try{
  assert.notEqual(seen.at(-1)[1],previousRequest);
  assert.equal((await database.load(a)).state.definitions.length,2);
  console.log("R386_S3_EXISTING_BROWSER_SENDER_INTENT_PASS");
+ // A stale candidate client must not reach a legacy executor when its
+ // previous request could have committed. Also prove ordinary default-off
+ // transport still reaches the old executor.
+ let legacyCalls=0;
+ const legacy=createRouteAccessHttpServer(routeExecutor,{personalControl:{
+   async executeCommand(){legacyCalls++;return {status:204};},
+   async readWorkspace(){return {status:200,body:{}};},
+ }});
+ await legacy.listen({host:"127.0.0.1",port:0});
+ try{
+   const legacyAddress=legacy.address();
+   assert.ok(legacyAddress&&typeof legacyAddress!=="string");
+   const legacyFetcher=(path,init)=>fetch("http://127.0.0.1:"+legacyAddress.port+path,init);
+   const mustAtomic=createR386CommandIntent(ordinary,legacyFetcher,true);
+   assert.equal((await sendR386CommandIntent(mustAtomic,legacyFetcher)).kind,"unavailable");
+   assert.equal(legacyCalls,0);
+   assert.equal((await sendNoorPersonalCommandDetailed({...ordinary},legacyFetcher)).kind,"success");
+   assert.equal(legacyCalls,1);
+ }finally{await legacy.close();}
+ console.log("R386_S3_NO_SILENT_LEGACY_DOWNGRADE_PASS");
 }finally{
  await scheduler.stop();
  await server.close();

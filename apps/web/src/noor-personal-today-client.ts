@@ -162,6 +162,14 @@ function isJsonResponse(
     ?? false;
 }
 
+// Same-origin, authenticated read capabilities only; never persist on disk.
+const r386AtomicReaders=new WeakSet<typeof fetch>();
+export function supportsR386AtomicSave(fetcher:typeof fetch=fetch):boolean{return r386AtomicReaders.has(fetcher);}
+function observeR386Capability(response:Response,fetcher:typeof fetch):void{
+ // Sticky during the loaded client lifetime: if a later response lacks the
+ // header, do not downgrade an already-observed receipt requirement.
+ if(response.headers.get("X-Noor-Atomic-Save")==="r386")r386AtomicReaders.add(fetcher);
+}
 async function fetchNoorPersonalTodayOnce(
   fetcher: typeof fetch,
 ): Promise<NoorPersonalTodayResult> {
@@ -179,6 +187,7 @@ async function fetchNoorPersonalTodayOnce(
       },
     );
 
+    if(response.status===200||response.status===409)observeR386Capability(response,fetcher);
     if (response.status === 409) {
       return {
         kind: "setup-required",
@@ -249,6 +258,7 @@ async function fetchNoorPersonalWorkspaceOnce(
       },
     );
 
+    if(response.status===200)observeR386Capability(response,fetcher);
     if (!response.ok || !isJsonResponse(response)) {
       return {
         kind: "unavailable",
@@ -306,14 +316,14 @@ export function fetchLatestNoorPersonalWorkspaceAfterConflict(fetcher:typeof fet
   return fetchNoorPersonalWorkspace(fetcher);
 }
 export type NoorPersonalCommandReply = Readonly<{kind:NoorPersonalCommandResult;workspace?:unknown;executions?:unknown;personalDayId?:string|null;materializationRequired?:boolean}>;
-export type R386CommandIntent=Readonly<{requestId:string|null;body:string}>;
+export type R386CommandIntent=Readonly<{requestId:string|null;body:string;requiresAtomic:boolean}>;
 // Prepare once per explicit logical intent, not per fetch. Crypto is available
 // on secure origins; preserve compatibility for legacy insecure test origins.
-export function createR386CommandIntent(command:NoorPersonalCommandInput):R386CommandIntent{
- return Object.freeze({requestId:typeof globalThis.crypto?.randomUUID==="function"?"client-"+globalThis.crypto.randomUUID():null,body:JSON.stringify(command)});
+export function createR386CommandIntent(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch,requiresAtomic=supportsR386AtomicSave(fetcher)):R386CommandIntent{
+ return Object.freeze({requestId:typeof globalThis.crypto?.randomUUID==="function"?"client-"+globalThis.crypto.randomUUID():null,body:JSON.stringify(command),requiresAtomic});
 }
 export function sendR386CommandIntentRaw(intent:R386CommandIntent,fetcher:typeof fetch=fetch):Promise<Response>{
- return fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(intent.requestId?{"X-Noor-Request-Id":intent.requestId}:{})},body:intent.body});
+ return fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(intent.requestId?{"X-Noor-Request-Id":intent.requestId}:{}),...(intent.requiresAtomic?{"X-Noor-Require-Atomic-Save":"r386"}:{})},body:intent.body});
 }
 export async function sendR386CommandIntent(intent:R386CommandIntent,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandReply>{
  try{
@@ -337,7 +347,7 @@ export async function sendNoorPersonalCommandDetailed(command:NoorPersonalComman
   let pending=pendingR386Intents.get(fetcher);
   if(!pending){pending=new WeakMap();pendingR386Intents.set(fetcher,pending);}
   let intent=pending.get(command);
-  if(!intent){intent=createR386CommandIntent(command);pending.set(command,intent);}
+  if(!intent){intent=createR386CommandIntent(command,fetcher);pending.set(command,intent);}
   else if(JSON.stringify(command)!==intent.body)return {kind:"conflict"};
   const result=await sendR386CommandIntent(intent,fetcher);
   if(result.kind!=="unavailable"&&pending.get(command)===intent)pending.delete(command);
@@ -345,7 +355,7 @@ export async function sendNoorPersonalCommandDetailed(command:NoorPersonalComman
  }catch{return {kind:"unavailable"};}
 }
 export function prepareR386NoorPersonalCommand(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch){
- const intent=createR386CommandIntent(command);
+ const intent=createR386CommandIntent(command,fetcher,true);
  if(!intent.requestId)throw Error("R386_SECURE_RANDOM_REQUIRED");
  return Object.freeze({requestId:intent.requestId,send:()=>sendR386CommandIntent(intent,fetcher)});
 }

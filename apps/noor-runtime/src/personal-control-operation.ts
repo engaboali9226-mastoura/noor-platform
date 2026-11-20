@@ -60,6 +60,7 @@ interface AuthorizationExecutor {
 }
 
 export interface PersonalControlExecutor {
+  readonly atomicSaveProtocol?: "r386"|undefined;
   readWorkspace(
     input: Readonly<{
       sessionId: string | null;
@@ -156,6 +157,7 @@ type UserResolution =
 
 export class PersonalControlOperation
 implements PersonalControlExecutor {
+  public get atomicSaveProtocol():"r386"|undefined{return this.dependencies.atomicSaveCandidate?"r386":undefined;}
   public constructor(
     private readonly dependencies:
       PersonalControlOperationDependencies,

@@ -32,6 +32,7 @@ import type {
 } from "@worktracker/infrastructure";
 
 export interface PersonalTodayExecutor {
+  readonly atomicSaveProtocol?: "r386"|undefined;
   execute(
     input:
       Readonly<{
@@ -147,6 +148,7 @@ boolean {
 
 export class PersonalTodayOperation
 implements PersonalTodayExecutor {
+  public get atomicSaveProtocol():"r386"|undefined{return this.dependencies.atomicSaveCandidate?"r386":undefined;}
   public constructor(
     private readonly dependencies:
       PersonalTodayOperationDependencies,
