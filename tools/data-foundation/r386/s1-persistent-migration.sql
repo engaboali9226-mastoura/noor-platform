@@ -94,12 +94,12 @@ BEGIN
      IF v_text !~* '^([A-Za-z0-9_+-]+/)+[A-Za-z0-9_+-]+$|^(UTC|GMT)$'
        OR NOT EXISTS(SELECT 1 FROM pg_timezone_names WHERE lower(name)=lower(v_text)) THEN RETURN false; END IF;
     WHEN 'status' THEN
-     IF NOT CASE v_type
+     IF NOT (CASE v_type
       WHEN 'ExecutionCompleted' THEN v_text='Completed'
       WHEN 'ExecutionMissed' THEN v_text='Missed'
       WHEN 'ExecutionCancelled' THEN v_text='Cancelled'
       WHEN 'ExecutionReopened' THEN v_text IN ('Planned','InProgress','Pending','Deferred','Skipped','Suppressed')
-      ELSE false END THEN RETURN false; END IF;
+      ELSE false END) THEN RETURN false; END IF;
     ELSE RETURN false;
    END CASE;
   END IF;

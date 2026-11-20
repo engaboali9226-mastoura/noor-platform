@@ -22,6 +22,14 @@ sql(){ docker exec -i "$name" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1
 sql -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;'
 sql -1 < tools/data-foundation/r386/s1-persistent-migration.sql
 sql < tools/data-foundation/r386/s1-persistent-regression.sql
+for role in anon authenticated service_role; do
+ if sql -c "SET ROLE $role; SELECT * FROM noor_r386_candidate.event_history" >"$tmp/s1-role" 2>&1; then echo R386_S1_ROLE_ACCESS_LEAK; exit 1; fi
+ grep -q 'permission denied' "$tmp/s1-role"
+ if sql -c "SET ROLE $role; SELECT noor_r386_candidate.erase_owner('synthetic-s1-a')" >"$tmp/s1-role" 2>&1; then echo R386_S1_ROLE_ERASURE_LEAK; exit 1; fi
+ grep -q 'permission denied' "$tmp/s1-role"
+done
+test "$(sql -c 'SELECT (SELECT count(*) FROM noor_r386_candidate.owner_scope)+(SELECT count(*) FROM noor_r386_candidate.event_history)+(SELECT count(*) FROM noor_r386_candidate.delivery_outbox)+(SELECT count(*) FROM noor_r386_candidate.checkpoint)+(SELECT count(*) FROM noor_r386_candidate.command_receipt)')" = 0
+echo R386_S1_ROLE_DENIAL_AND_CLEANUP_PASS
 sql -1 < tools/data-foundation/r386/staging-lab-schema.sql
 sql -1 < tools/data-foundation/r386/staging-lab-v2.sql
 sql < tools/data-foundation/r386/staging-lab-regression.sql

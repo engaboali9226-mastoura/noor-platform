@@ -31,10 +31,10 @@ BEGIN
  INSERT INTO noor_r386_candidate.delivery_outbox VALUES(a,e->>'id','Pending'),(b,e->>'id','Failed');
  INSERT INTO noor_r386_candidate.checkpoint VALUES(a,0,1,1,true),(b,0,1,1,true);
  INSERT INTO noor_r386_candidate.command_receipt VALUES
- (a,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01Z','2026-01-02Z'),
- (b,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01Z','2026-01-02Z'),
- (c,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01Z','2099-01-02Z'),
- (a,'future','k1',decode(repeat('ab',32),'hex'),1,'2026-01-01Z','2099-01-02Z');
+ (a,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01T00:00:00Z','2026-01-02T00:00:00Z'),
+ (b,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01T00:00:00Z','2026-01-02T00:00:00Z'),
+ (c,'same','k1',decode(repeat('ab',32),'hex'),0,'2026-01-01T00:00:00Z','2099-01-02T00:00:00Z'),
+ (a,'future','k1',decode(repeat('ab',32),'hex'),1,'2026-01-01T00:00:00Z','2099-01-02T00:00:00Z');
  SET CONSTRAINTS ALL IMMEDIATE;
  BEGIN
   INSERT INTO noor_r386_candidate.event_history VALUES(a,'other',e->>'idempotencyKey',0,e||'{"id":"other"}'); RAISE EXCEPTION 'duplicate key accepted';
@@ -81,7 +81,7 @@ BEGIN
  IF noor_r386_candidate.erase_references(a,ARRAY['d1'])<>1 THEN RAISE EXCEPTION 'R386_ERASURE_COUNT'; END IF;
  IF EXISTS(SELECT 1 FROM noor_r386_candidate.event_history WHERE owner_id=a) OR EXISTS(SELECT 1 FROM noor_r386_candidate.delivery_outbox WHERE owner_id=a) OR EXISTS(SELECT 1 FROM noor_r386_candidate.checkpoint WHERE owner_id=a) OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>2 THEN RAISE EXCEPTION 'R386_ERASURE_INCOMPLETE'; END IF;
  IF (SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id=b)<>1 OR (SELECT state FROM noor_r386_candidate.delivery_outbox WHERE owner_id=b)<>'Failed' OR (SELECT count(*) FROM noor_r386_candidate.checkpoint WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_CROSS_OWNER_ERASURE'; END IF;
- IF noor_r386_candidate.expire_receipts(a,'2026-01-03Z')<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_RETENTION'; END IF;
+ IF noor_r386_candidate.expire_receipts(a,'2026-01-03T00:00:00Z')<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=a)<>1 OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=b)<>1 THEN RAISE EXCEPTION 'R386_RECEIPT_RETENTION'; END IF;
  BEGIN
   PERFORM noor_r386_candidate.expire_receipts(a,'infinity'); RAISE EXCEPTION 'invalid cutoff accepted';
  EXCEPTION WHEN raise_exception THEN IF SQLERRM<>'R386_RETENTION_SCOPE' THEN RAISE; END IF; END;
