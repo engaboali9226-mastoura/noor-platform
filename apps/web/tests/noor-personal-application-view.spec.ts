@@ -839,8 +839,8 @@ test("R382 contextual help is collapsed, accessible, and does not submit forms",
   await act(async()=>root.render(createElement("form",{onSubmit:e=>{e.preventDefault();submits++;}},createElement(NoorContextHelp,{label:"مساعدة الاختبار"},"شرح اختباري"))));
   const button=t.container.querySelector<HTMLButtonElement>(".noor-help-trigger-r382")!,copy=t.container.querySelector<HTMLElement>(".noor-help-copy-r382")!;
   assert.equal(button.type,"button");assert.equal(button.getAttribute("aria-expanded"),"false");assert.equal(copy.hidden,true);assert.equal(button.getAttribute("aria-controls"),copy.id);
-  await act(async()=>button.click());assert.equal(copy.hidden,false);assert.equal(button.getAttribute("aria-expanded"),"true");assert.equal(submits,0);
-  await act(async()=>button.dispatchEvent(new t.dom.window.KeyboardEvent("keydown",{key:"Escape",bubbles:true})));assert.equal(copy.hidden,true);
-  await act(async()=>button.click());await act(async()=>button.click());assert.equal(copy.hidden,true);assert.equal(submits,0);
+  await act(async()=>button.click());assert.equal(t.dom.window.document.querySelector<HTMLElement>(".noor-help-dialog-r384 .noor-help-copy-r382")?.hidden,false);assert.equal(button.getAttribute("aria-expanded"),"true");assert.equal(submits,0);
+  await act(async()=>t.dom.window.document.querySelector(".noor-help-dialog-r384 button")?.dispatchEvent(new t.dom.window.KeyboardEvent("keydown",{key:"Escape",bubbles:true})));assert.equal(t.container.querySelector<HTMLElement>(".noor-help-copy-r382")?.hidden,true);
+  await act(async()=>button.click());await act(async()=>t.dom.window.document.querySelector<HTMLButtonElement>(".noor-help-dialog-r384 button")?.click());assert.equal(t.container.querySelector<HTMLElement>(".noor-help-copy-r382")?.hidden,true);assert.equal(submits,0);
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });

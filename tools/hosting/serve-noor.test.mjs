@@ -175,3 +175,12 @@ test('R382 world history excludes Islamic, related and unclassified events even 
  const rows=(await get('gregorian',11,20)).events;
  assert.equal(rows.length,1);assert.equal(rows[0].scope,'world');assert.equal(rows[0].year,1917);
 });
+
+test('R384 reviewed Hijri history has exact current-week anniversaries without third-party fallback',async()=>{
+ const {createHistoryEngine}=await import('./noor-history-r381.mjs');
+ const get=createHistoryEngine({request:async()=>{throw Error('Hijri must be local and reviewed');}});
+ const today=await get('hijri',6,10);
+ assert.ok(today.events.some(e=>e.id==='islamic:mustasim-640'&&e.year===640&&e.sourceUrl==='https://dorar.net/history/event/2566'));
+ assert.equal(today.events.length,2);
+ for(const day of [11,13,15,16])assert.ok((await get('hijri',6,day)).events.length>0);
+});
