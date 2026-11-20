@@ -24,6 +24,7 @@ sql -1 < tools/data-foundation/r386/staging-lab-schema.sql
 sql -1 < tools/data-foundation/r386/staging-lab-v2.sql
 sql < tools/data-foundation/r386/staging-lab-regression.sql
 sql < tools/data-foundation/r386/staging-lab-atomic.sql
+sql < tools/data-foundation/r386/staging-lab-logical-receipt.sql
 sql < tools/data-foundation/r386/staging-lab-scale.sql
 sql < tools/data-foundation/r386/structural-mirror.sql
 for role in anon authenticated service_role; do
