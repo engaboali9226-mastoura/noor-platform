@@ -2,7 +2,9 @@
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createPublicKey, verify } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import https from 'node:https';
 import { createClient } from '@supabase/supabase-js';
 
 const project = 'noor-r386-synthetic-runtime';
@@ -17,6 +19,10 @@ const localFetch = (input, init) => {
 };
 const options = { auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
   global:{fetch:localFetch} };
+const proveHttpsIssuer = process.argv.includes('--https-issuer');
+const httpsIssuer = 'https://127.0.0.1:54443/auth/v1';
+const jwksPath = '/auth/v1/.well-known/jwks.json';
+let jwks, tlsServer;
 let admin;
 const ids = [], clients = [];
 try {
@@ -26,6 +32,45 @@ try {
   guard(ports.includes('127.0.0.1:54321') && ports.every(p=>['127.0.0.1:54321','[::1]:54321'].includes(p)));
   const listeners=execFileSync('lsof',['-nP','-iTCP:54321','-sTCP:LISTEN','-Fn'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).split('\n').filter(x=>x.startsWith('n'));
   guard(listeners.length && listeners.every(x=>['n127.0.0.1:54321','n[::1]:54321'].includes(x)));
+  if (proveHttpsIssuer) {
+    stage='HTTPS_JWKS_SETUP';
+    const response=await localFetch(origin+jwksPath);
+    guard(response.status===200);
+    const source=await response.json();
+    guard(Array.isArray(source.keys) && source.keys.some(k=>k.kty==='EC' && k.alg==='ES256'));
+    const certDir=join(homedir(),project,'tls-r386');
+    const ca=readFileSync(join(certDir,'ca.crt'));
+    tlsServer=https.createServer({
+      cert:readFileSync(join(certDir,'server.crt')),
+      key:readFileSync(join(certDir,'server.key')),
+      minVersion:'TLSv1.2'
+    },(req,res)=>{
+      if(req.method!=='GET'||req.url!==jwksPath){res.writeHead(404);res.end();return;}
+      res.writeHead(200,{'Content-Type':'application/json'});
+      res.end(JSON.stringify(source));
+    });
+    await new Promise((resolve,reject)=>{
+      tlsServer.once('error',reject);
+      tlsServer.listen(54443,'127.0.0.1',resolve);
+    });
+    guard(tlsServer.address().address==='127.0.0.1');
+    jwks=await new Promise((resolve,reject)=>{
+      const req=https.get(httpsIssuer+'/.well-known/jwks.json',{
+        ca,rejectUnauthorized:true,minVersion:'TLSv1.2'
+      },res=>{
+        if(res.statusCode!==200){res.destroy();reject(new Error('R386_JWKS_HTTP'));return;}
+        let body='';
+        res.setEncoding('utf8');
+        res.on('data',chunk=>{body+=chunk;if(body.length>65536)res.destroy(new Error('R386_JWKS_SIZE'));});
+        res.on('error',reject);
+        res.on('end',()=>{try{resolve(JSON.parse(body));}catch(e){reject(e);}});
+      });
+      req.setTimeout(5000,()=>req.destroy(new Error('R386_JWKS_TIMEOUT')));
+      req.on('error',reject);
+    });
+    guard(JSON.stringify(jwks)===JSON.stringify(source));
+    pass(stage);
+  }
   const status=JSON.parse(execFileSync('supabase',['status','-o','json'],{
     cwd:join(homedir(),project),env:{HOME:homedir(),PATH:process.env.PATH},encoding:'utf8',
     stdio:['ignore','pipe','ignore'],timeout:20000}));
@@ -55,6 +100,26 @@ try {
     const login=await client.auth.signInWithPassword({email,password});
     guard(!login.error && login.data.session?.access_token && login.data.user?.id===ids[i]);
     pass(stage);
+    if(proveHttpsIssuer){
+      stage='SIGNED_HTTPS_ISSUER_'+(i+1);
+      const parts=login.data.session.access_token.split('.');
+      guard(parts.length===3 && parts.every(p=>/^[A-Za-z0-9_-]+$/.test(p)));
+      const header=JSON.parse(Buffer.from(parts[0],'base64url'));
+      const claims=JSON.parse(Buffer.from(parts[1],'base64url'));
+      guard(header.alg==='ES256' && typeof header.kid==='string');
+      const matches=jwks.keys.filter(k=>k.kid===header.kid && k.alg==='ES256' && k.kty==='EC' && k.crv==='P-256');
+      guard(matches.length===1);
+      const signature=Buffer.from(parts[2],'base64url');
+      guard(signature.length===64);
+      const publicKey=createPublicKey({key:matches[0],format:'jwk'});
+      guard(verify('sha256',Buffer.from(parts[0]+'.'+parts[1]),{key:publicKey,dsaEncoding:'ieee-p1363'},signature));
+      guard(claims.iss===httpsIssuer && claims.sub===ids[i] &&
+        claims.aud==='authenticated' && claims.role==='authenticated' &&
+        claims.is_anonymous===false && typeof claims.session_id==='string' &&
+        claims.session_id.length>0 && Number.isInteger(claims.exp) &&
+        claims.exp>Math.floor(Date.now()/1000));
+      pass(stage);
+    }
     stage='VERIFIED_USER_'+(i+1);
     const verified=await client.auth.getUser();
     guard(!verified.error && verified.data.user?.id===ids[i]);
@@ -101,5 +166,9 @@ try {
       process.exitCode=1;
     }
   }
+  if(tlsServer?.listening) await new Promise(resolve=>tlsServer.close(resolve));
 }
-if (!process.exitCode) console.log('R386_MANAGED_AUTH_SMOKE_PASS');
+if (!process.exitCode) {
+  console.log('R386_MANAGED_AUTH_SMOKE_PASS');
+  if(proveHttpsIssuer) console.log('R386_SIGNED_HTTPS_ISSUER_PASS');
+}
