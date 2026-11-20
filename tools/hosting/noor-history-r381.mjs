@@ -1,5 +1,6 @@
 // R381 public anniversaries: no account data, no writes to personal storage.
 import {createHash} from 'node:crypto';
+import {reviewedIslamicDay,eligibleWorldHistory} from './noor-islamic-history-r382.mjs';
 const months={gregorian:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],hijri:['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة']};
 const categoryPatterns=[
  ['الغزوات والفتوحات',/غزو[ةه]|فتوحات|فتح (?:مكة|بلاد|مدينة|القسطنطينية)/u,9],
@@ -61,7 +62,7 @@ export function createHistoryEngine({request=fetch,now=Date.now}={}){
   const page=day+' '+months[calendar][month-1];
   const body=await json({action:'parse',page,prop:'wikitext|revid',redirects:'1'});
   if(typeof body.parse?.wikitext!=='string')throw Error('HISTORY_FORMAT');
-  const rows=parseHistoryDay({calendar,month,day,wikitext:body.parse.wikitext,revision:body.parse.revid});
+  const rows=parseHistoryDay({calendar,month,day,wikitext:body.parse.wikitext,revision:body.parse.revid}).filter(row=>eligibleWorldHistory([row.title,row.details,row.article??''].join(' '))).map(row=>({...row,scope:'world'}));
   // Use the structured Wikidata entity identifiers exposed by MediaWiki.
   // This is identity enrichment, not independent historical corroboration.
   const titles=[...new Set(rows.map(e=>e.article).filter(Boolean))];
@@ -94,6 +95,8 @@ export function createHistoryEngine({request=fetch,now=Date.now}={}){
  }
  return async function getDay(calendar,month,day){
   if(!validHistoryDay(calendar,month,day))return {status:'invalid',events:[]};
+  const approved=reviewedIslamicDay(calendar,month,day);
+  if(calendar==='hijri')return {status:'ok',events:approved}; // Never call Wikipedia for Islamic history.
   const key=[calendar,month,day].join(':'),cached=cache.get(key),at=now();
   if(cached&&cached.expires>at)return cached.value;
   if(pending.has(key))return pending.get(key);
@@ -101,10 +104,10 @@ export function createHistoryEngine({request=fetch,now=Date.now}={}){
   active++;
   const work=(async()=>{
    try{
-    const events=await load(calendar,month,day),value={status:'ok',events};
+    const events=[...approved,...await load(calendar,month,day)].slice(0,12),value={status:'ok',events};
     cache.set(key,{value,expires:now()+ttl});return value;
    }catch{
-    const value=cached&&cached.value.status!=='unavailable'?{...cached.value,status:'stale'}:{status:'unavailable',events:[]};
+    const value=cached&&cached.value.status!=='unavailable'?{...cached.value,status:'stale'}:{status:approved.length?'stale':'unavailable',events:approved};
     cache.set(key,{value,expires:now()+retry});return value;
    }finally{active--;pending.delete(key);}
   })();
