@@ -1,3 +1,4 @@
+import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {useEffect,useRef,useState,type ReactElement,type FormEvent} from "react";
 import type {NoorPersonalCommandInput,NoorBeveragePlanR294} from "./noor-personal-today-client.js";
 import {activeServingsR295,classifyCaffeineR295,kindForDrinkR295,localClockR295,validClockR295,type CaffeineKindR295} from "./noor-caffeine-health-r295.js";
@@ -183,7 +184,7 @@ export function NoorBeverageTrackerR294({rows,allNames=[],localDate,busy,onComma
    </div>:null}
   {quickRow&&!historical?<div className="np-caffeine-time-picker-r295" data-testid="r295-time-picker">
    <strong>تسجيل {quickRow.title} — اختر الوقت أولًا</strong>
-   <small className="np-caffeine-time-hint-r297">الفترات أوقات تقريبية ثابتة للتسجيل السريع، وليست مواقيت الصلاة. لتسجيل الساعة الدقيقة اختر «تحديد الساعة يدويًا».</small>
+   <NoorContextHelp label="مساعدة: الفترات أوقات تقريبية ثابتة">الفترات أوقات تقريبية ثابتة للتسجيل السريع، وليست مواقيت الصلاة. لتسجيل الساعة الدقيقة اختر «تحديد الساعة يدويًا».</NoorContextHelp>
    <div className="np-caffeine-time-options-r295">{LABELS_R295.map(option=><button type="button"
      key={option.value} aria-pressed={timeChoice===option.value} onClick={()=>setTimeChoice(option.value)}>{option.label}</button>)}</div>
    {timeChoice==="manual"?<label>وقت الشرب <input type="time" aria-label="الوقت اليدوي للشرب"
