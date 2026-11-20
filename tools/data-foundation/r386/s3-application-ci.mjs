@@ -3,6 +3,7 @@
 // CI database. Session/entitlement resolver ports are existing-style test
 // doubles only: this creates no actual linked Auth/RPC identities.
 import assert from "node:assert/strict";
+import {proveS4Application} from "./s4-application-proof.mjs";
 import {createS3CiPostgres} from "./s3-ci-postgres.mjs";
 import {createR386RuntimeSaveCandidate,openR386CandidateReadScope} from "./s3-runtime-coordinator.mjs";
 import {PersonalControlOperation} from "../../../apps/noor-runtime/dist/personal-control-operation.js";
@@ -188,6 +189,10 @@ try{
    assert.equal(legacyCalls,1);
  }finally{await legacy.close();}
  console.log("R386_S3_NO_SILENT_LEGACY_DOWNGRADE_PASS");
+ await proveS4Application({database,psql,literal,owner:b,otherOwner:a,setNow:value=>{now=value;},
+  send:c=>sendRaw("fixture-b",createR386CommandIntent(c).requestId,c),
+  readToday:()=>fetch(origin+PERSONAL_TODAY_HTTP_PATH,{method:"POST",headers:{"Content-Type":"application/json",Cookie:"noor_session=fixture-b"},body:"{}"}),
+  readWorkspace:()=>fetch(origin+PERSONAL_WORKSPACE_HTTP_PATH,{method:"POST",headers:{"Content-Type":"application/json",Cookie:"noor_session=fixture-b"},body:"{}"})});
 }finally{
  await scheduler.stop();
  await server.close();
