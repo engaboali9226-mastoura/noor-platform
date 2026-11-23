@@ -134,8 +134,8 @@ export function createNoorR386G1SqlCommitAdapter(
       }
       return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
         const response = await client.query<{ loaded: unknown }>(
-          "SELECT noor_r386_candidate.s3_load($1) AS loaded",
-          [value.serverResolvedOwnerId],
+          "SELECT noor_r386_candidate.g1_authorized_load($1,$2) AS loaded",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId],
         );
         const loaded = response.rows[0]?.loaded;
         if (response.rows.length !== 1 || loaded === null
