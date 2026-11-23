@@ -382,3 +382,33 @@ test("R321 first login requires an authorized NOOR session and strictly chosen c
  f.state.allowInitialization=false;
  assert.equal((await s.executeCommand({sessionId:"session-1",command:make("cairo","Egyptian")})).status,409);
 });
+
+test("R386 G1 forwards only trusted NOOR session and resolved user into the dormant SQL commit candidate", async () => {
+ const fixture=dependencies();
+ const seen:Array<{trustedNoorSessionId:string;ownerId:string}>=[];
+ const atomicSaveCandidate={
+  async run(input:{trustedNoorSessionId:string;ownerId:string}) {
+   seen.push({trustedNoorSessionId:input.trustedNoorSessionId,ownerId:input.ownerId});
+   return {status:204 as const};
+  },
+  async initialize(input:{trustedNoorSessionId:string;ownerId:string}) {
+   seen.push({trustedNoorSessionId:input.trustedNoorSessionId,ownerId:input.ownerId});
+   return {status:204 as const};
+  },
+  async reconcile():Promise<never> {throw new Error("G1 scheduler cannot borrow a user session");},
+ };
+ const op=new PersonalControlOperation({...fixture.value,atomicSaveCandidate});
+ const requestId="client-7d2b802a-6f0d-4862-925b-3b66cbe9e67e";
+ const command={type:"create-definition",kind:"Habit",title:"المشي",category:"الصحة والرياضة",
+  startDate:"2026-10-24",endDate:null,scheduleKind:"Daily",weekdays:[],importance:"Supporting"};
+ assert.equal((await op.executeCommand({sessionId:"session-1",requestId,command})).status,204);
+ assert.equal((await op.executeCommand({sessionId:"session-1",requestId,
+  command:{type:"initialize-personal-profile-r321",city:"riyadh",calculationMethod:"UmmAlQura"}})).status,204);
+ assert.deepEqual(seen,[
+  {trustedNoorSessionId:"session-1",ownerId:"user-1"},
+  {trustedNoorSessionId:"session-1",ownerId:"user-1"},
+ ]);
+ assert.equal((await op.executeCommand({sessionId:"session-1",command})).status,400);
+ assert.equal((await op.executeCommand({sessionId:null,requestId,command})).status,401);
+ assert.equal(seen.length,2);
+});
