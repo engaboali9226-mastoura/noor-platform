@@ -22,6 +22,8 @@ sql(){ docker exec -i "$name" psql -X -U postgres -d postgres -v ON_ERROR_STOP=1
 sql -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;'
 sql -1 < tools/data-foundation/r386/s1-persistent-migration.sql
 sql < tools/data-foundation/r386/s1-persistent-regression.sql
+sql -1 < tools/data-foundation/r386/g1-retention-lock.sql
+sql < tools/data-foundation/r386/g1-retention-lock-regression.sql
 for role in anon authenticated service_role; do
  if sql -c "SET ROLE $role; SELECT * FROM noor_r386_candidate.event_history" >"$tmp/s1-role" 2>&1; then echo R386_S1_ROLE_ACCESS_LEAK; exit 1; fi
  grep -q 'permission denied' "$tmp/s1-role"
