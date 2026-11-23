@@ -60,6 +60,8 @@ BEGIN
    WITH CHECK (owner_id IN ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'));
 END $g1_fixture$;
 
+\i tools/data-foundation/r386/g1-s3-exact-uuid-fixture.sql
+
 INSERT INTO auth.users(id,deleted_at) VALUES
   ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',NULL),
   ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',NULL);
