@@ -11,13 +11,18 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock,
  // The historic CI-only coordinator must opt into syntheticOnly explicitly.
  // A future live HTTP injection without a same-transaction, NOBYPASSRLS
  // PostgreSQL commit adapter fails during composition, not after a user write.
- if(syntheticOnly ? sqlCommit!==null : !sqlCommit||typeof sqlCommit.commit!=="function")
+ if(syntheticOnly ? sqlCommit!==null : !sqlCommit||typeof sqlCommit.commit!=="function"||typeof sqlCommit.lookup!=="function")
   throw Error("R386_G1_LIVE_COMMIT_FENCE_REQUIRED");
  const execute=async({trustedNoorSessionId,ownerId,requestId,command,deletedDefinitionId=null,evaluate})=>{
   if(!syntheticOnly && (typeof trustedNoorSessionId!=="string"||!trustedNoorSessionId))
    throw Error("R386_G1_MISSING_TRUSTED_SESSION");
   const sessionDatabase=syntheticOnly?database:Object.freeze({
-   lookup:(...a)=>database.lookup(...a),
+   lookup:(lookupOwner,lookupRequest)=>{
+    if(lookupOwner!==ownerId)throw Error("R386_G1_OWNER_CONTEXT_CHANGED");
+    return sqlCommit.lookup({
+     trustedNoorSessionId,serverResolvedOwnerId:ownerId,requestId:lookupRequest,
+    });
+   },
    load:(...a)=>database.load(...a),
    commit:args=>{
     if(args.owner!==ownerId)throw Error("R386_G1_OWNER_CONTEXT_CHANGED");
