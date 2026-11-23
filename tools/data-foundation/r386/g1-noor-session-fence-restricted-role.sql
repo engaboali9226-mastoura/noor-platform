@@ -44,9 +44,6 @@ BEGIN
   EXECUTE format('CREATE POLICY g1_guard_lock ON public.%I FOR UPDATE TO noor_r386_g1_guard USING (true) WITH CHECK (true)',name);
  END LOOP;
 END $noor_g1$;
-CREATE POLICY g1_guard_noor_sessions_read ON public.noor_sessions FOR SELECT TO noor_r386_g1_guard USING (true);
-CREATE POLICY g1_guard_noor_grants_read ON public.noor_entitlement_grants FOR SELECT TO noor_r386_g1_guard USING (true);
-CREATE POLICY g1_guard_noor_linkages_read ON public.noor_authentication_account_linkages FOR SELECT TO noor_r386_g1_guard USING (true);
 CREATE POLICY g1_guard_auth_users_read ON auth.users FOR SELECT TO noor_r386_g1_guard USING (true);
 CREATE POLICY g1_guard_tombstone_read
   ON noor_r386_candidate.g1_owner_erasure_tombstone
