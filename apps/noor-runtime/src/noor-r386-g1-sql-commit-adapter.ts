@@ -70,6 +70,7 @@ export function createNoorR386G1SqlCommitAdapter(
 ): Readonly<{
   commit(value: G1ReceiptCommitInput): Promise<G1ReceiptCommitResult>;
   lookup(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string; requestId: string }>): Promise<unknown | null>;
+  load(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> }>>;
 }> {
   if (!/^noor_r386_g1_[a-z0-9_]{1,48}$/u.test(input.expectedSqlRole)) {
     throw new Error("R386_G1_UNAPPROVED_SQL_ROLE");
@@ -117,6 +118,41 @@ export function createNoorR386G1SqlCommitAdapter(
   };
 
   return Object.freeze({
+    // The source snapshot is as sensitive as the write: the exact same
+    // transaction-time NOOR fence must protect it from revoked identities.
+    async load(value: Readonly<{
+      trustedNoorSessionId: string;
+      serverResolvedOwnerId: string;
+    }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> }>> {
+      if (typeof value.trustedNoorSessionId !== "string"
+        || value.trustedNoorSessionId.length < 1
+        || value.trustedNoorSessionId.length > 256
+        || typeof value.serverResolvedOwnerId !== "string"
+        || value.serverResolvedOwnerId.length < 1
+        || value.serverResolvedOwnerId.length > 512) {
+        throw new Error("R386_G1_INVALID_LOAD_INPUT");
+      }
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const response = await client.query<{ loaded: unknown }>(
+          "SELECT noor_r386_candidate.s3_load($1) AS loaded",
+          [value.serverResolvedOwnerId],
+        );
+        const loaded = response.rows[0]?.loaded;
+        if (response.rows.length !== 1 || loaded === null
+          || typeof loaded !== "object" || Array.isArray(loaded)) {
+          throw new Error("R386_G1_INVALID_LOAD_RESULT");
+        }
+        const state = (loaded as { state?: unknown }).state;
+        const existed = (loaded as { existed?: unknown }).existed;
+        const revision = (loaded as { revision?: unknown }).revision;
+        if (typeof existed !== "boolean" || !Number.isSafeInteger(revision)
+          || (revision as number) < 0 || (!existed && revision !== 0)
+          || state === null || typeof state !== "object" || Array.isArray(state)) {
+          throw new Error("R386_G1_INVALID_LOAD_RESULT");
+        }
+        return { existed, revision: revision as number, state: state as Record<string, unknown> };
+      });
+    },
     async lookup(value: Readonly<{
       trustedNoorSessionId: string;
       serverResolvedOwnerId: string;
