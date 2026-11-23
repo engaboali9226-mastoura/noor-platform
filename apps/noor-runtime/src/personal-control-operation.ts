@@ -86,6 +86,7 @@ export interface PersonalControlExecutor {
 // Neither the browser nor a header can select the owner or enable this path.
 export interface R386AtomicSaveCandidate {
   run(input: Readonly<{
+    trustedNoorSessionId: string;
     ownerId: string;
     requestId: string;
     command: unknown;
@@ -97,7 +98,7 @@ export interface R386AtomicSaveCandidate {
     evaluate(scope:PersonalFoundationOperation):Promise<T>;
   }>):Promise<Readonly<{status:200;value:T;scope:PersonalFoundationOperation}|{status:409|503}>>;
   initialize(input: Readonly<{
-    ownerId:string; requestId:string;
+    trustedNoorSessionId:string; ownerId:string; requestId:string;
     city:"riyadh"|"cairo"|"dubai"|"london";
     calculationMethod:"UmmAlQura"|"Egyptian"|"MuslimWorldLeague"|"Karachi"|"NorthAmerica";
   }>): Promise<Readonly<{status:204|409|503}>>;
@@ -459,9 +460,10 @@ implements PersonalControlExecutor {
       if(resolved.kind==="error")return empty(resolved.status);
       if(this.dependencies.atomicSaveCandidate){
         if(!validCandidateClientRequestId(input.requestId))return empty(400);
+        if(!input.sessionId)return empty(401);
         try{
           return empty((await this.dependencies.atomicSaveCandidate.initialize({
-            ownerId:resolved.userId,requestId:input.requestId,city,calculationMethod:method,
+            trustedNoorSessionId:input.sessionId,ownerId:resolved.userId,requestId:input.requestId,city,calculationMethod:method,
           })).status);
         }catch(error){return this.candidateFailure(error);}
         finally{this.dependencies.foundation.forgetCommandCache?.(resolved.userId);}
@@ -497,9 +499,10 @@ implements PersonalControlExecutor {
 
     if(this.dependencies.atomicSaveCandidate){
       if(!validCandidateClientRequestId(input.requestId))return empty(400);
+      if(!input.sessionId)return empty(401);
       try{
         return empty((await this.dependencies.atomicSaveCandidate.run({
-          ownerId:resolved.userId,requestId:input.requestId,command,
+          trustedNoorSessionId:input.sessionId,ownerId:resolved.userId,requestId:input.requestId,command,
           ...(command.type==="delete-definition"?{deletedDefinitionId:command.definitionId}:{}),
           evaluate:async scope=>{
             if(command.type==="set-account-location"){
