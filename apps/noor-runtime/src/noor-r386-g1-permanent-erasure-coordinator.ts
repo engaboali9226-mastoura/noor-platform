@@ -93,6 +93,7 @@ function validFence(value: unknown, intendedUserId: string): value is R386G1Fenc
   if (value === null || typeof value !== "object") return false;
   const v = value as Partial<R386G1FencedOwner>;
   return uuid(v.ownerId) && uuid(v.authUserId)
+    && v.ownerId.toLowerCase() === v.authUserId.toLowerCase()
     && v.authUserId.toLowerCase() === intendedUserId.toLowerCase()
     && typeof v.accountId === "string"
     && v.accountId.trim().length >= 1 && v.accountId.length <= 256
