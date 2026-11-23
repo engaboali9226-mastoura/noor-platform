@@ -14,6 +14,7 @@
 export const R386_G1_ERASURE_STORES = Object.freeze([
   "storage-objects",
   "admin-audit",
+  "admin-accounts",
   "task-events",
   "tasks",
   "habit-entries",
