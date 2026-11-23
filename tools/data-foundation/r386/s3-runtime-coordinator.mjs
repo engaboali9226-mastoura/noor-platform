@@ -7,10 +7,31 @@ import {createPersistentSaveAdapter} from "./s3-persistent-adapter.mjs";
 import {canonicalJson} from "./shadow-transition.mjs";
 const readOnly=scope=>Object.freeze({snapshot:scope.snapshot,locations:scope.locations,prayerPolicies:scope.prayerPolicies,transaction:{async runInTransaction(){throw Error("R386_READ_SCOPE_WRITE");}}});
 
-export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock}){
- const execute=async({ownerId,requestId,command,deletedDefinitionId=null,evaluate})=>{
+export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock,sqlCommit=null,syntheticOnly=false}){
+ // The historic CI-only coordinator must opt into syntheticOnly explicitly.
+ // A future live HTTP injection without a same-transaction, NOBYPASSRLS
+ // PostgreSQL commit adapter fails during composition, not after a user write.
+ if(syntheticOnly ? sqlCommit!==null : !sqlCommit||typeof sqlCommit.commit!=="function")
+  throw Error("R386_G1_LIVE_COMMIT_FENCE_REQUIRED");
+ const execute=async({trustedNoorSessionId,ownerId,requestId,command,deletedDefinitionId=null,evaluate})=>{
+  if(!syntheticOnly && (typeof trustedNoorSessionId!=="string"||!trustedNoorSessionId))
+   throw Error("R386_G1_MISSING_TRUSTED_SESSION");
+  const sessionDatabase=syntheticOnly?database:Object.freeze({
+   lookup:(...a)=>database.lookup(...a),
+   load:(...a)=>database.load(...a),
+   commit:args=>{
+    if(args.owner!==ownerId)throw Error("R386_G1_OWNER_CONTEXT_CHANGED");
+    return sqlCommit.commit({
+     trustedNoorSessionId,serverResolvedOwnerId:ownerId,
+     requestId:args.requestId,expectedExists:args.existed,
+     expectedRevision:args.expectedRevision,before:args.before,after:args.after,
+     keyId:args.keyId,digest:args.digest,fingerprints:args.fingerprints,
+     deleteRefs:args.deleteRefs,
+    });
+   },
+  });
   const result=await executeReceiptCandidate({owner:ownerId,requestId,command,keys,activeKeyId,evaluate,
-   adapter:createPersistentSaveAdapter({database,deletedDefinitionId})});
+   adapter:createPersistentSaveAdapter({database:sessionDatabase,deletedDefinitionId})});
   return {status:result.status};
  };
  return Object.freeze({
@@ -18,6 +39,9 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock}
    return execute({...input,evaluate:state=>evaluateR386PersonalFoundationCandidate(input.ownerId,state,input.evaluate)});
   },
   async reconcile({ownerId,instant,evaluate}){
+   // A scheduler has no browser session; it requires a distinct authorized
+   // server identity and same-transaction SQL gate before live activation.
+   if(!syntheticOnly)throw Error("R386_G1_SCHEDULER_AUTHORITY_UNAVAILABLE");
    // A Today read may materialize state. Compute on an authorized private clone
    // first; commit changes through the same receipt transaction, then rebuild
    // the projection from a confirmed fresh source, never from a stored receipt.
@@ -46,8 +70,8 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock}
    }
    return {status:503};
   },
-  initialize({ownerId,requestId,city,calculationMethod}){
-   return execute({ownerId,requestId,command:{type:"initialize-personal-profile-r321",city,calculationMethod},
+  initialize({trustedNoorSessionId,ownerId,requestId,city,calculationMethod}){
+   return execute({trustedNoorSessionId,ownerId,requestId,command:{type:"initialize-personal-profile-r321",city,calculationMethod},
     evaluate:state=>{
      const candidate=evaluateR386InitializationCandidate(ownerId,state,city,calculationMethod,clock.now(),
       "location-revision:r321:"+randomUUID(),"prayer-policy:r321:"+randomUUID());
