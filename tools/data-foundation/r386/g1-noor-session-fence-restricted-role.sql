@@ -26,9 +26,24 @@ GRANT SELECT(id,deleted_at), UPDATE(deleted_at)
 GRANT SELECT ON noor_r386_candidate.g1_owner_erasure_tombstone
   TO noor_r386_g1_guard;
 
--- Role-specific visibility only: do not grant any permissions to browser or
--- service_role. These policies require independently reviewed RLS on managed
--- application tables in an actual isolated schema before deployment.
+-- The real NOOR public tables have RLS enabled, with no permissive
+-- browser policies. The guard is NOLOGIN and has no member roles.
+-- Explicit guard-only read/update policies are required for row locks;
+-- otherwise SELECT FOR SHARE silently sees no session/grants/linkages.
+-- This is isolated-only and must be independently audited before managed rollout.
+DO $noor_g1$
+DECLARE name text;
+BEGIN
+ FOREACH name IN ARRAY ARRAY[
+   'noor_sessions','noor_entitlement_grants','noor_authentication_account_linkages'
+ ] LOOP
+  IF NOT (SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace ns
+    ON ns.oid=c.relnamespace WHERE ns.nspname='public' AND c.relname=name)
+  THEN RAISE EXCEPTION 'R386_G1_SOURCE_RLS_REQUIRED'; END IF;
+  EXECUTE format('CREATE POLICY g1_guard_select ON public.%I FOR SELECT TO noor_r386_g1_guard USING (true)',name);
+  EXECUTE format('CREATE POLICY g1_guard_lock ON public.%I FOR UPDATE TO noor_r386_g1_guard USING (true) WITH CHECK (true)',name);
+ END LOOP;
+END $noor_g1$;
 CREATE POLICY g1_guard_tombstone_read
   ON noor_r386_candidate.g1_owner_erasure_tombstone
   FOR SELECT TO noor_r386_g1_guard USING (true);
