@@ -52,6 +52,19 @@ CREATE POLICY g1_guard_tombstone_read
 
 -- The NOLOGIN guard owns the trusted wrappers. The LOGIN writer gets only
 -- those wrapped entrypoints, never S3/raw auth or even the standalone guard.
+-- The source read must be protected too; no raw S3 load capability
+-- may be available to the LOGIN writer.
+CREATE FUNCTION noor_r386_candidate.g1_authorized_load(
+ p_session text,p_owner text
+) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY INVOKER
+SET search_path=pg_catalog AS $g1$
+BEGIN
+ IF noor_r386_candidate.g1_assert_committable_noor_owner(p_session,p_owner)
+    IS DISTINCT FROM p_owner
+ THEN RAISE EXCEPTION 'R386_G1_OWNER_CONTEXT_CHANGED'; END IF;
+ RETURN noor_r386_candidate.s3_load(p_owner);
+END $g1$;
+
 CREATE FUNCTION noor_r386_candidate.g1_authorized_lookup(
  p_session text,p_owner text,p_request text
 ) RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY INVOKER
@@ -78,6 +91,7 @@ BEGIN
 END $g1$;
 
 REVOKE ALL ON FUNCTION
+  noor_r386_candidate.g1_authorized_load(text,text),
   noor_r386_candidate.g1_authorized_lookup(text,text,text),
   noor_r386_candidate.g1_authorized_commit(text,text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])
   FROM PUBLIC,anon,authenticated,service_role,noor_r386_g1_writer;
@@ -85,12 +99,16 @@ REVOKE ALL ON FUNCTION
 GRANT CREATE ON SCHEMA noor_r386_candidate TO noor_r386_g1_guard;
 ALTER FUNCTION noor_r386_candidate.g1_assert_committable_noor_owner(text,text)
  OWNER TO noor_r386_g1_guard;
+ALTER FUNCTION noor_r386_candidate.g1_authorized_load(text,text)
+ OWNER TO noor_r386_g1_guard;
 ALTER FUNCTION noor_r386_candidate.g1_authorized_lookup(text,text,text)
  OWNER TO noor_r386_g1_guard;
 ALTER FUNCTION noor_r386_candidate.g1_authorized_commit(text,text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])
  OWNER TO noor_r386_g1_guard;
 REVOKE CREATE ON SCHEMA noor_r386_candidate FROM noor_r386_g1_guard;
 
+ALTER FUNCTION noor_r386_candidate.g1_authorized_load(text,text)
+ SECURITY DEFINER;
 ALTER FUNCTION noor_r386_candidate.g1_authorized_lookup(text,text,text)
  SECURITY DEFINER;
 ALTER FUNCTION noor_r386_candidate.g1_authorized_commit(text,text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])
@@ -100,10 +118,12 @@ ALTER FUNCTION noor_r386_candidate.g1_authorized_commit(text,text,text,boolean,b
 GRANT EXECUTE ON FUNCTION
   noor_r386_candidate.g1_assert_committable_noor_owner(text,text),
   noor_r386_candidate.s3_lookup(text,text),
+  noor_r386_candidate.s3_load(text),
   noor_r386_candidate.s3_commit(text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])
   TO noor_r386_g1_guard;
 
 GRANT EXECUTE ON FUNCTION
+  noor_r386_candidate.g1_authorized_load(text,text),
   noor_r386_candidate.g1_authorized_lookup(text,text,text),
   noor_r386_candidate.g1_authorized_commit(text,text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])
   TO noor_r386_g1_writer;
@@ -128,11 +148,15 @@ BEGIN
  FOREACH t IN ARRAY ARRAY[
  'noor_r386_candidate.g1_assert_committable_noor_owner(text,text)',
  'noor_r386_candidate.s3_lookup(text,text)',
+ 'noor_r386_candidate.s3_load(text)',
  'noor_r386_candidate.s3_commit(text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])'
  ] LOOP
   IF has_function_privilege('noor_r386_g1_writer',t,'EXECUTE')
   THEN RAISE EXCEPTION 'R386_G1_WRITER_RAW_SQL_LEAK'; END IF;
  END LOOP;
+ IF NOT has_function_privilege('noor_r386_g1_writer',
+     'noor_r386_candidate.g1_authorized_load(text,text)','EXECUTE')
+ THEN RAISE EXCEPTION 'R386_G1_WRAPPED_LOAD_UNREACHABLE'; END IF;
  IF NOT has_function_privilege('noor_r386_g1_writer',
      'noor_r386_candidate.g1_authorized_commit(text,text,text,boolean,bigint,jsonb,jsonb,text,text,jsonb,text[])','EXECUTE')
  THEN RAISE EXCEPTION 'R386_G1_WRAPPED_COMMIT_UNREACHABLE'; END IF;
@@ -140,9 +164,9 @@ BEGIN
   SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
   JOIN pg_roles owner ON owner.oid=p.proowner
   WHERE n.nspname='noor_r386_candidate'
-    AND p.proname IN ('g1_authorized_commit','g1_authorized_lookup')
+    AND p.proname IN ('g1_authorized_commit','g1_authorized_lookup','g1_authorized_load')
     AND p.prosecdef AND owner.rolname='noor_r386_g1_guard'
-  GROUP BY owner.rolname HAVING count(*)=2
+  GROUP BY owner.rolname HAVING count(*)=3
  ) THEN RAISE EXCEPTION 'R386_G1_WRAPPER_PRIVILEGES_UNSAFE'; END IF;
  RAISE NOTICE 'R386_G1_NO_BYPASS_RAW_SQL_WRITER_ACCESS_PASS';
 END $g1$;
