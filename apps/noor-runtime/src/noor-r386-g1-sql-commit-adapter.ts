@@ -100,14 +100,8 @@ export function createNoorR386G1SqlCommitAdapter(
       }
       await client.query("BEGIN");
       started = true;
-      const verified = await client.query<{ owner_id: string }>(
-        "SELECT noor_r386_candidate.g1_assert_committable_noor_owner($1,$2) AS owner_id",
-        [trustedNoorSessionId, serverResolvedOwnerId],
-      );
-      if (verified.rows.length !== 1
-        || verified.rows[0]?.owner_id !== serverResolvedOwnerId) {
-        throw new Error("R386_G1_SESSION_OWNER_MISMATCH");
-      }
+      // Never split authorization and mutation into two SQL statements.
+      // The role can execute the guarded wrappers but not raw S3 functions.
       const result = await work(client);
       await client.query("COMMIT");
       started = false;
@@ -137,8 +131,8 @@ export function createNoorR386G1SqlCommitAdapter(
       }
       return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
         const row = await client.query<{ receipt: unknown | null }>(
-          "SELECT noor_r386_candidate.s3_lookup($1,$2) AS receipt",
-          [value.serverResolvedOwnerId, value.requestId],
+          "SELECT noor_r386_candidate.g1_authorized_lookup($1,$2,$3) AS receipt",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId, value.requestId],
         );
         if (row.rows.length !== 1) throw new Error("R386_G1_BAD_LOOKUP_RESULT");
         return row.rows[0]?.receipt ?? null;
@@ -148,9 +142,10 @@ export function createNoorR386G1SqlCommitAdapter(
       if (!permittedInput(value)) throw new Error("R386_G1_INVALID_COMMIT_INPUT");
       return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
         const result = await client.query<{ outcome: G1ReceiptCommitResult }>(
-          "SELECT noor_r386_candidate.s3_commit("
-          + "$1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9::jsonb,$10::text[]) AS outcome",
+          "SELECT noor_r386_candidate.g1_authorized_commit("
+          + "$1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10::jsonb,$11::text[]) AS outcome",
           [
+            value.trustedNoorSessionId,
             value.serverResolvedOwnerId,
             value.requestId,
             value.expectedExists,
