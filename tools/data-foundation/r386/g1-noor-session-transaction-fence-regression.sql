@@ -81,7 +81,7 @@ CREATE FUNCTION noor_r386_candidate.g1_expect_rejection(
 DECLARE actual text;
 BEGIN
  BEGIN
-  PERFORM noor_r386_candidate.g1_assert_committable_noor_owner(p_session,p_owner);
+  PERFORM noor_r386_candidate.g1_authorized_load(p_session,p_owner);
   RAISE EXCEPTION 'R386_G1_REJECTION_NOT_ENFORCED';
  EXCEPTION WHEN OTHERS THEN
   GET STACKED DIAGNOSTICS actual=MESSAGE_TEXT;
@@ -91,12 +91,15 @@ BEGIN
  END;
 END $$;
 
+INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES
+  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
+
 SET ROLE noor_r386_g1_writer;
 DO $$
 BEGIN
- IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-   OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
-   OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') <> 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+ IF pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')) <> 'object'
+   OR pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')) <> 'object'
+   OR pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')) <> 'object'
  THEN RAISE EXCEPTION 'R386_G1_TWO_DEVICE_OWNER_BIND_FAILED'; END IF;
  RAISE NOTICE 'R386_G1_LIVE_NOOR_TABLE_NAMES_TWO_DEVICE_PASS';
 END $$;
@@ -104,8 +107,6 @@ END $$;
 -- This is the actual R386 S3 SQL commit function, in the SAME transaction as
 -- the persisted NOOR session/grant/owner fence. Both are server-authorized,
 -- not a browser-selected owner or separate service_role API write.
-INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES
-  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
 DO $$
 DECLARE
   a text:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -116,16 +117,12 @@ DECLARE
   response_a jsonb;
   response_b jsonb;
 BEGIN
-  IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-one',a)<>a
-  THEN RAISE EXCEPTION 'R386_G1_FENCE_OWNER_A'; END IF;
-  response_a:=noor_r386_candidate.s3_commit(a,'g1-receipt-a',false,0,
+  response_a:=noor_r386_candidate.g1_authorized_commit('g1-a-device-one',a,'g1-receipt-a',false,0,
     empty_state,empty_state,'k1',digest_a,jsonb_build_object('k1',digest_a));
   IF response_a->>'kind'<>'committed' OR response_a#>>'{receipt,revision}'<>'0'
   THEN RAISE EXCEPTION 'R386_G1_FENCED_S3_COMMIT_A'; END IF;
 
-  IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one',b)<>b
-  THEN RAISE EXCEPTION 'R386_G1_FENCE_OWNER_B'; END IF;
-  response_b:=noor_r386_candidate.s3_commit(b,'g1-receipt-b',false,0,
+  response_b:=noor_r386_candidate.g1_authorized_commit('g1-b-device-one',b,'g1-receipt-b',false,0,
     empty_state,empty_state,'k1',digest_b,jsonb_build_object('k1',digest_b));
   IF response_b->>'kind'<>'committed' OR response_b#>>'{receipt,revision}'<>'0'
   THEN RAISE EXCEPTION 'R386_G1_FENCED_S3_COMMIT_B'; END IF;
@@ -175,7 +172,7 @@ SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','aaaaaaaa-aaaa-
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_ERASED_OWNER_DENIED');
 DO $$
 BEGIN
- IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') <> 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+ IF pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')) <> 'object'
  THEN RAISE EXCEPTION 'R386_G1_OTHER_ACCOUNT_CHANGED'; END IF;
  RAISE NOTICE 'R386_G1_COMMIT_FENCE_REVOKE_GRANT_AUTH_ERASE_OWNER_ISOLATION_PASS';
 END $$;
