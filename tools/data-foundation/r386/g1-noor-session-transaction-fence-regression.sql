@@ -75,14 +75,14 @@ BEGIN
    OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','synthetic-r386-s3-g1-b') <> 'synthetic-r386-s3-g1-b'
  THEN RAISE EXCEPTION 'R386_G1_TWO_DEVICE_OWNER_BIND_FAILED'; END IF;
  RAISE NOTICE 'R386_G1_LIVE_NOOR_TABLE_NAMES_TWO_DEVICE_PASS';
-END $;
+END $$;
 
 -- This is the actual R386 S3 SQL commit function, in the SAME transaction as
 -- the persisted NOOR session/grant/owner fence. Both are server-authorized,
 -- not a browser-selected owner or separate service_role API write.
 INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES
   ('synthetic-r386-s3-g1-a',true),('synthetic-r386-s3-g1-b',true);
-DO $
+DO $$
 DECLARE
   a text:='synthetic-r386-s3-g1-a';
   b text:='synthetic-r386-s3-g1-b';
@@ -109,7 +109,7 @@ BEGIN
     OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id=b)<>1
   THEN RAISE EXCEPTION 'R386_G1_CROSS_OWNER_RECEIPT_DRIFT'; END IF;
   RAISE NOTICE 'R386_G1_NOOR_FENCE_AND_S3_COMMIT_SAME_SQL_TRANSACTION_PASS';
-END $;
+END $$;
 
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','synthetic-r386-s3-g1-b','R386_G1_LINKAGE_DENIED');
 SELECT noor_r386_candidate.g1_expect_rejection('g1-no-such-session','synthetic-r386-s3-g1-a','R386_G1_NOOR_SESSION_DENIED');
