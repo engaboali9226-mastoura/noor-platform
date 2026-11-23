@@ -83,7 +83,7 @@ CREATE FUNCTION noor_r386_candidate.g1_expect_rejection(
 DECLARE actual text;
 BEGIN
  BEGIN
-  PERFORM noor_r386_candidate.g1_authorized_load(p_session,p_owner);
+  PERFORM noor_r386_candidate.g1_assert_committable_noor_owner(p_session,p_owner);
   RAISE EXCEPTION 'R386_G1_REJECTION_NOT_ENFORCED';
  EXCEPTION WHEN OTHERS THEN
   GET STACKED DIAGNOSTICS actual=MESSAGE_TEXT;
@@ -93,51 +93,38 @@ BEGIN
  END;
 END $$;
 
-INSERT INTO noor_r386_candidate.s3_enrollment(owner_id,shadow_enabled) VALUES
-  ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',true),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',true);
-
-SET ROLE noor_r386_g1_writer;
+-- The real NOOR linkage owns UUIDs; S3 is deliberately synthetic-only
+-- and refuses these IDs. Keep those separate until a true source migration
+-- is designed. Verify the actual NOLOGIN guard's locked SQL view first.
+SET ROLE noor_r386_g1_guard;
 DO $$
 BEGIN
- IF pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')) <> 'object'
-   OR pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')) <> 'object'
-   OR pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')) <> 'object'
- THEN RAISE EXCEPTION 'R386_G1_TWO_DEVICE_OWNER_BIND_FAILED'; END IF;
- RAISE NOTICE 'R386_G1_LIVE_NOOR_TABLE_NAMES_TWO_DEVICE_PASS';
-END $$;
-
--- This is the actual R386 S3 SQL commit function, in the SAME transaction as
--- the persisted NOOR session/grant/owner fence. Both are server-authorized,
--- not a browser-selected owner or separate service_role API write.
-DO $$
-DECLARE
-  a text:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-  b text:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
-  empty_state jsonb:='{"historicalEvents":[],"notificationHistory":[],"fridayMosqueVisits":[],"locations":[],"prayerPolicies":[],"personalDays":[],"islamicContexts":[],"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
-  digest_a text:=repeat('a',64);
-  digest_b text:=repeat('b',64);
-  response_a jsonb;
-  response_b jsonb;
-BEGIN
-  response_a:=noor_r386_candidate.g1_authorized_commit('g1-a-device-one',a,'g1-receipt-a',false,0,
-    empty_state,empty_state,'k1',digest_a,jsonb_build_object('k1',digest_a));
-  IF response_a->>'kind'<>'committed' OR response_a#>>'{receipt,revision}'<>'0'
-  THEN RAISE EXCEPTION 'R386_G1_FENCED_S3_COMMIT_A'; END IF;
-
-  response_b:=noor_r386_candidate.g1_authorized_commit('g1-b-device-one',b,'g1-receipt-b',false,0,
-    empty_state,empty_state,'k1',digest_b,jsonb_build_object('k1',digest_b));
-  IF response_b->>'kind'<>'committed' OR response_b#>>'{receipt,revision}'<>'0'
-  THEN RAISE EXCEPTION 'R386_G1_FENCED_S3_COMMIT_B'; END IF;
-  RAISE NOTICE 'R386_G1_NOOR_FENCE_AND_S3_COMMIT_SAME_SQL_TRANSACTION_PASS';
+ IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')<>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')<>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')<>'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+ THEN RAISE EXCEPTION 'R386_G1_UUID_AUTH_OWNER_FENCE_FAILED'; END IF;
+ RAISE NOTICE 'R386_G1_REAL_UUID_NOOR_SESSION_OWNER_FENCE_PASS';
 END $$;
 RESET ROLE;
-DO $$
-BEGIN
- IF (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')<>1
-    OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')<>1
- THEN RAISE EXCEPTION 'R386_G1_CROSS_OWNER_RECEIPT_DRIFT'; END IF;
-END $$;
 SET ROLE noor_r386_g1_writer;
+DO $g1_deny$
+DECLARE actual text;
+BEGIN
+ BEGIN
+  PERFORM noor_r386_candidate.g1_authorized_commit(
+   'g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','uuid-unenrolled',false,0,
+   '{"outbox":[]}'::jsonb,'{"outbox":[]}'::jsonb,
+   'k1',repeat('a',64),jsonb_build_object('k1',repeat('a',64)),ARRAY[]::text[]);
+  RAISE EXCEPTION 'R386_G1_UNSAFE_UUID_WRITE_ALLOWED';
+ EXCEPTION WHEN OTHERS THEN
+  GET STACKED DIAGNOSTICS actual=MESSAGE_TEXT;
+  IF actual NOT IN ('R386_S3_SCOPE','R386_S3_NOT_ENROLLED')
+  THEN RAISE EXCEPTION 'R386_G1_WRONG_UNENROLLED_FAILURE %',actual; END IF;
+ END;
+ RAISE NOTICE 'R386_G1_REAL_UUID_S3_SYNTHETIC_SCOPE_DENIED_PASS';
+END $g1_deny$;
+RESET ROLE;
+SET ROLE noor_r386_g1_guard;
 
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','R386_G1_LINKAGE_DENIED');
 SELECT noor_r386_candidate.g1_expect_rejection('g1-no-such-session','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_NOOR_SESSION_DENIED');
@@ -147,13 +134,13 @@ RESET ROLE;
 
 -- Simulate revocation AFTER an earlier successful NOOR application check.
 UPDATE public.noor_sessions SET revoked_at_epoch_ms=1 WHERE id='g1-a-device-one';
-SET ROLE noor_r386_g1_writer;
+SET ROLE noor_r386_g1_guard;
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_NOOR_SESSION_DENIED');
 RESET ROLE;
 UPDATE public.noor_sessions SET revoked_at_epoch_ms=NULL WHERE id='g1-a-device-one';
 
 UPDATE public.noor_entitlement_grants SET revoked_at_epoch_ms=1 WHERE id='grant-a';
-SET ROLE noor_r386_g1_writer;
+SET ROLE noor_r386_g1_guard;
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_GRANT_DENIED');
 RESET ROLE;
 UPDATE public.noor_entitlement_grants SET revoked_at_epoch_ms=NULL WHERE id='grant-a';
@@ -161,7 +148,7 @@ UPDATE public.noor_entitlement_grants SET revoked_at_epoch_ms=NULL WHERE id='gra
 -- Old cookie must also fail if the linked Auth principal is soft deleted.
 UPDATE auth.users SET deleted_at=clock_timestamp()
  WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-SET ROLE noor_r386_g1_writer;
+SET ROLE noor_r386_g1_guard;
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_AUTH_USER_DENIED');
 RESET ROLE;
 UPDATE auth.users SET deleted_at=NULL
@@ -169,12 +156,12 @@ UPDATE auth.users SET deleted_at=NULL
 
 -- Erasure has a transaction-level owner lock shared with the write guard.
 INSERT INTO noor_r386_candidate.g1_owner_erasure_tombstone(owner_id) VALUES('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-SET ROLE noor_r386_g1_writer;
+SET ROLE noor_r386_g1_guard;
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_ERASED_OWNER_DENIED');
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_ERASED_OWNER_DENIED');
 DO $$
 BEGIN
- IF pg_catalog.jsonb_typeof(noor_r386_candidate.g1_authorized_load('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')) <> 'object'
+ IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') <> 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
  THEN RAISE EXCEPTION 'R386_G1_OTHER_ACCOUNT_CHANGED'; END IF;
  RAISE NOTICE 'R386_G1_COMMIT_FENCE_REVOKE_GRANT_AUTH_ERASE_OWNER_ISOLATION_PASS';
 END $$;
