@@ -96,7 +96,8 @@ test("G1 denies revoked or mismatched session before any S3 write; rolls back", 
   for (const mode of ["revoked", "mismatch"] as const) {
     const f = rig(mode);
     await assert.rejects(f.adapter.commit(fixture), /R386_G1_COMMIT_UNAVAILABLE/);
-    assert.equal(f.calls.some(x => x.sql.includes("g1_authorized_commit")), false);
+    assert.equal(f.calls.filter(x => x.sql.includes("g1_authorized_commit")).length, 1);
+    assert.equal(f.calls.some(x => x.sql.includes("SELECT noor_r386_candidate.s3_commit")), false);
     assert.equal(f.calls.filter(x => x.sql === "ROLLBACK").length, 1);
     assert.equal(f.releases(), 1);
   }
@@ -140,8 +141,8 @@ test("G1 receipt replay lookup requires the same fresh NOOR SQL owner guard", as
   });
   assert.deepEqual(prior, { keyId: "k1", digest: "a".repeat(64), revision: 0 });
   const queries = f.calls.map(v => v.sql);
-  assert.equal(queries.some(s => s.includes("g1_authorized_lookup")), true);
-  assert.equal(queries.some(s => s.includes("g1_authorized_lookup")), true);
+  assert.equal(queries.filter(s => s.includes("g1_authorized_lookup")).length, 1);
+  assert.equal(queries.some(s => s.includes("SELECT noor_r386_candidate.s3_lookup")), false);
   assert.equal(queries.some(s => s.includes("g1_authorized_commit")), false);
   assert.equal(queries.at(-1), "COMMIT");
   assert.equal(f.releases(), 1);
@@ -152,7 +153,8 @@ test("G1 receipt replay lookup requires the same fresh NOOR SQL owner guard", as
     serverResolvedOwnerId: owner,
     requestId: fixture.requestId,
   }), /R386_G1_COMMIT_UNAVAILABLE/);
-  assert.equal(revoked.calls.some(v => v.sql.includes("g1_authorized_lookup")), false);
+  assert.equal(revoked.calls.filter(v => v.sql.includes("g1_authorized_lookup")).length, 1);
+  assert.equal(revoked.calls.some(v => v.sql.includes("SELECT noor_r386_candidate.s3_lookup")), false);
   assert.equal(revoked.calls.at(-1)?.sql, "ROLLBACK");
   assert.equal(revoked.releases(), 1);
 });
