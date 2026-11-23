@@ -92,7 +92,7 @@ BEGIN
 END $$;
 
 SET ROLE noor_r386_g1_writer;
-DO $
+DO $$
 BEGIN
  IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
    OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa') <> 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -130,14 +130,14 @@ BEGIN
   IF response_b->>'kind'<>'committed' OR response_b#>>'{receipt,revision}'<>'0'
   THEN RAISE EXCEPTION 'R386_G1_FENCED_S3_COMMIT_B'; END IF;
   RAISE NOTICE 'R386_G1_NOOR_FENCE_AND_S3_COMMIT_SAME_SQL_TRANSACTION_PASS';
-END $;
+END $$;
 RESET ROLE;
-DO $
+DO $$
 BEGIN
  IF (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')<>1
     OR (SELECT count(*) FROM noor_r386_candidate.command_receipt WHERE owner_id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')<>1
  THEN RAISE EXCEPTION 'R386_G1_CROSS_OWNER_RECEIPT_DRIFT'; END IF;
-END $;
+END $$;
 SET ROLE noor_r386_g1_writer;
 
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','R386_G1_LINKAGE_DENIED');
@@ -178,7 +178,7 @@ BEGIN
  IF noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb') <> 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
  THEN RAISE EXCEPTION 'R386_G1_OTHER_ACCOUNT_CHANGED'; END IF;
  RAISE NOTICE 'R386_G1_COMMIT_FENCE_REVOKE_GRANT_AUTH_ERASE_OWNER_ISOLATION_PASS';
-END $;
+END $$;
 RESET ROLE;
 
 -- The forbidden app/browser roles get no entry point into the fence or tombstones.
