@@ -42,6 +42,11 @@ function rig(mode: Case = "success") {
         if (mode === "revoked") throw Error("R386_G1_NOOR_SESSION_DENIED");
         return { rows: [{ owner_id: mode === "mismatch" ? "other-owner" : owner }] as Row[] };
       }
+      if (sql.startsWith("SELECT noor_r386_candidate.s3_lookup")) {
+        return { rows: [{ receipt: {
+          keyId: "k1", digest: "a".repeat(64), revision: 0,
+        } }] as Row[] };
+      }
       if (sql.startsWith("SELECT noor_r386_candidate.s3_commit")) {
         if (mode === "databaseFailure") throw Error("sensitive SQL contents");
         return { rows: [{ outcome: { kind: "committed", receipt: { revision: 0 } } }] as Row[] };
@@ -126,4 +131,30 @@ test("G1 refuses missing trusted session or forged owner before database connect
   }
   assert.equal(f.calls.length, 0);
   assert.equal(f.releases(), 0);
+});
+
+test("G1 receipt replay lookup requires the same fresh NOOR SQL owner guard", async () => {
+  const f = rig();
+  const prior = await f.adapter.lookup({
+    trustedNoorSessionId: fixture.trustedNoorSessionId,
+    serverResolvedOwnerId: owner,
+    requestId: fixture.requestId,
+  });
+  assert.deepEqual(prior, { keyId: "k1", digest: "a".repeat(64), revision: 0 });
+  const queries = f.calls.map(v => v.sql);
+  assert.equal(queries.some(s => s.includes("g1_assert_committable_noor_owner")), true);
+  assert.equal(queries.some(s => s.includes("s3_lookup")), true);
+  assert.equal(queries.some(s => s.includes("s3_commit")), false);
+  assert.equal(queries.at(-1), "COMMIT");
+  assert.equal(f.releases(), 1);
+
+  const revoked = rig("revoked");
+  await assert.rejects(revoked.adapter.lookup({
+    trustedNoorSessionId: fixture.trustedNoorSessionId,
+    serverResolvedOwnerId: owner,
+    requestId: fixture.requestId,
+  }), /R386_G1_COMMIT_UNAVAILABLE/);
+  assert.equal(revoked.calls.some(v => v.sql.includes("s3_lookup")), false);
+  assert.equal(revoked.calls.at(-1)?.sql, "ROLLBACK");
+  assert.equal(revoked.releases(), 1);
 });
