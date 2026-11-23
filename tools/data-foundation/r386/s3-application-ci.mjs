@@ -17,7 +17,7 @@ const a="synthetic-r386-s3-app-a",b="synthetic-r386-s3-app-b";
 let now="2026-11-20T12:00:00.000Z";
 const clock={now:()=>now};
 const idGenerator=new CryptographicIdGenerator();
-const atomicSaveCandidate=createR386RuntimeSaveCandidate({database,keys:new Map([["ci-key",Buffer.alloc(32,91)]]),activeKeyId:"ci-key",clock});
+const atomicSaveCandidate=createR386RuntimeSaveCandidate({database,keys:new Map([["ci-key",Buffer.alloc(32,91)]]),activeKeyId:"ci-key",clock,syntheticOnly:true});
 const foundation={
  openOperation:owner=>openR386CandidateReadScope(database,owner),
  listKnownUserIds:async()=>[a],
