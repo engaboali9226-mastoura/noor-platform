@@ -86,7 +86,7 @@ export interface PersonalControlExecutor {
 // Neither the browser nor a header can select the owner or enable this path.
 export interface R386AtomicSaveCandidate {
   run(input: Readonly<{
-    trustedNoorSessionId: string;
+    trustedNoorSessionId?: string;
     ownerId: string;
     requestId: string;
     command: unknown;
