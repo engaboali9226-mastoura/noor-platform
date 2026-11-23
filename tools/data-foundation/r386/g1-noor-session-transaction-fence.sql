@@ -86,11 +86,11 @@ BEGIN
     WHERE account_id=s.account_id FOR SHARE
   LOOP
     linkage_count := linkage_count+1;
-    IF l.user_id IS DISTINCT FROM p_server_owner_id
-      OR l.subject IS NULL OR l.issuer IS NULL
+    IF l.user_id::text IS DISTINCT FROM p_server_owner_id
+      OR l.subject IS DISTINCT FROM l.user_id::text OR l.issuer IS NULL
     THEN RAISE EXCEPTION 'R386_G1_LINKAGE_DENIED'; END IF;
     SELECT id,deleted_at INTO a FROM auth.users
-      WHERE id::text=l.subject FOR SHARE;
+      WHERE id=l.user_id FOR SHARE;
     IF NOT FOUND OR a.deleted_at IS NOT NULL
     THEN RAISE EXCEPTION 'R386_G1_AUTH_USER_DENIED'; END IF;
   END LOOP;
