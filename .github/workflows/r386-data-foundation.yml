@@ -65,3 +65,10 @@ jobs:
       - name: Verify no fixture data remains
         run: |
           psql -X -v ON_ERROR_STOP=1 -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM noor_r386_lab.synthetic_source) OR EXISTS (SELECT 1 FROM noor_r386_lab.event_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.checkpoint) OR EXISTS (SELECT 1 FROM noor_r386_lab.command_receipt) OR EXISTS (SELECT 1 FROM noor_r386_lab.shadow_progress) OR EXISTS (SELECT 1 FROM noor_r386_lab.shadow_history) OR EXISTS (SELECT 1 FROM noor_r386_lab.shadow_delivery) THEN RAISE EXCEPTION 'residual fixture data'; END IF; END \$\$;"
+      - name: G1 transactional multi-device deletion and isolation
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/s2-permanent-backfill.sql
+          psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/s3-atomic-save.sql
+          psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/s3-isolated-role.sql
+          psql -X -v ON_ERROR_STOP=1 -1 -f tools/data-foundation/r386/s4-analytics-facts.sql
+          psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/g1-multisession-erasure-regression.sql
