@@ -64,6 +64,7 @@ import {
 
 import {
   PersonalDailyMaterializationScheduler,
+  type R386SchedulerSaveCandidate,
 } from "./personal-daily-materialization-scheduler.js";
 
 import {
@@ -188,7 +189,7 @@ implements PrivilegedPlatformRuntimeHost {
     private readonly journalStore?: SupabasePostgresPrivateJournalStoreR221,
     private readonly journalKeyRing?: JournalKeyRingR188,
     private readonly atomicSaveCandidate?: R386AtomicSaveCandidate,
-    private readonly schedulerSaveCandidate?: Pick<R386AtomicSaveCandidate,"run">,
+    private readonly schedulerSaveCandidate?: R386SchedulerSaveCandidate,
   ) {}
 
   public getState():
@@ -565,13 +566,16 @@ implements PrivilegedPlatformRuntimeHost {
 export function createPrivilegedPlatformRuntimeHost(
   configuration:
     NoorProductionRuntimeConfiguration,
-  isolatedG1?: Readonly<{ captureOriginatingAuthSessionId: true; atomicSaveCandidate?:R386AtomicSaveCandidate; schedulerSaveCandidate?:Pick<R386AtomicSaveCandidate,"run"> }>,
+  isolatedG1?: Readonly<{ captureOriginatingAuthSessionId: true; hostedR386?:true; atomicSaveCandidate?:R386AtomicSaveCandidate; schedulerSaveCandidate?:R386SchedulerSaveCandidate }>,
 ): PrivilegedPlatformRuntimeHost {
   if(isolatedG1?.atomicSaveCandidate||isolatedG1?.schedulerSaveCandidate){
     const url=new URL(configuration.supabaseUrl);
-    if(url.protocol!=="https:"||url.hostname!=="127.0.0.1"||
+    const permitted=url.protocol==="https:"&&(url.hostname==="127.0.0.1"||
+      (isolatedG1.hostedR386===true&&process.env.NOOR_R386_RUNTIME==="enabled"&&/^[a-z0-9]+\.supabase\.co$/u.test(url.hostname)
+       &&!!isolatedG1.atomicSaveCandidate?.useForOwner&&!!isolatedG1.schedulerSaveCandidate?.useForOwner));
+    if(!permitted||
       !isolatedG1.atomicSaveCandidate?.openRead||!isolatedG1.schedulerSaveCandidate||
-      isolatedG1.atomicSaveCandidate===isolatedG1.schedulerSaveCandidate)
+      Object.is(isolatedG1.atomicSaveCandidate,isolatedG1.schedulerSaveCandidate))
       throw new Error("R386_RUNTIME_ISOLATED_COMPOSITION_REQUIRED");
   }
   const linkageClient =

@@ -91,8 +91,14 @@ async function main(){
   import('../../apps/noor-runtime/dist/privileged-platform-runtime-host.js'),import('../../apps/noor-runtime/dist/privileged-transport-runtime.js'),import('../../apps/noor-runtime/dist/runtime-environment.js'),import('../../apps/noor-runtime/dist/runtime-http-environment.js')
  ]);
  const httpConfiguration=readNoorRuntimeHttpConfigurationFromEnvironment();
- const host=createPrivilegedPlatformRuntimeHost(readNoorProductionRuntimeConfigurationFromEnvironment());
- const runtime=createPrivilegedTransportRuntime({host,httpConfiguration});let server;
+ const config=readNoorProductionRuntimeConfigurationFromEnvironment();
+ const composition=process.env.NOOR_R386_RUNTIME===undefined||process.env.NOOR_R386_RUNTIME==="disabled"?undefined:
+   await (await import('../data-foundation/r386/r386-hosted-composition.mjs')).createR386HostedComposition(process.env);
+ let runtime,server;
+ try{
+  const host=createPrivilegedPlatformRuntimeHost(config,composition?.options);
+  runtime=createPrivilegedTransportRuntime({host,httpConfiguration});
+ }catch(error){await composition?.close();throw error;}
  try{
   await runtime.start();
   server=await createHostedWebServer({staticDirectory:path.join(ROOT,'apps/web/dist'),apiOrigin:'http://127.0.0.1:8787',publicOrigin:httpConfiguration.publicOrigin,usernameLogin:createUsernameLogin({
@@ -101,8 +107,8 @@ async function main(){
    publishableKey:process.env.VITE_NOOR_SUPABASE_PUBLISHABLE_KEY,
   }),releaseCommit:process.env.RENDER_GIT_COMMIT});
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'0.0.0.0',resolve);});
- }catch(error){await runtime.shutdown().catch(()=>{});throw error;}
- let stopping;const stop=()=>{stopping??=(async()=>{await new Promise(resolve=>server.close(resolve));await runtime.shutdown();})().catch(()=>{process.exitCode=1;});return stopping;};
+ }catch(error){await runtime.shutdown().catch(()=>{});await composition?.close();throw error;}
+ let stopping;const stop=()=>{stopping??=(async()=>{await new Promise(resolve=>server.close(resolve));try{await runtime.shutdown();}finally{await composition?.close();}})().catch(()=>{process.exitCode=1;});return stopping;};
  process.once('SIGTERM',()=>{void stop();});process.once('SIGINT',()=>{void stop();});
  // Optional server-only reviewer bootstrap. Never interrupt the real site on failure.
  if(process.env.NOOR_REVIEWER_CREATE_ONCE==='YES'){
