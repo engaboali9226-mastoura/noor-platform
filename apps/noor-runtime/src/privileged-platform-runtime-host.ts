@@ -59,6 +59,7 @@ import { parseJournalServerKeyRingR198 } from "./noor-private-journal-release-gu
 
 import {
   PersonalControlOperation,
+  type R386AtomicSaveCandidate,
 } from "./personal-control-operation.js";
 
 import {
@@ -186,6 +187,8 @@ implements PrivilegedPlatformRuntimeHost {
 
     private readonly journalStore?: SupabasePostgresPrivateJournalStoreR221,
     private readonly journalKeyRing?: JournalKeyRingR188,
+    private readonly atomicSaveCandidate?: R386AtomicSaveCandidate,
+    private readonly schedulerSaveCandidate?: Pick<R386AtomicSaveCandidate,"run">,
   ) {}
 
   public getState():
@@ -256,6 +259,7 @@ implements PrivilegedPlatformRuntimeHost {
 
       this.personalScheduler =
         new PersonalDailyMaterializationScheduler({
+          ...(this.schedulerSaveCandidate?{atomicSaveCandidate:this.schedulerSaveCandidate}:{}),
           foundation:
             this.personalPersistence,
         });
@@ -322,6 +326,7 @@ implements PrivilegedPlatformRuntimeHost {
 
       const personalToday =
         new PersonalTodayOperation({
+          ...(this.atomicSaveCandidate?{atomicSaveCandidate:this.atomicSaveCandidate}:{}),
           isRuntimeRunning,
 
           resolveSession:
@@ -360,6 +365,7 @@ implements PrivilegedPlatformRuntimeHost {
 
       const personalControl =
         new PersonalControlOperation({
+          ...(this.atomicSaveCandidate?{atomicSaveCandidate:this.atomicSaveCandidate}:{}),
           isRuntimeRunning,
 
           resolveSession:
@@ -559,8 +565,15 @@ implements PrivilegedPlatformRuntimeHost {
 export function createPrivilegedPlatformRuntimeHost(
   configuration:
     NoorProductionRuntimeConfiguration,
-  isolatedG1?: Readonly<{ captureOriginatingAuthSessionId: true }>,
+  isolatedG1?: Readonly<{ captureOriginatingAuthSessionId: true; atomicSaveCandidate?:R386AtomicSaveCandidate; schedulerSaveCandidate?:Pick<R386AtomicSaveCandidate,"run"> }>,
 ): PrivilegedPlatformRuntimeHost {
+  if(isolatedG1?.atomicSaveCandidate||isolatedG1?.schedulerSaveCandidate){
+    const url=new URL(configuration.supabaseUrl);
+    if(url.protocol!=="https:"||url.hostname!=="127.0.0.1"||
+      !isolatedG1.atomicSaveCandidate?.openRead||!isolatedG1.schedulerSaveCandidate||
+      isolatedG1.atomicSaveCandidate===isolatedG1.schedulerSaveCandidate)
+      throw new Error("R386_RUNTIME_ISOLATED_COMPOSITION_REQUIRED");
+  }
   const linkageClient =
     createNoorPrivilegedSupabaseClient<
       NoorAuthenticationAccountLinkageDatabase
@@ -696,5 +709,7 @@ export function createPrivilegedPlatformRuntimeHost(
     configuration.expectedIssuer,configuration.expectedAudience,
     journalStore,
     journalKeyRing,
+    isolatedG1?.atomicSaveCandidate,
+    isolatedG1?.schedulerSaveCandidate,
   );
 }

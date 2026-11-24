@@ -13,10 +13,10 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock,
  // PostgreSQL commit adapter fails during composition, not after a user write.
  if(syntheticOnly ? sqlCommit!==null : !sqlCommit||typeof sqlCommit.commit!=="function"||typeof sqlCommit.lookup!=="function"||typeof sqlCommit.load!=="function")
   throw Error("R386_G1_LIVE_COMMIT_FENCE_REQUIRED");
- const execute=async({trustedNoorSessionId,ownerId,requestId,command,deletedDefinitionId=null,evaluate})=>{
+ const scopedDatabase=(trustedNoorSessionId,ownerId)=>{
   if(!syntheticOnly && (typeof trustedNoorSessionId!=="string"||!trustedNoorSessionId))
    throw Error("R386_G1_MISSING_TRUSTED_SESSION");
-  const sessionDatabase=syntheticOnly?database:Object.freeze({
+  return syntheticOnly?database:Object.freeze({
    lookup:(lookupOwner,lookupRequest)=>{
     if(lookupOwner!==ownerId)throw Error("R386_G1_OWNER_CONTEXT_CHANGED");
     return sqlCommit.lookup({
@@ -40,6 +40,9 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock,
     });
    },
   });
+ };
+ const execute=async({trustedNoorSessionId,ownerId,requestId,command,deletedDefinitionId=null,evaluate})=>{
+  const sessionDatabase=scopedDatabase(trustedNoorSessionId,ownerId);
   const result=await executeReceiptCandidate({owner:ownerId,requestId,command,keys,activeKeyId,evaluate,
    adapter:createPersistentSaveAdapter({database:sessionDatabase,deletedDefinitionId})});
   return {status:result.status};
@@ -48,10 +51,11 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock,
   run(input){
    return execute({...input,evaluate:state=>evaluateR386PersonalFoundationCandidate(input.ownerId,state,input.evaluate)});
   },
-  async reconcile({ownerId,instant,evaluate}){
-   // A scheduler has no browser session; it requires a distinct authorized
-   // server identity and same-transaction SQL gate before live activation.
-   if(!syntheticOnly)throw Error("R386_G1_SCHEDULER_AUTHORITY_UNAVAILABLE");
+  openRead({trustedNoorSessionId,ownerId}){
+   return openR386CandidateReadScope(scopedDatabase(trustedNoorSessionId,ownerId),ownerId);
+  },
+  async reconcile({trustedNoorSessionId,ownerId,instant,evaluate}){
+   const sessionDatabase=scopedDatabase(trustedNoorSessionId,ownerId);
    // A Today read may materialize state. Compute on an authorized private clone
    // first; commit changes through the same receipt transaction, then rebuild
    // the projection from a confirmed fresh source, never from a stored receipt.
@@ -65,15 +69,15 @@ export function createR386RuntimeSaveCandidate({database,keys,activeKeyId,clock,
     return {value,scope,next};
    };
    for(let attempt=0;attempt<3;attempt++){
-    const observed=await database.load(ownerId);
+    const observed=await sessionDatabase.load(ownerId);
     const inspected=await inspect(observed.state);
     if(canonicalJson(inspected.next)===canonicalJson(observed.state)){
-     const confirmed=await database.load(ownerId);
+     const confirmed=await sessionDatabase.load(ownerId);
      if(confirmed.revision===observed.revision&&confirmed.existed===observed.existed&&canonicalJson(confirmed.state)===canonicalJson(observed.state))
       return {status:200,value:inspected.value,scope:inspected.scope};
      continue;
     }
-    const result=await execute({ownerId,requestId:"today-"+slot+"-r"+observed.revision,
+    const result=await execute({trustedNoorSessionId,ownerId,requestId:"today-"+slot+"-r"+observed.revision,
      command:{type:"ensure-today-r386",slot,observedRevision:observed.revision},
      evaluate:async state=>(await inspect(state)).next});
     if(result.status!==204)return result;

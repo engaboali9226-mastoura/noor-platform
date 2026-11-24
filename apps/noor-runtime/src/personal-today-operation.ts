@@ -309,8 +309,9 @@ implements PersonalTodayExecutor {
         }).execute(ownerId);
       if(this.dependencies.atomicSaveCandidate){
         const instant=this.dependencies.ensureToday.clock.now();
+        if(!input.sessionId)return empty(401);
         const candidate=await this.dependencies.atomicSaveCandidate.reconcile({
-          ownerId,instant,evaluate:operation=>executeToday(operation,instant),
+          ownerId,instant,trustedNoorSessionId:input.sessionId,evaluate:operation=>executeToday(operation,instant),
         });
         if(candidate.status!==200)return empty(candidate.status);
         scope=candidate.scope;

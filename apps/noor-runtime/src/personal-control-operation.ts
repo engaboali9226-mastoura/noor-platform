@@ -85,6 +85,7 @@ export interface PersonalControlExecutor {
 // Optional server-injected R386 isolated candidate; absent in normal runtime.
 // Neither the browser nor a header can select the owner or enable this path.
 export interface R386AtomicSaveCandidate {
+  openRead?(input: Readonly<{trustedNoorSessionId:string;ownerId:string}>):Promise<PersonalFoundationOperation>;
   run(input: Readonly<{
     trustedNoorSessionId?: string;
     ownerId: string;
@@ -94,7 +95,7 @@ export interface R386AtomicSaveCandidate {
     deletedDefinitionId?: string;
   }>): Promise<Readonly<{status:204|409|503}>>;
   reconcile<T>(input: Readonly<{
-    ownerId:string; instant:string;
+    ownerId:string; instant:string; trustedNoorSessionId?:string;
     evaluate(scope:PersonalFoundationOperation):Promise<T>;
   }>):Promise<Readonly<{status:200;value:T;scope:PersonalFoundationOperation}|{status:409|503}>>;
   initialize(input: Readonly<{
@@ -303,6 +304,15 @@ implements PersonalControlExecutor {
   /** R186 lab: expose the existing verified session -> authorization -> UserId path
    * to server-only private journal operations, without adding an alternate identity owner.
    */
+  private async openAuthorizedRead(sessionId:string|null, ownerId:string):Promise<PersonalFoundationOperation> {
+    const candidate=this.dependencies.atomicSaveCandidate;
+    if(candidate?.openRead){
+      if(!sessionId)throw new Error("R386_G1_MISSING_TRUSTED_SESSION");
+      return candidate.openRead({trustedNoorSessionId:sessionId,ownerId});
+    }
+    return this.dependencies.foundation.openOperation(ownerId);
+  }
+
   public async resolveAuthorizedJournalUser(sessionId: string | null): Promise<UserResolution> {
     return this.resolveUser(sessionId);
   }
@@ -324,7 +334,7 @@ implements PersonalControlExecutor {
       if (typeof now !== "string" || !Number.isFinite(Date.parse(now))) {
         return { kind: "error", status: 503 };
       }
-      const scope = await this.dependencies.foundation.openOperation(resolved.userId);
+      const scope = await this.openAuthorizedRead(sessionId,resolved.userId);
       const matches = scope.snapshot.listPersonalDays(resolved.userId).filter((day: Readonly<{state: string; userId: string; boundary: {startAt: string; endAt: string; localDate: string}}>) =>
         day.state === "Open"
         && day.userId === resolved.userId
@@ -365,12 +375,7 @@ implements PersonalControlExecutor {
     }
 
     try {
-      const scope =
-        await this.dependencies
-          .foundation
-          .openOperation(
-            resolved.userId,
-          );
+      const scope = await this.openAuthorizedRead(input.sessionId,resolved.userId);
 
       return Object.freeze({
         status: 200 as const,
