@@ -22,9 +22,11 @@ extends PersonalFoundationOperationScopeProvider {
   listKnownUserIds(): Promise<readonly string[]>;
 }
 
+export type R386SchedulerSaveCandidate=Pick<R386AtomicSaveCandidate,"run"> & {useForOwner?(ownerId:string):Promise<boolean>};
+
 export interface PersonalDailyMaterializationSchedulerDependencies {
   readonly foundation: ScheduledFoundation;
-  readonly atomicSaveCandidate?: Pick<R386AtomicSaveCandidate,"run">;
+  readonly atomicSaveCandidate?: R386SchedulerSaveCandidate;
   readonly clock?: ClockPort;
   readonly idGenerator?: IdGeneratorPort;
   readonly intervalMs?: number;
@@ -168,10 +170,11 @@ export class PersonalDailyMaterializationScheduler {
   
           await ensureToday.execute(userId);
         };
-        if(this.dependencies.atomicSaveCandidate){
+        const atomic=this.dependencies.atomicSaveCandidate;
+        if(atomic&&(!atomic.useForOwner||await atomic.useForOwner(userId))){
           const slot=now.slice(0,16).replace(/[-:T]/g,"");
           // A stable scheduler namespace independent of client-generated IDs.
-          await this.dependencies.atomicSaveCandidate.run({
+          await atomic.run({
             ownerId:userId,requestId:"scheduler-"+slot,
             command:{type:"ensure-today-r386",slot},
             evaluate:scope=>ensure(scope,{now:()=>now}),

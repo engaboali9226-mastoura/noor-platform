@@ -85,6 +85,7 @@ export interface PersonalControlExecutor {
 // Optional server-injected R386 isolated candidate; absent in normal runtime.
 // Neither the browser nor a header can select the owner or enable this path.
 export interface R386AtomicSaveCandidate {
+  useForOwner?(input: Readonly<{trustedNoorSessionId:string;ownerId:string}>):Promise<boolean>;
   openRead?(input: Readonly<{trustedNoorSessionId:string;ownerId:string}>):Promise<PersonalFoundationOperation>;
   run(input: Readonly<{
     trustedNoorSessionId?: string;
@@ -304,8 +305,15 @@ implements PersonalControlExecutor {
   /** R186 lab: expose the existing verified session -> authorization -> UserId path
    * to server-only private journal operations, without adding an alternate identity owner.
    */
-  private async openAuthorizedRead(sessionId:string|null, ownerId:string):Promise<PersonalFoundationOperation> {
+  private async selectedCandidate(sessionId:string|null,ownerId:string):Promise<R386AtomicSaveCandidate|undefined>{
     const candidate=this.dependencies.atomicSaveCandidate;
+    if(!candidate)return undefined;
+    if(!candidate.useForOwner)return candidate;
+    if(!sessionId)throw new Error("R386_G1_MISSING_TRUSTED_SESSION");
+    return await candidate.useForOwner({trustedNoorSessionId:sessionId,ownerId})?candidate:undefined;
+  }
+  private async openAuthorizedRead(sessionId:string|null, ownerId:string):Promise<PersonalFoundationOperation> {
+    const candidate=await this.selectedCandidate(sessionId,ownerId);
     if(candidate?.openRead){
       if(!sessionId)throw new Error("R386_G1_MISSING_TRUSTED_SESSION");
       return candidate.openRead({trustedNoorSessionId:sessionId,ownerId});
@@ -463,11 +471,13 @@ implements PersonalControlExecutor {
           &&method!=="Karachi"&&method!=="NorthAmerica"))return empty(400);
       const resolved=await this.resolveUser(input.sessionId);
       if(resolved.kind==="error")return empty(resolved.status);
-      if(this.dependencies.atomicSaveCandidate){
+      let candidate:R386AtomicSaveCandidate|undefined;
+      try{candidate=await this.selectedCandidate(input.sessionId,resolved.userId);}catch{return empty(503);}
+      if(candidate){
         if(!validCandidateClientRequestId(input.requestId))return empty(400);
         if(!input.sessionId)return empty(401);
         try{
-          return empty((await this.dependencies.atomicSaveCandidate.initialize({
+          return empty((await candidate.initialize({
             trustedNoorSessionId:input.sessionId,ownerId:resolved.userId,requestId:input.requestId,city,calculationMethod:method,
           })).status);
         }catch(error){return this.candidateFailure(error);}
@@ -502,11 +512,13 @@ implements PersonalControlExecutor {
       );
     }
 
-    if(this.dependencies.atomicSaveCandidate){
+    let candidate:R386AtomicSaveCandidate|undefined;
+    try{candidate=await this.selectedCandidate(input.sessionId,resolved.userId);}catch{return empty(503);}
+    if(candidate){
       if(!validCandidateClientRequestId(input.requestId))return empty(400);
       if(!input.sessionId)return empty(401);
       try{
-        return empty((await this.dependencies.atomicSaveCandidate.run({
+        return empty((await candidate.run({
           trustedNoorSessionId:input.sessionId,ownerId:resolved.userId,requestId:input.requestId,command,
           ...(command.type==="delete-definition"?{deletedDefinitionId:command.definitionId}:{}),
           evaluate:async scope=>{

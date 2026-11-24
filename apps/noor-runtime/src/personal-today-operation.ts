@@ -98,7 +98,7 @@ type EnsureTodayStableDependencies =
 import type {R386AtomicSaveCandidate} from "./personal-control-operation.js";
 
 export interface PersonalTodayOperationDependencies {
-  readonly atomicSaveCandidate?: Pick<R386AtomicSaveCandidate,"reconcile">;
+  readonly atomicSaveCandidate?: Pick<R386AtomicSaveCandidate,"reconcile"|"useForOwner">;
   readonly isRuntimeRunning:
     () => boolean;
 
@@ -307,10 +307,12 @@ implements PersonalTodayExecutor {
           prayerPolicies:operation.prayerPolicies,
           transaction:operation.transaction,
         }).execute(ownerId);
-      if(this.dependencies.atomicSaveCandidate){
+      const atomic=this.dependencies.atomicSaveCandidate;
+      const selected=atomic&&(!atomic.useForOwner||await atomic.useForOwner({trustedNoorSessionId:input.sessionId,ownerId}));
+      if(atomic&&selected){
         const instant=this.dependencies.ensureToday.clock.now();
         if(!input.sessionId)return empty(401);
-        const candidate=await this.dependencies.atomicSaveCandidate.reconcile({
+        const candidate=await atomic.reconcile({
           ownerId,instant,trustedNoorSessionId:input.sessionId,evaluate:operation=>executeToday(operation,instant),
         });
         if(candidate.status!==200)return empty(candidate.status);
