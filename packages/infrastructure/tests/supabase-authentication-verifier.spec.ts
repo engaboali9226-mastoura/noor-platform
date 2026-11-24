@@ -1941,3 +1941,22 @@ test(
   },
 );
 
+
+// Isolated G1 opt-in: preserve only a verified UUID claim, without making it enumerable.
+test("G1 captures signed originating session only when explicitly enabled", async () => {
+  const key = await createKey("key-1");
+  const resolver = new RecordingResolver(() => linkage("account-1", "user-1"));
+  const sid = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const proof = await issueToken(key.privateKey, { claims: { session_id: sid } });
+  const jwks = jwksFetch([{ keys: [key.publicJwk] }]);
+  await usingFetch(jwks.fetcher, async () => {
+    const verifier = new SupabaseAuthenticationVerifier({ expectedIssuer: ISSUER,
+      expectedAudience: AUDIENCE, expectedAlgorithm: "ES256", captureOriginatingAuthSessionId: true }, resolver);
+    const auth = await verifier.verify(proof);
+    assert.equal(auth.originatingAuthSessionId, sid);
+    assert.equal(Object.keys(auth).includes("originatingAuthSessionId"), false);
+    assert.equal((await candidate(resolver).verify(proof)).originatingAuthSessionId, undefined);
+    const invalid = await issueToken(key.privateKey, { claims: { session_id: "not-a-uuid" } });
+    await assert.rejects(verifier.verify(invalid), InvalidCredentialsError);
+  });
+});

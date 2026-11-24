@@ -12,15 +12,21 @@ import type {
   ClockPort,
   IdGeneratorPort,
   PersonalFoundationOperationScopeProvider,
+  PersonalFoundationOperation,
 } from "@noor/personal";
+
+import type {R386AtomicSaveCandidate} from "./personal-control-operation.js";
 
 interface ScheduledFoundation
 extends PersonalFoundationOperationScopeProvider {
   listKnownUserIds(): Promise<readonly string[]>;
 }
 
+export type R386SchedulerSaveCandidate=Pick<R386AtomicSaveCandidate,"run"> & {useForOwner?(ownerId:string):Promise<boolean>};
+
 export interface PersonalDailyMaterializationSchedulerDependencies {
   readonly foundation: ScheduledFoundation;
+  readonly atomicSaveCandidate?: R386SchedulerSaveCandidate;
   readonly clock?: ClockPort;
   readonly idGenerator?: IdGeneratorPort;
   readonly intervalMs?: number;
@@ -149,19 +155,33 @@ export class PersonalDailyMaterializationScheduler {
           continue;
         }
 
-        const ensureToday = new EnsureTodayService({
-          clock: this.clock,
-          idGenerator: this.idGenerator,
-          timeZone: new IntlTimeZoneAdapter(),
-          locations: operation.locations,
-          prayerPolicies: operation.prayerPolicies,
-          prayerCalculator: new AdhanPrayerTimeCalculator(),
-          hijriCalculator: new IntlUmmAlQuraHijriDateCalculator(),
-          historyCatalog: new VersionedApprovedIslamicHistoryCatalog(),
-          transaction: operation.transaction,
-        });
-
-        await ensureToday.execute(userId);
+        const ensure=async(scope:PersonalFoundationOperation,clock:ClockPort)=>{
+          const ensureToday = new EnsureTodayService({
+            clock,
+            idGenerator: this.idGenerator,
+            timeZone: new IntlTimeZoneAdapter(),
+            locations: scope.locations,
+            prayerPolicies: scope.prayerPolicies,
+            prayerCalculator: new AdhanPrayerTimeCalculator(),
+            hijriCalculator: new IntlUmmAlQuraHijriDateCalculator(),
+            historyCatalog: new VersionedApprovedIslamicHistoryCatalog(),
+            transaction: scope.transaction,
+          });
+  
+          await ensureToday.execute(userId);
+        };
+        const atomic=this.dependencies.atomicSaveCandidate;
+        if(atomic&&(!atomic.useForOwner||await atomic.useForOwner(userId))){
+          const slot=now.slice(0,16).replace(/[-:T]/g,"");
+          // A stable scheduler namespace independent of client-generated IDs.
+          await atomic.run({
+            ownerId:userId,requestId:"scheduler-"+slot,
+            command:{type:"ensure-today-r386",slot},
+            evaluate:scope=>ensure(scope,{now:()=>now}),
+          });
+        }else{
+          await ensure(operation,this.clock);
+        }
       } catch {
         // Fail closed for one user and retry on a later scheduler tick.
       }

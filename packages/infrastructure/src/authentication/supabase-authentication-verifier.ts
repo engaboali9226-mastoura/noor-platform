@@ -57,6 +57,7 @@ export type SupabaseAuthenticationAlgorithm =
   | "RS256";
 
 export interface SupabaseAuthenticationVerifierConfiguration {
+  readonly captureOriginatingAuthSessionId?: boolean;
   readonly expectedIssuer: string;
   readonly expectedAudience: string;
   readonly expectedAlgorithm:
@@ -158,6 +159,7 @@ function canonicalUnavailable():
 function createVerifiedAuthenticationFromLinkage(
   linkage:
     AuthenticationAccountLinkage,
+  originatingAuthSessionId?: string,
 ): VerifiedAuthentication {
   try {
     if (
@@ -192,6 +194,7 @@ function createVerifiedAuthenticationFromLinkage(
     return new VerifiedAuthentication(
       accountId,
       userId,
+      originatingAuthSessionId,
     );
   } catch {
     throw canonicalUnavailable();
@@ -255,6 +258,7 @@ function isAuthenticatedUserPayload(
 
 export class SupabaseAuthenticationVerifier
 implements AuthenticationVerifier<string> {
+  readonly #captureOriginatingAuthSessionId: boolean;
   readonly #issuer: string;
   readonly #audience: string;
   readonly #algorithm:
@@ -285,6 +289,7 @@ implements AuthenticationVerifier<string> {
       );
     }
 
+    this.#captureOriginatingAuthSessionId = configuration.captureOriginatingAuthSessionId === true;
     this.#issuer =
       requireExactString(
         configuration.expectedIssuer,
@@ -403,6 +408,13 @@ implements AuthenticationVerifier<string> {
       throw canonicalInvalidCredentials();
     }
 
+    const originatingAuthSessionId = this.#captureOriginatingAuthSessionId
+      ? payload.session_id : undefined;
+    if (originatingAuthSessionId !== undefined
+      && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u.test(originatingAuthSessionId)) {
+      throw canonicalInvalidCredentials();
+    }
+
     let identity:
       VerifiedExternalIdentity;
 
@@ -435,6 +447,7 @@ implements AuthenticationVerifier<string> {
 
     return createVerifiedAuthenticationFromLinkage(
       linkage,
+      originatingAuthSessionId,
     );
   }
 }

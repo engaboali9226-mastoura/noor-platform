@@ -1,0 +1,280 @@
+/**
+ * R386 G1 isolated-only PostgreSQL transaction adapter.
+ *
+ * NOT wired to createPrivilegedPlatformRuntimeHost. An approved private
+ * PostgreSQL connection/least-privilege role is required before activation.
+ * Keeps the persisted NOOR session/owner fence and S3 mutation in ONE
+ * connection and transaction. A Supabase REST RPC is not an equivalent
+ * transaction boundary, and service_role is explicitly rejected.
+ */
+export interface G1PostgresClient {
+  query<Row extends Record<string, unknown>>(
+    sql: string,
+    parameters?: unknown[],
+  ): Promise<Readonly<{ rows: Row[] }>>;
+  /** Pass true to destroy the physical connection instead of returning it to the pool. */
+  release(destroy?: boolean): void;
+}
+
+export interface G1PostgresPool {
+  connect(): Promise<G1PostgresClient>;
+}
+
+export interface G1ReceiptCommitInput {
+  readonly trustedNoorSessionId: string;
+  readonly serverResolvedOwnerId: string;
+  readonly requestId: string;
+  readonly expectedExists: boolean;
+  readonly expectedRevision: number;
+  readonly before: Readonly<Record<string, unknown>>;
+  readonly after: Readonly<Record<string, unknown>>;
+  readonly keyId: string;
+  readonly digest: string;
+  readonly fingerprints: Readonly<Record<string, string>>;
+  readonly deleteRefs: readonly string[];
+}
+
+export type G1ReceiptCommitResult =
+  | Readonly<{ kind: "committed" | "replay"; receipt: unknown }>
+  | Readonly<{ kind: "conflict" }>;
+
+interface G1OperationalOwner {
+  readonly trustedNoorSessionId: string;
+  readonly serverResolvedOwnerId: string;
+}
+
+interface G1OperationalSave extends G1OperationalOwner {
+  readonly expectedExists: boolean;
+  readonly expectedRevision: number;
+  readonly state: Readonly<Record<string, unknown>>;
+}
+
+function validOperationalOwner(value: G1OperationalOwner): boolean {
+  return typeof value.trustedNoorSessionId === "string" && value.trustedNoorSessionId.length > 0
+    && value.trustedNoorSessionId.length <= 256
+    && typeof value.serverResolvedOwnerId === "string" && value.serverResolvedOwnerId.length > 0
+    && value.serverResolvedOwnerId.length <= 512;
+}
+
+function permittedInput(input: G1ReceiptCommitInput): boolean {
+  return typeof input.trustedNoorSessionId === "string"
+    && input.trustedNoorSessionId.length > 0
+    && input.trustedNoorSessionId.length <= 256
+    && typeof input.serverResolvedOwnerId === "string"
+    && input.serverResolvedOwnerId.length > 0
+    && input.serverResolvedOwnerId.length <= 512
+    && typeof input.requestId === "string"
+    && /^[A-Za-z0-9_-]{1,128}$/u.test(input.requestId)
+    && typeof input.keyId === "string"
+    && /^[A-Za-z0-9_-]{1,128}$/u.test(input.keyId)
+    && /^[0-9a-f]{64}$/u.test(input.digest)
+    && Number.isSafeInteger(input.expectedRevision)
+    && input.expectedRevision >= 0
+    && typeof input.expectedExists === "boolean"
+    && input.before !== null && typeof input.before === "object"
+    && !Array.isArray(input.before)
+    && input.after !== null && typeof input.after === "object"
+    && !Array.isArray(input.after)
+    && input.fingerprints !== null && typeof input.fingerprints === "object"
+    && !Array.isArray(input.fingerprints)
+    && Array.isArray(input.deleteRefs)
+    && input.deleteRefs.every(value => typeof value === "string" && value.length <= 512);
+}
+
+export function createNoorR386G1SqlCommitAdapter(
+  input: Readonly<{
+    pool: G1PostgresPool;
+    expectedSqlRole: string;
+  }>,
+): Readonly<{
+  commit(value: G1ReceiptCommitInput): Promise<G1ReceiptCommitResult>;
+  lookup(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string; requestId: string }>): Promise<unknown | null>;
+  load(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> }>>;
+  // Original NOOR foundation. These methods are only wired in the disposable G1 fixture.
+  loadOperational(value: G1OperationalOwner): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> | null }>>;
+  saveOperational(value: G1OperationalSave): Promise<boolean>;
+}> {
+  if (!/^noor_r386_g1_[a-z0-9_]{1,48}$/u.test(input.expectedSqlRole)) {
+    throw new Error("R386_G1_UNAPPROVED_SQL_ROLE");
+  }
+  // Also protect the replay/receipt lookup; checking only the write path
+  // would let a revoked NOOR session acknowledge an old command receipt.
+  const guarded = async <T>(
+    trustedNoorSessionId: string,
+    serverResolvedOwnerId: string,
+    work: (client: G1PostgresClient) => Promise<T>,
+  ): Promise<T> => {
+    const client = await input.pool.connect();
+    let started = false;
+    // Until role verification and BEGIN are acknowledged, do not reuse the connection.
+    let discard = true;
+    try {
+      const identity = await client.query<{
+        role_name: string;
+        is_superuser: boolean;
+        bypass_rls: boolean;
+      }>(
+        "SELECT current_user AS role_name, rolsuper AS is_superuser, rolbypassrls AS bypass_rls "
+        + "FROM pg_catalog.pg_roles WHERE rolname=current_user",
+      );
+      const role = identity.rows[0];
+      if (identity.rows.length !== 1 || !role
+        || role.role_name !== input.expectedSqlRole
+        || role.is_superuser !== false || role.bypass_rls !== false) {
+        throw new Error("R386_G1_PRIVILEGED_SQL_ROLE_DENIED");
+      }
+      await client.query("BEGIN");
+      started = true;
+      discard = false;
+      // Never split authorization and mutation into two SQL statements.
+      // The role can execute the guarded wrappers but not raw S3 functions.
+      const result = await work(client);
+      // A failed COMMIT has an ambiguous outcome, even if a subsequent rollback succeeds.
+      discard = true;
+      await client.query("COMMIT");
+      started = false;
+      discard = false;
+      return result;
+    } catch {
+      if (started) {
+        try { await client.query("ROLLBACK"); } catch { discard = true; }
+      }
+      throw new Error("R386_G1_COMMIT_UNAVAILABLE");
+    } finally {
+      client.release(discard);
+    }
+  };
+
+  return Object.freeze({
+    async loadOperational(value: G1OperationalOwner): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> | null }>> {
+      if (!validOperationalOwner(value)) {
+        throw new Error("R386_G1_INVALID_OPERATIONAL_LOAD_INPUT");
+      }
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const result = await client.query<{ loaded: unknown }>(
+          "SELECT noor_r386_candidate.g1_authorized_operational_read($1,$2) AS loaded",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId],
+        );
+        const loaded = result.rows[0]?.loaded;
+        if (result.rows.length !== 1 || loaded === null
+          || typeof loaded !== "object" || Array.isArray(loaded)) {
+          throw new Error("R386_G1_OPERATIONAL_LOAD_CORRUPT");
+        }
+        const { existed, revision, state } = loaded as Record<string, unknown>;
+        if (typeof existed !== "boolean" || !Number.isSafeInteger(revision)
+          || (revision as number) < 0
+          || (existed
+            ? state === null || typeof state !== "object" || Array.isArray(state)
+            : state !== null || revision !== 0)) {
+          throw new Error("R386_G1_OPERATIONAL_LOAD_CORRUPT");
+        }
+        return { existed, revision: revision as number, state: state as Record<string, unknown> | null };
+      });
+    },
+    async saveOperational(value: G1OperationalSave): Promise<boolean> {
+      if (!validOperationalOwner(value) || typeof value.expectedExists !== "boolean"
+        || !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision < 0
+        || value.expectedRevision >= Number.MAX_SAFE_INTEGER
+        || (!value.expectedExists && value.expectedRevision !== 0)
+        || value.state === null || typeof value.state !== "object" || Array.isArray(value.state)) {
+        throw new Error("R386_G1_INVALID_OPERATIONAL_SAVE_INPUT");
+      }
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const result = await client.query<{ saved: boolean }>(
+          "SELECT noor_r386_candidate.g1_authorized_operational_save($1,$2,$3,$4,$5::jsonb) AS saved",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId, value.expectedExists,
+            value.expectedRevision, JSON.stringify(value.state)],
+        );
+        const saved = result.rows[0]?.saved;
+        if (result.rows.length !== 1 || typeof saved !== "boolean") {
+          throw new Error("R386_G1_INVALID_OPERATIONAL_SAVE_RESULT");
+        }
+        return saved;
+      });
+    },
+    // The source snapshot is as sensitive as the write: the exact same
+    // transaction-time NOOR fence must protect it from revoked identities.
+    async load(value: Readonly<{
+      trustedNoorSessionId: string;
+      serverResolvedOwnerId: string;
+    }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> }>> {
+      if (typeof value.trustedNoorSessionId !== "string"
+        || value.trustedNoorSessionId.length < 1
+        || value.trustedNoorSessionId.length > 256
+        || typeof value.serverResolvedOwnerId !== "string"
+        || value.serverResolvedOwnerId.length < 1
+        || value.serverResolvedOwnerId.length > 512) {
+        throw new Error("R386_G1_INVALID_LOAD_INPUT");
+      }
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const response = await client.query<{ loaded: unknown }>(
+          "SELECT noor_r386_candidate.g1_authorized_load($1,$2) AS loaded",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId],
+        );
+        const loaded = response.rows[0]?.loaded;
+        if (response.rows.length !== 1 || loaded === null
+          || typeof loaded !== "object" || Array.isArray(loaded)) {
+          throw new Error("R386_G1_INVALID_LOAD_RESULT");
+        }
+        const state = (loaded as { state?: unknown }).state;
+        const existed = (loaded as { existed?: unknown }).existed;
+        const revision = (loaded as { revision?: unknown }).revision;
+        if (typeof existed !== "boolean" || !Number.isSafeInteger(revision)
+          || (revision as number) < 0 || (!existed && revision !== 0)
+          || state === null || typeof state !== "object" || Array.isArray(state)) {
+          throw new Error("R386_G1_INVALID_LOAD_RESULT");
+        }
+        return { existed, revision: revision as number, state: state as Record<string, unknown> };
+      });
+    },
+    async lookup(value: Readonly<{
+      trustedNoorSessionId: string;
+      serverResolvedOwnerId: string;
+      requestId: string;
+    }>): Promise<unknown | null> {
+      if (typeof value.trustedNoorSessionId !== "string" || !value.trustedNoorSessionId
+        || value.trustedNoorSessionId.length > 256
+        || typeof value.serverResolvedOwnerId !== "string" || !value.serverResolvedOwnerId
+        || value.serverResolvedOwnerId.length > 512
+        || !/^[A-Za-z0-9_-]{1,128}$/u.test(value.requestId)) {
+        throw new Error("R386_G1_INVALID_LOOKUP_INPUT");
+      }
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const row = await client.query<{ receipt: unknown | null }>(
+          "SELECT noor_r386_candidate.g1_authorized_lookup($1,$2,$3) AS receipt",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId, value.requestId],
+        );
+        if (row.rows.length !== 1) throw new Error("R386_G1_BAD_LOOKUP_RESULT");
+        return row.rows[0]?.receipt ?? null;
+      });
+    },
+    async commit(value: G1ReceiptCommitInput): Promise<G1ReceiptCommitResult> {
+      if (!permittedInput(value)) throw new Error("R386_G1_INVALID_COMMIT_INPUT");
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const result = await client.query<{ outcome: G1ReceiptCommitResult }>(
+          "SELECT noor_r386_candidate.g1_authorized_commit("
+          + "$1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10::jsonb,$11::text[]) AS outcome",
+          [
+            value.trustedNoorSessionId,
+            value.serverResolvedOwnerId,
+            value.requestId,
+            value.expectedExists,
+            value.expectedRevision,
+            JSON.stringify(value.before),
+            JSON.stringify(value.after),
+            value.keyId,
+            value.digest,
+            JSON.stringify(value.fingerprints),
+            [...value.deleteRefs],
+          ],
+        );
+        const outcome = result.rows[0]?.outcome;
+        if (result.rows.length !== 1 || !outcome
+          || !["committed", "replay", "conflict"].includes(outcome.kind)) {
+          throw new Error("R386_G1_BAD_COMMIT_RESULT");
+        }
+        return outcome;
+      });
+    },
+  });
+}

@@ -31,6 +31,7 @@ import type {
   IslamicHistoryCatalogPort,
   PersonalCommand,
   PersonalFoundationOperationScopeProvider,
+  PersonalFoundationOperation,
 } from "@noor/personal";
 
 import type {
@@ -59,6 +60,7 @@ interface AuthorizationExecutor {
 }
 
 export interface PersonalControlExecutor {
+  readonly atomicSaveProtocol?: "r386"|undefined;
   readWorkspace(
     input: Readonly<{
       sessionId: string | null;
@@ -72,6 +74,7 @@ export interface PersonalControlExecutor {
     input: Readonly<{
       sessionId: string | null;
       command: unknown;
+      requestId?: string;
     }>,
   ): Promise<Readonly<{
     status: 200 | 204 | 400 | 401 | 403 | 409 | 503;
@@ -79,7 +82,37 @@ export interface PersonalControlExecutor {
   }>>;
 }
 
+// Optional server-injected R386 isolated candidate; absent in normal runtime.
+// Neither the browser nor a header can select the owner or enable this path.
+export interface R386AtomicSaveCandidate {
+  useForOwner?(input: Readonly<{trustedNoorSessionId:string;ownerId:string}>):Promise<boolean>;
+  openRead?(input: Readonly<{trustedNoorSessionId:string;ownerId:string}>):Promise<PersonalFoundationOperation>;
+  run(input: Readonly<{
+    trustedNoorSessionId?: string;
+    ownerId: string;
+    requestId: string;
+    command: unknown;
+    evaluate(scope: PersonalFoundationOperation): Promise<void>;
+    deletedDefinitionId?: string;
+  }>): Promise<Readonly<{status:204|409|503}>>;
+  reconcile<T>(input: Readonly<{
+    ownerId:string; instant:string; trustedNoorSessionId?:string;
+    evaluate(scope:PersonalFoundationOperation):Promise<T>;
+  }>):Promise<Readonly<{status:200;value:T;scope:PersonalFoundationOperation}|{status:409|503}>>;
+  initialize(input: Readonly<{
+    trustedNoorSessionId:string; ownerId:string; requestId:string;
+    city:"riyadh"|"cairo"|"dubai"|"london";
+    calculationMethod:"UmmAlQura"|"Egyptian"|"MuslimWorldLeague"|"Karachi"|"NorthAmerica";
+  }>): Promise<Readonly<{status:204|409|503}>>;
+}
+
+function validCandidateClientRequestId(value:unknown):value is string {
+  // Separate browser IDs from scheduler IDs. No commands or owner IDs in tokens.
+  return typeof value==="string" && /^client-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(value);
+}
+
 export interface PersonalControlOperationDependencies {
+  readonly atomicSaveCandidate?: R386AtomicSaveCandidate;
   readonly isRuntimeRunning: () => boolean;
   readonly resolveSession: SessionResolver;
   readonly authorize: AuthorizationExecutor;
@@ -127,6 +160,7 @@ type UserResolution =
 
 export class PersonalControlOperation
 implements PersonalControlExecutor {
+  public get atomicSaveProtocol():"r386"|undefined{return this.dependencies.atomicSaveCandidate?"r386":undefined;}
   public constructor(
     private readonly dependencies:
       PersonalControlOperationDependencies,
@@ -271,6 +305,22 @@ implements PersonalControlExecutor {
   /** R186 lab: expose the existing verified session -> authorization -> UserId path
    * to server-only private journal operations, without adding an alternate identity owner.
    */
+  private async selectedCandidate(sessionId:string|null,ownerId:string):Promise<R386AtomicSaveCandidate|undefined>{
+    const candidate=this.dependencies.atomicSaveCandidate;
+    if(!candidate)return undefined;
+    if(!candidate.useForOwner)return candidate;
+    if(!sessionId)throw new Error("R386_G1_MISSING_TRUSTED_SESSION");
+    return await candidate.useForOwner({trustedNoorSessionId:sessionId,ownerId})?candidate:undefined;
+  }
+  private async openAuthorizedRead(sessionId:string|null, ownerId:string):Promise<PersonalFoundationOperation> {
+    const candidate=await this.selectedCandidate(sessionId,ownerId);
+    if(candidate?.openRead){
+      if(!sessionId)throw new Error("R386_G1_MISSING_TRUSTED_SESSION");
+      return candidate.openRead({trustedNoorSessionId:sessionId,ownerId});
+    }
+    return this.dependencies.foundation.openOperation(ownerId);
+  }
+
   public async resolveAuthorizedJournalUser(sessionId: string | null): Promise<UserResolution> {
     return this.resolveUser(sessionId);
   }
@@ -292,7 +342,7 @@ implements PersonalControlExecutor {
       if (typeof now !== "string" || !Number.isFinite(Date.parse(now))) {
         return { kind: "error", status: 503 };
       }
-      const scope = await this.dependencies.foundation.openOperation(resolved.userId);
+      const scope = await this.openAuthorizedRead(sessionId,resolved.userId);
       const matches = scope.snapshot.listPersonalDays(resolved.userId).filter((day: Readonly<{state: string; userId: string; boundary: {startAt: string; endAt: string; localDate: string}}>) =>
         day.state === "Open"
         && day.userId === resolved.userId
@@ -333,12 +383,7 @@ implements PersonalControlExecutor {
     }
 
     try {
-      const scope =
-        await this.dependencies
-          .foundation
-          .openOperation(
-            resolved.userId,
-          );
+      const scope = await this.openAuthorizedRead(input.sessionId,resolved.userId);
 
       return Object.freeze({
         status: 200 as const,
@@ -354,10 +399,57 @@ implements PersonalControlExecutor {
     }
   }
 
+  private async commandServiceForScope(userId:string,command:PersonalCommand,scope:PersonalFoundationOperation):Promise<PersonalCommandService|null> {
+      // Finance-only and historical accounts may lack an active Personal Day.
+      // In that case use the actual authenticated location revision, not an
+      // implicit Riyadh zone. No browser-provided timezone is accepted.
+      let accountTimeZone:string|undefined;
+      if(command.type==="finance"
+        ||command.type==="set-friday-mosque-hour"
+        ||command.type==="correct-historical-execution"
+        ||command.type==="record-historical-progress"){
+        const active=await scope.locations?.getEffective(userId,this.dependencies.clock.now());
+        if(active){
+          if(active.userId!==userId)return null;
+          try{new Intl.DateTimeFormat("en-US",{timeZone:active.timeZone});}
+          catch{return null;}
+          accountTimeZone=active.timeZone;
+        }
+      }
+
+      return new PersonalCommandService({
+          clock:
+            this.dependencies
+              .clock,
+          idGenerator:
+            this.dependencies
+              .idGenerator,
+          transaction:
+            scope.transaction,
+          ...(accountTimeZone?{accountTimeZone}:{}),
+        });
+  }
+
+  private async applyLocationForScope(userId:string,command:Extract<PersonalCommand,{type:"set-account-location"}>,scope:PersonalFoundationOperation):Promise<void> {
+    if(!this.dependencies.locationChange)throw new ProductionAdapterError("PersistenceUnavailable","Location change unavailable.");
+    await applyAccountLocationChange({
+      userId,command,scope,clock:this.dependencies.clock,...this.dependencies.locationChange,
+    });
+  }
+
+  private candidateFailure(error:unknown):Readonly<{status:409|503}> {
+    if(error instanceof PersonalControlError || error instanceof AccountLocationChangeConflict ||
+       error instanceof ProductionAdapterError && error.code==="PersistenceConflict" ||
+       error instanceof Error && (/^TASK_SESSION_[A-Z_]+$/u.test(error.message)||error.message==="R386_RECEIPT_COLLISION"||error.message==="R386_INITIALIZATION_ALREADY_CONFIGURED"))
+      return empty(409);
+    return empty(503);
+  }
+
   public async executeCommand(
     input: Readonly<{
       sessionId: string | null;
       command: unknown;
+      requestId?: string;
     }>,
   ): Promise<Readonly<{
     status: 200 | 204 | 400 | 401 | 403 | 409 | 503;
@@ -379,6 +471,18 @@ implements PersonalControlExecutor {
           &&method!=="Karachi"&&method!=="NorthAmerica"))return empty(400);
       const resolved=await this.resolveUser(input.sessionId);
       if(resolved.kind==="error")return empty(resolved.status);
+      let candidate:R386AtomicSaveCandidate|undefined;
+      try{candidate=await this.selectedCandidate(input.sessionId,resolved.userId);}catch{return empty(503);}
+      if(candidate){
+        if(!validCandidateClientRequestId(input.requestId))return empty(400);
+        if(!input.sessionId)return empty(401);
+        try{
+          return empty((await candidate.initialize({
+            trustedNoorSessionId:input.sessionId,ownerId:resolved.userId,requestId:input.requestId,city,calculationMethod:method,
+          })).status);
+        }catch(error){return this.candidateFailure(error);}
+        finally{this.dependencies.foundation.forgetCommandCache?.(resolved.userId);}
+      }
       const initialize=this.dependencies.foundation.initializePersonalProfile;
       if(!initialize)return empty(503);
       try{
@@ -408,6 +512,29 @@ implements PersonalControlExecutor {
       );
     }
 
+    let candidate:R386AtomicSaveCandidate|undefined;
+    try{candidate=await this.selectedCandidate(input.sessionId,resolved.userId);}catch{return empty(503);}
+    if(candidate){
+      if(!validCandidateClientRequestId(input.requestId))return empty(400);
+      if(!input.sessionId)return empty(401);
+      try{
+        return empty((await candidate.run({
+          trustedNoorSessionId:input.sessionId,ownerId:resolved.userId,requestId:input.requestId,command,
+          ...(command.type==="delete-definition"?{deletedDefinitionId:command.definitionId}:{}),
+          evaluate:async scope=>{
+            if(command.type==="set-account-location"){
+              await this.applyLocationForScope(resolved.userId,command,scope);
+            }else{
+              const service=await this.commandServiceForScope(resolved.userId,command,scope);
+              if(!service)throw new ProductionAdapterError("PersistenceUnavailable","Command scope unavailable.");
+              await service.execute(resolved.userId,command);
+            }
+          },
+        })).status);
+      }catch(error){return this.candidateFailure(error);}
+      finally{this.dependencies.foundation.forgetCommandCache?.(resolved.userId);}
+    }
+
     try {
       const foundation=this.dependencies.foundation;
       for(let attempt=0;attempt<2;attempt++){
@@ -418,11 +545,7 @@ implements PersonalControlExecutor {
       if(command.type==="set-account-location"){
         if(!this.dependencies.locationChange)return empty(503);
         try{
-          await applyAccountLocationChange({
-            userId:resolved.userId,command,scope,
-            clock:this.dependencies.clock,
-            ...this.dependencies.locationChange,
-          });
+          await this.applyLocationForScope(resolved.userId,command,scope);
           // 204 forces a new authorized Today fetch; never project old prayers.
           return empty(204);
         }catch(error){
@@ -433,35 +556,8 @@ implements PersonalControlExecutor {
         }
       }
 
-      // Finance-only and historical accounts may lack an active Personal Day.
-      // In that case use the actual authenticated location revision, not an
-      // implicit Riyadh zone. No browser-provided timezone is accepted.
-      let accountTimeZone:string|undefined;
-      if(command.type==="finance"
-        ||command.type==="set-friday-mosque-hour"
-        ||command.type==="correct-historical-execution"
-        ||command.type==="record-historical-progress"){
-        const active=await scope.locations?.getEffective(resolved.userId,this.dependencies.clock.now());
-        if(active){
-          if(active.userId!==resolved.userId)return empty(503);
-          try{new Intl.DateTimeFormat("en-US",{timeZone:active.timeZone});}
-          catch{return empty(503);}
-          accountTimeZone=active.timeZone;
-        }
-      }
-
-      const service =
-        new PersonalCommandService({
-          clock:
-            this.dependencies
-              .clock,
-          idGenerator:
-            this.dependencies
-              .idGenerator,
-          transaction:
-            scope.transaction,
-          ...(accountTimeZone?{accountTimeZone}:{}),
-        });
+      const service=await this.commandServiceForScope(resolved.userId,command,scope);
+      if(!service)return empty(503);
 
       try {
         await service.execute(resolved.userId,command);
