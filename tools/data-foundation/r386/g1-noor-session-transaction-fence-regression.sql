@@ -8,6 +8,7 @@ BEGIN
     OR to_regclass('public.noor_entitlement_grants') IS NOT NULL
     OR to_regclass('public.noor_authentication_account_linkages') IS NOT NULL
     OR to_regclass('auth.users') IS NOT NULL
+    OR to_regclass('public.noor_personal_foundations') IS NOT NULL
     OR to_regclass('noor_r386_candidate.g1_owner_erasure_tombstone') IS NOT NULL
  THEN RAISE EXCEPTION 'R386_G1_FENCE_REQUIRES_EMPTY_ISOLATED_FIXTURE'; END IF;
 END $$;
@@ -31,8 +32,18 @@ CREATE TABLE public.noor_authentication_account_linkages (
   issuer text NOT NULL, subject text NOT NULL,
   account_id text NOT NULL, user_id uuid NOT NULL
 );
+-- Exact column names/types for the NOOR authoritative personal data source.
+-- This is fictional data inside an uncommitted disposable fixture only.
+CREATE TABLE public.noor_personal_foundations(
+  user_id text PRIMARY KEY, schema_version integer NOT NULL CHECK(schema_version=1),
+  revision bigint NOT NULL CHECK(revision>=0),
+  state jsonb NOT NULL CHECK(jsonb_typeof(state)='object'),
+  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  updated_at timestamptz NOT NULL DEFAULT clock_timestamp()
+);
 REVOKE ALL ON auth.users, public.noor_sessions,
-  public.noor_entitlement_grants, public.noor_authentication_account_linkages
+  public.noor_entitlement_grants, public.noor_authentication_account_linkages,
+  public.noor_personal_foundations
   FROM PUBLIC,anon,authenticated,service_role;
 
 -- Precisely mirror the managed source's RLS posture, rather than relying
@@ -40,8 +51,10 @@ REVOKE ALL ON auth.users, public.noor_sessions,
 ALTER TABLE public.noor_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.noor_entitlement_grants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.noor_authentication_account_linkages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.noor_personal_foundations ENABLE ROW LEVEL SECURITY;
 \i tools/data-foundation/r386/g1-noor-session-transaction-fence.sql
 \i tools/data-foundation/r386/g1-noor-session-fence-restricted-role.sql
+\i tools/data-foundation/r386/g1-authoritative-foundation-read.sql
 
 -- S3 is still a synthetic-only candidate: permit exactly these two UUID
 -- fixtures in the S3 NOLOGIN transaction role, without permitting arbitrary
@@ -76,6 +89,42 @@ INSERT INTO public.noor_entitlement_grants VALUES
 INSERT INTO public.noor_authentication_account_linkages VALUES
   ('https://localhost/auth/v1','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','g1-account-a','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),
   ('https://localhost/auth/v1','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','g1-account-b','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+
+INSERT INTO public.noor_personal_foundations(user_id,schema_version,revision,state)
+VALUES
+ ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',1,7,
+  '{"definitions":[],"outbox":[],"source":"original-a"}'::jsonb),
+ ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',1,11,
+  '{"definitions":[],"outbox":[],"source":"original-b"}'::jsonb);
+
+SET ROLE noor_r386_g1_writer;
+DO $operational$
+DECLARE owner_a text:='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+        owner_b text:='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+        a1 jsonb; a2 jsonb; b jsonb; failure text;
+BEGIN
+ a1:=noor_r386_candidate.g1_authorized_operational_read('g1-a-device-one',owner_a);
+ a2:=noor_r386_candidate.g1_authorized_operational_read('g1-a-device-two',owner_a);
+ b:=noor_r386_candidate.g1_authorized_operational_read('g1-b-device-one',owner_b);
+ IF a1 IS DISTINCT FROM a2
+    OR a1->>'existed' IS DISTINCT FROM 'true'
+    OR a1->>'revision' IS DISTINCT FROM '7'
+    OR a1#>>'{state,source}' IS DISTINCT FROM 'original-a'
+    OR b#>>'{state,source}' IS DISTINCT FROM 'original-b'
+    OR b->>'revision' IS DISTINCT FROM '11'
+ THEN RAISE EXCEPTION 'R386_G1_ORIGINAL_FOUNDATION_PARITY_FAILED'; END IF;
+ BEGIN
+   PERFORM noor_r386_candidate.g1_authorized_operational_read('g1-a-device-one',owner_b);
+   RAISE EXCEPTION 'R386_G1_CROSS_OWNER_READ_ALLOWED';
+ EXCEPTION WHEN OTHERS THEN
+   GET STACKED DIAGNOSTICS failure=MESSAGE_TEXT;
+   IF failure <> 'R386_G1_LINKAGE_DENIED' THEN
+     RAISE EXCEPTION 'R386_G1_WRONG_CROSS_OWNER_DENIAL %',failure;
+   END IF;
+ END;
+ RAISE NOTICE 'R386_G1_AUTH_ORIGINAL_FOUNDATION_TWO_DEVICES_AND_OWNER_ISOLATION_PASS';
+END $operational$;
+RESET ROLE;
 
 CREATE FUNCTION noor_r386_candidate.g1_expect_rejection(
  p_session text,p_owner text,p_error text
@@ -134,6 +183,22 @@ RESET ROLE;
 
 -- Simulate revocation AFTER an earlier successful NOOR application check.
 UPDATE public.noor_sessions SET revoked_at_epoch_ms=1 WHERE id='g1-a-device-one';
+SET ROLE noor_r386_g1_writer;
+DO $revoked_read$
+DECLARE error_text text;
+BEGIN
+ BEGIN
+  PERFORM noor_r386_candidate.g1_authorized_operational_read(
+   'g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  RAISE EXCEPTION 'R386_G1_REVOKED_OPERATIONAL_READ_ALLOWED';
+ EXCEPTION WHEN OTHERS THEN
+  GET STACKED DIAGNOSTICS error_text=MESSAGE_TEXT;
+  IF error_text <> 'R386_G1_NOOR_SESSION_DENIED'
+  THEN RAISE EXCEPTION 'R386_G1_OPERATIONAL_READ_DENIAL_MISMATCH %',error_text; END IF;
+ END;
+ RAISE NOTICE 'R386_G1_REVOKED_SESSION_OPERATIONAL_READ_DENIED_PASS';
+END $revoked_read$;
+RESET ROLE;
 SET ROLE noor_r386_g1_guard;
 SELECT noor_r386_candidate.g1_expect_rejection('g1-a-device-one','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','R386_G1_NOOR_SESSION_DENIED');
 RESET ROLE;
@@ -186,8 +251,10 @@ BEGIN
     OR to_regclass('public.noor_entitlement_grants') IS NOT NULL
     OR to_regclass('public.noor_authentication_account_linkages') IS NOT NULL
     OR to_regclass('auth.users') IS NOT NULL
+    OR to_regclass('public.noor_personal_foundations') IS NOT NULL
     OR to_regclass('noor_r386_candidate.g1_owner_erasure_tombstone') IS NOT NULL
     OR to_regprocedure('noor_r386_candidate.g1_assert_committable_noor_owner(text,text)') IS NOT NULL
+    OR to_regprocedure('noor_r386_candidate.g1_authorized_operational_read(text,text)') IS NOT NULL
  THEN RAISE EXCEPTION 'R386_G1_FENCE_ROLLBACK_FAILED'; END IF;
  RAISE NOTICE 'R386_G1_FENCE_COMPLETE_TRANSACTION_ROLLBACK_PASS';
 END $$;
