@@ -48,7 +48,7 @@ GRANT SELECT,INSERT,UPDATE ON public.noor_sessions TO service_role;
 SET LOCAL createrole_self_grant = 'set, inherit';
 \ir s3-isolated-role.sql
 \ir g1-noor-session-transaction-fence.sql
-\ir g1-noor-session-fence-restricted-role.sql
+\ir g1-managed-guard-role.sql
 \ir g1-authoritative-foundation-read.sql
 \ir g1-managed-foundation-write.sql
 \ir g1-managed-auth-session-binding.sql

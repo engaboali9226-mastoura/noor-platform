@@ -18,25 +18,25 @@ ALTER TABLE public.noor_sessions ADD COLUMN originating_auth_session_id uuid NOT
 CREATE INDEX g1_originating_auth_session_idx ON public.noor_sessions(originating_auth_session_id);
 GRANT SELECT(originating_auth_session_id) ON public.noor_sessions TO noor_r386_g1_guard;
 
--- Fixed column grants only; never grant access to token strings.
-GRANT SELECT(id,user_id,not_after), UPDATE(not_after) ON auth.sessions TO noor_r386_g1_guard;
-GRANT SELECT(id,session_id,revoked), UPDATE(revoked) ON auth.refresh_tokens TO noor_r386_g1_guard;
-CREATE POLICY g1_guard_provider_session_read ON auth.sessions
-  FOR SELECT TO noor_r386_g1_guard USING(true);
-CREATE POLICY g1_guard_provider_session_lock ON auth.sessions
-  FOR UPDATE TO noor_r386_g1_guard USING(true) WITH CHECK(false);
-CREATE POLICY g1_guard_provider_refresh_read ON auth.refresh_tokens
-  FOR SELECT TO noor_r386_g1_guard USING(true);
-CREATE POLICY g1_guard_provider_refresh_lock ON auth.refresh_tokens
-  FOR UPDATE TO noor_r386_g1_guard USING(true) WITH CHECK(false);
+-- Disposable proof of a narrow provider-owned boundary, installed by postgres.
+-- No grants on provider tables or schema, no provider-table policy changes.
+DO $$ BEGIN
+  IF current_user <> 'postgres'
+    OR NOT EXISTS(SELECT 1 FROM pg_roles WHERE rolname=current_user AND NOT rolsuper AND rolbypassrls)
+    OR NOT has_schema_privilege(current_user,'auth','USAGE')
+    OR has_schema_privilege('noor_r386_g1_guard','auth','USAGE')
+  THEN RAISE EXCEPTION 'R386_G1_HOSTED_INSTALLER_PRECONDITION'; END IF;
+END $$;
 
 CREATE FUNCTION noor_r386_candidate.g1_assert_live_managed_auth_session(p_session uuid,p_owner uuid)
-RETURNS void LANGUAGE plpgsql VOLATILE SECURITY INVOKER
+RETURNS void LANGUAGE plpgsql VOLATILE SECURITY DEFINER
 SET search_path=pg_catalog AS $g1$
 BEGIN
   IF p_session IS NULL OR p_owner IS NULL THEN
     RAISE EXCEPTION 'R386_G1_MANAGED_SESSION_DENIED';
   END IF;
+  PERFORM u.id FROM auth.users u WHERE u.id=p_owner AND u.deleted_at IS NULL FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'R386_G1_AUTH_USER_DENIED'; END IF;
   -- Row lock serializes against provider deletion, and not_after is checked
   -- rather than assuming that presence alone proves all session validity.
   PERFORM s.id FROM auth.sessions s WHERE s.id=p_session AND s.user_id=p_owner
@@ -74,8 +74,6 @@ BEGIN
       THEN RAISE EXCEPTION 'R386_G1_MANAGED_LINKAGE_DENIED'; END IF;
   END LOOP;
   IF n=0 THEN RAISE EXCEPTION 'R386_G1_MANAGED_LINKAGE_DENIED'; END IF;
-  SELECT id,deleted_at INTO a FROM auth.users WHERE id=v_owner FOR SHARE;
-  IF NOT FOUND OR a.deleted_at IS NOT NULL THEN RAISE EXCEPTION 'R386_G1_AUTH_USER_DENIED'; END IF;
   PERFORM noor_r386_candidate.g1_assert_live_managed_auth_session(NEW.originating_auth_session_id,v_owner);
   RETURN NEW;
 END $g1$;
@@ -95,7 +93,7 @@ REVOKE ALL ON FUNCTION
   noor_r386_candidate.g1_reject_auth_binding_mutation()
   FROM PUBLIC,anon,authenticated,service_role,noor_r386_g1_writer;
 GRANT CREATE ON SCHEMA noor_r386_candidate TO noor_r386_g1_guard;
-ALTER FUNCTION noor_r386_candidate.g1_assert_live_managed_auth_session(uuid,uuid) OWNER TO noor_r386_g1_guard;
+GRANT EXECUTE ON FUNCTION noor_r386_candidate.g1_assert_live_managed_auth_session(uuid,uuid) TO noor_r386_g1_guard;
 ALTER FUNCTION noor_r386_candidate.g1_require_originating_auth_on_insert() OWNER TO noor_r386_g1_guard;
 ALTER FUNCTION noor_r386_candidate.g1_reject_auth_binding_mutation() OWNER TO noor_r386_g1_guard;
 REVOKE CREATE ON SCHEMA noor_r386_candidate FROM noor_r386_g1_guard;
@@ -169,10 +167,6 @@ BEGIN
     IF l.user_id::text IS DISTINCT FROM p_server_owner_id
       OR l.subject IS DISTINCT FROM l.user_id::text OR l.issuer IS NULL
     THEN RAISE EXCEPTION 'R386_G1_LINKAGE_DENIED'; END IF;
-    SELECT id,deleted_at INTO a FROM auth.users
-      WHERE id=l.user_id FOR SHARE;
-    IF NOT FOUND OR a.deleted_at IS NOT NULL
-    THEN RAISE EXCEPTION 'R386_G1_AUTH_USER_DENIED'; END IF;
   END LOOP;
   IF linkage_count=0 THEN RAISE EXCEPTION 'R386_G1_LINKAGE_DENIED'; END IF;
 
@@ -195,3 +189,30 @@ DO $$ BEGIN
     OR has_column_privilege('noor_r386_g1_guard','auth.refresh_tokens','token','UPDATE')
   THEN RAISE EXCEPTION 'R386_G1_MANAGED_SESSION_PRIVILEGE_LEAK'; END IF;
 END $$;
+
+DO $acl$
+DECLARE r text; t text;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_roles o ON o.oid=p.proowner
+      WHERE p.oid='noor_r386_candidate.g1_assert_live_managed_auth_session(uuid,uuid)'::regprocedure
+        AND p.prosecdef AND o.rolname='postgres' AND NOT o.rolsuper)
+    OR NOT has_function_privilege('noor_r386_g1_guard',
+        'noor_r386_candidate.g1_assert_live_managed_auth_session(uuid,uuid)','EXECUTE')
+    OR has_schema_privilege('noor_r386_g1_guard','auth','USAGE')
+    OR has_schema_privilege('noor_r386_g1_writer','auth','USAGE')
+    OR has_schema_privilege('noor_r386_g1_guard','noor_r386_candidate','CREATE')
+    OR pg_has_role('noor_r386_g1_writer','noor_r386_g1_guard','MEMBER')
+    OR pg_has_role('noor_r386_g1_guard','postgres','MEMBER')
+  THEN RAISE EXCEPTION 'R386_G1_HOSTED_HELPER_ACL_MISMATCH'; END IF;
+  FOREACH r IN ARRAY ARRAY['anon','authenticated','service_role','noor_r386_g1_writer'] LOOP
+    IF has_function_privilege(r,'noor_r386_candidate.g1_assert_live_managed_auth_session(uuid,uuid)','EXECUTE')
+    THEN RAISE EXCEPTION 'R386_G1_HOSTED_HELPER_PUBLIC_ACCESS'; END IF;
+  END LOOP;
+  FOREACH t IN ARRAY ARRAY['auth.users','auth.sessions','auth.refresh_tokens'] LOOP
+    IF has_any_column_privilege('noor_r386_g1_guard',t,'SELECT,UPDATE,INSERT,REFERENCES')
+      OR has_table_privilege('noor_r386_g1_guard',t,'DELETE,TRUNCATE,TRIGGER')
+      OR has_any_column_privilege('noor_r386_g1_writer',t,'SELECT,UPDATE,INSERT,REFERENCES')
+      OR has_table_privilege('noor_r386_g1_writer',t,'DELETE,TRUNCATE,TRIGGER')
+    THEN RAISE EXCEPTION 'R386_G1_HOSTED_RAW_AUTH_ACCESS'; END IF;
+  END LOOP;
+END $acl$;

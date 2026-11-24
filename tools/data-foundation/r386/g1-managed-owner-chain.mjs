@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
 import { evaluateR386InitializationCandidate } from "@noor/personal";
 import { Pool } from "pg";
 import { exerciseManagedErasure } from "./g1-managed-erasure-exercise.mjs";
+import { safeSessionFailure, createSessionInsertTrace } from "./g1-managed-session-diagnostics.mjs";
 import { createPrivilegedPlatformRuntimeHost } from "../../../apps/noor-runtime/dist/privileged-platform-runtime-host.js";
 import { createNoorR386G1SqlCommitAdapter } from "../../../apps/noor-runtime/dist/noor-r386-g1-sql-commit-adapter.js";
 
@@ -35,12 +36,19 @@ const fixture = spawnSync("psql", ["-Xqw", "-v", "ON_ERROR_STOP=1", "-f", "tools
 // do not put it in argv or exception output.
 if (fixture.status !== 0) throw new Error(fixture.stderr?.replaceAll(writerPassword, "[redacted]") ?? "G1 fixture failed");
 
+console.log("R386_G1_HOSTED_HELPER_ACL_VERIFIED=YES");
 const observer = new Pool({ connectionString: DB_URL, max: 2 });
 const writerConnection = new URL(DB_URL);
 writerConnection.username = writerRole;
 writerConnection.password = writerPassword;
 const pool = new Pool({ connectionString: writerConnection.href, max: 2 });
 const adapter = createNoorR386G1SqlCommitAdapter({ pool, expectedSqlRole: writerRole });
+const nativeFetch = globalThis.fetch;
+const trace = createSessionInsertTrace({
+  origin: api.origin, fetcher: nativeFetch.bind(globalThis),
+  emit: record => console.log("R386_G1_SESSION_INSERT_TRACE " + JSON.stringify(record)),
+});
+globalThis.fetch = trace.fetch;
 const host = createPrivilegedPlatformRuntimeHost({
   supabaseUrl: api.origin, supabaseServiceRoleKey: SERVICE_ROLE_KEY,
   expectedIssuer: issuer, expectedAudience: "authenticated", expectedAlgorithm: "ES256", sessionLifetimeMs: 3600_000,
@@ -56,7 +64,7 @@ const emptyState = { locations: [], prayerPolicies: [], personalDays: [], islami
 try {
   // Confirm PostgREST has observed the fixture's committed schema before establishing sessions.
   for (let attempt = 0; ; attempt++) {
-    const result = await admin.from("noor_sessions").select("id").limit(1);
+    const result = await admin.from("noor_sessions").select("id,originating_auth_session_id").limit(1);
     if (!result.error) break;
     if (attempt === 20) response("PostgREST schema cache", result);
     await delay(150);
@@ -77,7 +85,32 @@ try {
     const client = createClient(api.origin, ANON_KEY, options);
     const { session } = response("GoTrue sign-in", await client.auth.signInWithPassword({ email, password }));
     assert.equal(JSON.parse(Buffer.from(session.access_token.split(".")[0], "base64url")).alg, "ES256");
-    const noorId = (await operations.sessionEstablishment.execute({ proof: session.access_token })).id;
+    let noorId;
+    try {
+      noorId = (await operations.sessionEstablishment.execute({ proof: session.access_token })).id;
+    } catch (error) {
+      console.log("R386_G1_SESSION_FAILURE_TRACE " + JSON.stringify(trace.snapshot()));
+      // Observer metadata only, no owner identifiers, no SQL/result bodies.
+      try {
+        const { rows } = await observer.query(`SELECT
+          has_schema_privilege('noor_r386_g1_guard','auth','USAGE') AS guard_auth_usage,
+          has_column_privilege('noor_r386_g1_guard','auth.users','id','SELECT') AS guard_user_select,
+          has_column_privilege('noor_r386_g1_guard','auth.users','deleted_at','UPDATE') AS guard_user_lock,
+          has_column_privilege('noor_r386_g1_guard','auth.sessions','id','SELECT') AS guard_session_select,
+          has_column_privilege('noor_r386_g1_guard','auth.sessions','not_after','SELECT') AS guard_session_expiry_select,
+          has_column_privilege('noor_r386_g1_guard','auth.sessions','not_after','UPDATE') AS guard_session_lock,
+          has_column_privilege('noor_r386_g1_guard','auth.refresh_tokens','id','SELECT') AS guard_refresh_id_select,
+          has_column_privilege('noor_r386_g1_guard','auth.refresh_tokens','session_id','SELECT') AS guard_refresh_session_select,
+          has_column_privilege('noor_r386_g1_guard','auth.refresh_tokens','revoked','SELECT') AS guard_refresh_revoked_select,
+          has_column_privilege('noor_r386_g1_guard','auth.refresh_tokens','revoked','UPDATE') AS guard_refresh_lock,
+          has_column_privilege('service_role','public.noor_sessions','originating_auth_session_id','INSERT') AS service_binding_insert,
+          has_function_privilege('noor_r386_g1_guard','noor_r386_candidate.g1_assert_live_managed_auth_session(uuid,uuid)','EXECUTE') AS guard_helper_execute`);
+        console.log("R386_G1_SESSION_CATALOG " + JSON.stringify(rows[0]));
+      } catch (diagnosticError) {
+        console.log("R386_G1_SESSION_CATALOG_UNAVAILABLE " + JSON.stringify(safeSessionFailure(diagnosticError)));
+      }
+      throw error;
+    }
     authClients.set(noorId, { client, proof: session.access_token, providerId: sessionClaim(session.access_token) });
     assert.equal((await observer.query("SELECT originating_auth_session_id FROM public.noor_sessions WHERE id=$1", [noorId])).rows[0].originating_auth_session_id, authClients.get(noorId).providerId);
     return noorId;
@@ -125,6 +158,8 @@ try {
   for (const table of ["public.noor_personal_foundations", "auth.users"]) {
     await assert.rejects(pool.query(`SELECT count(*) FROM ${table}`), { code: "42501" });
   }
+  await assert.rejects(pool.query("SELECT noor_r386_candidate.g1_assert_live_managed_auth_session($1,$2)", [authClients.get(firstSession).providerId,owner.ownerId]), {code:"42501"});
+  console.log("R386_G1_HOSTED_DIRECT_HELPER_CALL_DENIED=YES");
   console.log("R386_G1_REAL_NOOR_SIGNED_AUTH_RESTRICTED_FOUNDATION_TWO_DEVICES_PASS");
 
   await operations.sessionRevocation.execute({ sessionId: firstSession });
@@ -221,6 +256,7 @@ try {
 
   await exerciseManagedErasure({admin,observer,operations,adapter,response,makeAccount,signIn,resolve,save,emptyState,authClients,other,otherSession});
 } finally {
+  globalThis.fetch = nativeFetch;
   await host.shutdown();
   await pool.end();
   await observer.end();
