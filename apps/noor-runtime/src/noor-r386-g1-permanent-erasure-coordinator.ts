@@ -143,8 +143,16 @@ export function createR386G1PermanentErasureCoordinator(backend: R386G1ErasureBa
             throw new Error("RESIDUAL_STORE");
           }
         }
+        // A previous attempt may have hard-deleted Auth before its response
+        // or the final inventory was recorded. The durable fence is already
+        // established; independently verify absence before retrying the API.
+        // An invalid/unavailable count must never be treated as absence.
+        const authBefore = await backend.managedAuthResiduals(fence);
+        if (!Number.isSafeInteger(authBefore) || authBefore < 0) {
+          throw new Error("MANAGED_AUTH_INVENTORY_INVALID");
+        }
         // Managed Auth deletion MUST be hard, after all other stores are empty.
-        await backend.hardDeleteManagedAuth(fence);
+        if (authBefore > 0) await backend.hardDeleteManagedAuth(fence);
         if (!zero(await backend.managedAuthResiduals(fence))) {
           throw new Error("MANAGED_AUTH_RESIDUALS");
         }

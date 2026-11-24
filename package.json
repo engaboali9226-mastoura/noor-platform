@@ -17,5 +17,8 @@
     "validate:zero-tests": "node tools/validate-zero-test-workspaces.mjs",
     "test:hosting": "node --test tools/hosting/serve-noor.test.mjs",
     "start:hosted": "node tools/hosting/serve-noor.mjs"
+  },
+  "devDependencies": {
+    "pg": "8.22.0"
   }
 }

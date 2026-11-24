@@ -52,6 +52,7 @@ ALTER TABLE public.noor_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.noor_entitlement_grants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.noor_authentication_account_linkages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.noor_personal_foundations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth.users ENABLE ROW LEVEL SECURITY;
 \i tools/data-foundation/r386/g1-noor-session-transaction-fence.sql
 \i tools/data-foundation/r386/g1-noor-session-fence-restricted-role.sql
 \i tools/data-foundation/r386/g1-authoritative-foundation-read.sql
@@ -152,6 +153,12 @@ BEGIN
     OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-a-device-two','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')<>'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
     OR noor_r386_candidate.g1_assert_committable_noor_owner('g1-b-device-one','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')<>'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
  THEN RAISE EXCEPTION 'R386_G1_UUID_AUTH_OWNER_FENCE_FAILED'; END IF;
+ BEGIN
+  UPDATE auth.users SET deleted_at=clock_timestamp()
+    WHERE id='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  RAISE EXCEPTION 'R386_G1_GUARD_AUTH_UPDATE_ALLOWED';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
  RAISE NOTICE 'R386_G1_REAL_UUID_NOOR_SESSION_OWNER_FENCE_PASS';
 END $$;
 RESET ROLE;

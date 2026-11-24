@@ -21,6 +21,7 @@ export interface NoorSessionDatabase {
           readonly revoked_at_epoch_ms: number | null;
         };
         readonly Insert: {
+          readonly originating_auth_session_id?: string;
           readonly id: string;
           readonly account_id: string;
           readonly created_at_epoch_ms: number;
@@ -99,11 +100,15 @@ implements SessionRepository {
 
   public async create(
     session: SessionSnapshot,
+    originatingAuthSessionId?: string,
   ): Promise<void> {
     const response =
       await this.client
         .from("noor_sessions")
         .insert({
+          ...(originatingAuthSessionId === undefined ? {} : {
+            originating_auth_session_id: originatingAuthSessionId,
+          }),
           id: session.id,
           account_id: session.accountId,
           created_at_epoch_ms: session.createdAtEpochMs,

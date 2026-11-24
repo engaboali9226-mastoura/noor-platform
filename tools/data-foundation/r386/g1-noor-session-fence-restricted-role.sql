@@ -45,6 +45,10 @@ BEGIN
  END LOOP;
 END $noor_g1$;
 CREATE POLICY g1_guard_auth_users_read ON auth.users FOR SELECT TO noor_r386_g1_guard USING (true);
+-- With managed Auth RLS enabled, FOR SHARE also checks UPDATE visibility.
+-- Permit row locks while denying an actual UPDATE through this policy.
+CREATE POLICY g1_guard_auth_users_lock ON auth.users
+  FOR UPDATE TO noor_r386_g1_guard USING (true) WITH CHECK (false);
 CREATE POLICY g1_guard_tombstone_read
   ON noor_r386_candidate.g1_owner_erasure_tombstone
   FOR SELECT TO noor_r386_g1_guard USING (true);

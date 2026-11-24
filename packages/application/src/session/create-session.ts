@@ -146,9 +146,13 @@ implements UseCase<CreateSessionRequest, SessionSnapshot> {
     }
 
     try {
-      await this.repository.create(
-        session,
-      );
+      // The provider binding is intentionally not part of SessionSnapshot or HTTP output.
+      const binding = input.authentication.originatingAuthSessionId;
+      if (binding === undefined) {
+        await this.repository.create(session);
+      } else {
+        await this.repository.create(session, binding);
+      }
     } catch {
       throw new SessionUnavailableError();
     }

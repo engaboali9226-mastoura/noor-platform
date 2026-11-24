@@ -559,6 +559,7 @@ implements PrivilegedPlatformRuntimeHost {
 export function createPrivilegedPlatformRuntimeHost(
   configuration:
     NoorProductionRuntimeConfiguration,
+  isolatedG1?: Readonly<{ captureOriginatingAuthSessionId: true }>,
 ): PrivilegedPlatformRuntimeHost {
   const linkageClient =
     createNoorPrivilegedSupabaseClient<
@@ -603,6 +604,7 @@ export function createPrivilegedPlatformRuntimeHost(
   const authenticationVerifier =
     new SupabaseAuthenticationVerifier(
       {
+        captureOriginatingAuthSessionId: isolatedG1?.captureOriginatingAuthSessionId === true,
         expectedIssuer:
           configuration.expectedIssuer,
         expectedAudience:
