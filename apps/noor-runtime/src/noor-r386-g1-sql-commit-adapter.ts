@@ -71,6 +71,8 @@ export function createNoorR386G1SqlCommitAdapter(
   commit(value: G1ReceiptCommitInput): Promise<G1ReceiptCommitResult>;
   lookup(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string; requestId: string }>): Promise<unknown | null>;
   load(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> }>>;
+  // Original NOOR foundation, read-only. Distinct from synthetic S3 load.
+  loadOperational(value: Readonly<{ trustedNoorSessionId: string; serverResolvedOwnerId: string }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> | null }>>;
 }> {
   if (!/^noor_r386_g1_[a-z0-9_]{1,48}$/u.test(input.expectedSqlRole)) {
     throw new Error("R386_G1_UNAPPROVED_SQL_ROLE");
@@ -118,6 +120,37 @@ export function createNoorR386G1SqlCommitAdapter(
   };
 
   return Object.freeze({
+    async loadOperational(value: Readonly<{
+      trustedNoorSessionId: string;
+      serverResolvedOwnerId: string;
+    }>): Promise<Readonly<{ existed: boolean; revision: number; state: Record<string, unknown> | null }>> {
+      if (typeof value.trustedNoorSessionId !== "string" || value.trustedNoorSessionId.length < 1
+        || value.trustedNoorSessionId.length > 256
+        || typeof value.serverResolvedOwnerId !== "string" || value.serverResolvedOwnerId.length < 1
+        || value.serverResolvedOwnerId.length > 512) {
+        throw new Error("R386_G1_INVALID_OPERATIONAL_LOAD_INPUT");
+      }
+      return guarded(value.trustedNoorSessionId, value.serverResolvedOwnerId, async client => {
+        const result = await client.query<{ loaded: unknown }>(
+          "SELECT noor_r386_candidate.g1_authorized_operational_read($1,$2) AS loaded",
+          [value.trustedNoorSessionId, value.serverResolvedOwnerId],
+        );
+        const loaded = result.rows[0]?.loaded;
+        if (result.rows.length !== 1 || loaded === null
+          || typeof loaded !== "object" || Array.isArray(loaded)) {
+          throw new Error("R386_G1_OPERATIONAL_LOAD_CORRUPT");
+        }
+        const { existed, revision, state } = loaded as Record<string, unknown>;
+        if (typeof existed !== "boolean" || !Number.isSafeInteger(revision)
+          || (revision as number) < 0
+          || (existed
+            ? state === null || typeof state !== "object" || Array.isArray(state)
+            : state !== null || revision !== 0)) {
+          throw new Error("R386_G1_OPERATIONAL_LOAD_CORRUPT");
+        }
+        return { existed, revision: revision as number, state: state as Record<string, unknown> | null };
+      });
+    },
     // The source snapshot is as sensitive as the write: the exact same
     // transaction-time NOOR fence must protect it from revoked identities.
     async load(value: Readonly<{
