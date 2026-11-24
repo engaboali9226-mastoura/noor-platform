@@ -1,0 +1,31 @@
+name: R386 G1 managed-service isolate
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/r386-g1-managed-isolate.yml'
+      - 'tools/data-foundation/r386/g1-*'
+      - 'apps/noor-runtime/src/noor-r386-g1-*'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  managed-supabase:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26.4.0'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - name: Run disposable PostgreSQL, Supabase Auth and Storage
+        run: bash tools/data-foundation/r386/g1-managed-isolate.sh
