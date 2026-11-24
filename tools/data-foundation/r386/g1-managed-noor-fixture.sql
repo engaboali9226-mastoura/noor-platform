@@ -43,6 +43,9 @@ GRANT SELECT,INSERT,UPDATE ON public.noor_sessions TO service_role;
 \ir staging-lab-v2.sql
 \ir s2-permanent-backfill.sql
 \ir s3-atomic-save.sql
+-- PG17 non-superuser CREATEROLE installer: allow ownership transfer
+-- and ACL setup for newly-created disposable roles only in this transaction.
+SET LOCAL createrole_self_grant = 'set, inherit';
 \ir s3-isolated-role.sql
 \ir g1-noor-session-transaction-fence.sql
 \ir g1-noor-session-fence-restricted-role.sql
