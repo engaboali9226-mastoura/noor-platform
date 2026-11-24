@@ -38,6 +38,13 @@ function rig(mode: Case = "success") {
           bypass_rls: mode === "bypassRls",
         }] as Row[] };
       }
+      if (sql.startsWith("SELECT noor_r386_candidate.g1_authorized_operational_read")) {
+        if (mode === "revoked" || mode === "mismatch")
+          throw Error("R386_G1_NOOR_SESSION_DENIED");
+        return { rows: [{ loaded: {
+          existed: true, revision: 7, state: { definitions: [], source: "original-noor" },
+        } }] as Row[] };
+      }
       if (sql.startsWith("SELECT noor_r386_candidate.g1_authorized_load")) {
         if (mode === "revoked" || mode === "mismatch") throw Error("R386_G1_NOOR_SESSION_DENIED");
         if (mode === "databaseFailure") throw Error("hidden SQL data");
@@ -185,4 +192,37 @@ test("G1 source load cannot bypass live NOOR owner fence or SQL transaction",asy
   assert.equal(denied.calls.at(-1)?.sql,"ROLLBACK");
   assert.equal(denied.releases(),1);
  }
+});
+
+test("G1 trusted SQL reader reads the ORIGINAL NOOR foundation, never the synthetic S3 source",async()=>{
+ const f=rig();
+ const result=await f.adapter.loadOperational({
+   trustedNoorSessionId:fixture.trustedNoorSessionId,
+   serverResolvedOwnerId:owner,
+ });
+ assert.deepEqual(result,{
+   existed:true,revision:7,state:{definitions:[],source:"original-noor"},
+ });
+ assert.deepEqual(f.calls.map(x=>x.sql.includes("FROM pg_catalog.pg_roles")?"role":
+    x.sql.includes("g1_authorized_operational_read")?"operationalRead":x.sql),
+   ["role","BEGIN","operationalRead","COMMIT"]);
+ assert.deepEqual(f.calls[2]?.params,[fixture.trustedNoorSessionId,owner]);
+ assert.equal(f.calls.some(x=>x.sql.includes("g1_authorized_load(")),false);
+ assert.equal(f.releases(),1);
+
+ for (const mode of ["revoked","mismatch"] as const) {
+   const denied=rig(mode);
+   await assert.rejects(denied.adapter.loadOperational({
+      trustedNoorSessionId:fixture.trustedNoorSessionId,
+      serverResolvedOwnerId:owner,
+   }),/R386_G1_COMMIT_UNAVAILABLE/);
+   assert.equal(denied.calls.at(-1)?.sql,"ROLLBACK");
+   assert.equal(denied.releases(),1);
+ }
+
+ const invalid=rig();
+ await assert.rejects(invalid.adapter.loadOperational({
+   trustedNoorSessionId:"",serverResolvedOwnerId:owner,
+ }),/R386_G1_INVALID_OPERATIONAL_LOAD_INPUT/);
+ assert.equal(invalid.calls.length,0);
 });
