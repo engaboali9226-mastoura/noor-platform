@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
+import { totp } from "./g1-managed-totp.mjs";
 
 // Capability proof for a fresh, local synthetic stack. Never point at a linked project.
 const { API_URL, DB_URL, ANON_KEY, SERVICE_ROLE_KEY } = JSON.parse(readFileSync(process.argv[2], "utf8"));
@@ -54,28 +55,6 @@ async function signIn(user) {
   }));
   assert.equal((await checked("Auth getUser", device.auth.getUser())).user.id, user.id);
   return { device, session };
-}
-
-function totp(secret) {
-  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-  let bits = 0;
-  let pending = 0;
-  const bytes = [];
-  for (const character of secret.replace(/=+$/u, "")) {
-    const digit = alphabet.indexOf(character);
-    assert.ok(digit >= 0);
-    pending = (pending << 5) | digit;
-    bits += 5;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((pending >>> bits) & 255);
-    }
-  }
-  const counter = Buffer.alloc(8);
-  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
-  const hash = createHmac("sha1", Buffer.from(bytes)).update(counter).digest();
-  const offset = hash[hash.length - 1] & 15;
-  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
 assert.equal(sql("SELECT current_setting('server_version_num')::integer / 10000;"), "17");

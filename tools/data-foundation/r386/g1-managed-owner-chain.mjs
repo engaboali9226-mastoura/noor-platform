@@ -6,6 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { createClient } from "@supabase/supabase-js";
 import { evaluateR386InitializationCandidate } from "@noor/personal";
 import { Pool } from "pg";
+import { exerciseManagedErasure } from "./g1-managed-erasure-exercise.mjs";
 import { createPrivilegedPlatformRuntimeHost } from "../../../apps/noor-runtime/dist/privileged-platform-runtime-host.js";
 import { createNoorR386G1SqlCommitAdapter } from "../../../apps/noor-runtime/dist/noor-r386-g1-sql-commit-adapter.js";
 
@@ -43,7 +44,7 @@ const adapter = createNoorR386G1SqlCommitAdapter({ pool, expectedSqlRole: writer
 const host = createPrivilegedPlatformRuntimeHost({
   supabaseUrl: api.origin, supabaseServiceRoleKey: SERVICE_ROLE_KEY,
   expectedIssuer: issuer, expectedAudience: "authenticated", expectedAlgorithm: "ES256", sessionLifetimeMs: 3600_000,
-});
+}, { captureOriginatingAuthSessionId: true });
 
 function response(label, { data, error }) {
   if (error) throw new Error(`${label}: ${error.code ?? error.status ?? error.name}`);
@@ -61,6 +62,8 @@ try {
     await delay(150);
   }
   const operations = await host.start();
+  const authClients = new Map();
+  const sessionClaim = proof => JSON.parse(Buffer.from(proof.split(".")[1], "base64url")).session_id;
   async function makeAccount() {
     const email = `noor-${randomUUID()}@example.invalid`;
     const password = `Synthetic-${randomUUID()}-a1!`;
@@ -74,7 +77,10 @@ try {
     const client = createClient(api.origin, ANON_KEY, options);
     const { session } = response("GoTrue sign-in", await client.auth.signInWithPassword({ email, password }));
     assert.equal(JSON.parse(Buffer.from(session.access_token.split(".")[0], "base64url")).alg, "ES256");
-    return (await operations.sessionEstablishment.execute({ proof: session.access_token })).id;
+    const noorId = (await operations.sessionEstablishment.execute({ proof: session.access_token })).id;
+    authClients.set(noorId, { client, proof: session.access_token, providerId: sessionClaim(session.access_token) });
+    assert.equal((await observer.query("SELECT originating_auth_session_id FROM public.noor_sessions WHERE id=$1", [noorId])).rows[0].originating_auth_session_id, authClients.get(noorId).providerId);
+    return noorId;
   }
   async function resolve(sessionId, ownerId) {
     const found = await operations.personalControl.resolveAuthorizedJournalUser(sessionId);
@@ -144,6 +150,76 @@ try {
   assert.equal((await observer.query("SELECT count(*) FROM public.noor_personal_foundations WHERE user_id=$1", [owner.ownerId])).rows[0].count, "0");
   assert.deepEqual(await adapter.loadOperational(separate), { existed: true, revision: 1, state: emptyState });
   console.log("R386_G1_REAL_NOOR_OPERATIONAL_TOMBSTONE_PREVENTS_RECREATION_PASS");
+
+  // Distinct account, so the previously proven NOOR-session and grant
+  // revocation paths remain unchanged. Actual provider sign-out, not SQL simulation.
+  const bound = await makeAccount();
+  const aId = await signIn(bound), bId = await signIn(bound);
+  const a = await resolve(aId, bound.ownerId), b = await resolve(bId, bound.ownerId);
+  const aAuth = authClients.get(aId), bAuth = authClients.get(bId);
+  assert.notEqual(aAuth.providerId, bAuth.providerId);
+  const boundMissing = await adapter.loadOperational(a);
+  assert.equal(await save(a, boundMissing, emptyState), true);
+  const boundSnapshot = await adapter.loadOperational(b);
+  assert.deepEqual(boundSnapshot.state, emptyState);
+
+  // Even the observer cannot insert an inconsistent new binding in the fixture.
+  await assert.rejects(observer.query(
+    "INSERT INTO public.noor_sessions(id,account_id,created_at_epoch_ms,expires_at_epoch_ms,revoked_at_epoch_ms,originating_auth_session_id) VALUES ($1,$2,$3,$4,NULL,$5)",
+    [randomUUID(), bound.accountId, Date.now(), Date.now()+60_000, authClients.get(otherSession).providerId]),
+    /R386_G1_MANAGED_SESSION_DENIED/u);
+  await assert.rejects(observer.query(
+    "UPDATE public.noor_sessions SET originating_auth_session_id=$1 WHERE id=$2", [bAuth.providerId,aId]),
+    /R386_G1_MANAGED_BINDING_IMMUTABLE/u);
+
+  response("Provider local sign-out A", await aAuth.client.auth.signOut({scope:"local"}));
+  await assert.rejects(adapter.loadOperational(a), /R386_G1_COMMIT_UNAVAILABLE/u);
+  await assert.rejects(save(a,boundSnapshot,emptyState), /R386_G1_COMMIT_UNAVAILABLE/u);
+  await assert.rejects(operations.sessionEstablishment.execute({proof:aAuth.proof}));
+  assert.deepEqual(await adapter.loadOperational(b), boundSnapshot);
+  const refreshed = response("Provider refresh B", await bAuth.client.auth.refreshSession());
+  assert.equal(sessionClaim(refreshed.session.access_token), bAuth.providerId);
+  assert.deepEqual(await adapter.loadOperational(b), boundSnapshot);
+  const cId = await signIn(bound), c = await resolve(cId,bound.ownerId);
+
+  response("Provider global sign-out B", await bAuth.client.auth.signOut({scope:"global"}));
+  for (const identity of [b,c]) {
+    await assert.rejects(adapter.loadOperational(identity), /R386_G1_COMMIT_UNAVAILABLE/u);
+    await assert.rejects(save(identity,boundSnapshot,emptyState), /R386_G1_COMMIT_UNAVAILABLE/u);
+  }
+  await assert.rejects(operations.sessionEstablishment.execute({proof:authClients.get(cId).proof}));
+  assert.deepEqual(await adapter.loadOperational(separate), {existed:true,revision:1,state:emptyState});
+  assert.equal((await observer.query("SELECT count(*) FROM pg_stat_activity WHERE usename=$1 AND state LIKE 'idle in transaction%'",[writerRole])).rows[0].count,"0");
+  console.log("R386_G1_PROVIDER_SESSION_BINDING_LOCAL_GLOBAL_LOGOUT_AND_REFRESH_PASS");
+  const timed = await makeAccount();
+  const timedId = await signIn(timed);
+  const parallelId = await signIn(timed);
+  const timedOwner = await resolve(timedId,timed.ownerId);
+  const parallelOwner = await resolve(parallelId,timed.ownerId);
+  const timedAuth = authClients.get(timedId);
+  await observer.query("UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 minute' WHERE id=$1",
+    [timedAuth.providerId]);
+  await assert.rejects(adapter.loadOperational(timedOwner), /R386_G1_COMMIT_UNAVAILABLE/u);
+  await assert.rejects(operations.sessionEstablishment.execute({proof:timedAuth.proof}));
+  assert.deepEqual(await adapter.loadOperational(parallelOwner),{existed:false,revision:0,state:null});
+  console.log("R386_G1_PROVIDER_NOT_AFTER_FAILS_CLOSED_PASS");
+  const replayAuth = authClients.get(parallelId);
+  const firstRefresh = response("Read provider refresh context",await replayAuth.client.auth.getSession()).session.refresh_token;
+  const rotated = response("Rotate provider refresh once",await replayAuth.client.auth.refreshSession()).session.refresh_token;
+  const last = response("Rotate provider refresh twice",await replayAuth.client.auth.refreshSession()).session.refresh_token;
+  assert.notEqual(firstRefresh,rotated);
+  assert.notEqual(rotated,last);
+  // The default provider reuse window is ten seconds. Two rotations bypass
+  // the parent-token retry exception, then an actual provider replay revokes.
+  await delay(11_000);
+  assert.ok((await replayAuth.client.auth.refreshSession({refresh_token:firstRefresh})).error);
+  await assert.rejects(adapter.loadOperational(parallelOwner),/R386_G1_COMMIT_UNAVAILABLE/u);
+  await assert.rejects(operations.sessionEstablishment.execute({proof:replayAuth.proof}));
+  assert.deepEqual(await adapter.loadOperational(separate),{existed:true,revision:1,state:emptyState});
+  console.log("R386_G1_PROVIDER_REFRESH_REUSE_TERMINATION_PASS");
+
+
+  await exerciseManagedErasure({admin,observer,operations,adapter,response,makeAccount,signIn,resolve,save,emptyState,authClients,other,otherSession});
 } finally {
   await host.shutdown();
   await pool.end();

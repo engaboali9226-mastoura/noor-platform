@@ -7,7 +7,7 @@ export interface RevokeSessionRecordInput {
 }
 
 export interface SessionRepository {
-  create(session: SessionSnapshot): Promise<void>;
+  create(session: SessionSnapshot, originatingAuthSessionId?: string): Promise<void>;
 
   findById(
     id: SessionId,

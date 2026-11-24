@@ -48,6 +48,9 @@ GRANT SELECT,INSERT,UPDATE ON public.noor_sessions TO service_role;
 \ir g1-noor-session-fence-restricted-role.sql
 \ir g1-authoritative-foundation-read.sql
 \ir g1-managed-foundation-write.sql
+\ir g1-managed-auth-session-binding.sql
+\ir s4-analytics-facts.sql
+\ir g1-managed-erasure-fixture.sql
 ALTER ROLE noor_r386_g1_writer PASSWORD :'writer_password';
 NOTIFY pgrst, 'reload schema';
 COMMIT;

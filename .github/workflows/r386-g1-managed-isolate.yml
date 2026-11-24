@@ -8,6 +8,9 @@ on:
       - '.github/workflows/r386-g1-managed-isolate.yml'
       - 'tools/data-foundation/r386/g1-*'
       - 'apps/noor-runtime/src/noor-r386-g1-*'
+      - 'apps/noor-runtime/src/privileged-platform-runtime-host.ts'
+      - 'packages/*/src/authentication/**'
+      - 'packages/*/src/session/**'
       - 'package-lock.json'
 
 permissions:
