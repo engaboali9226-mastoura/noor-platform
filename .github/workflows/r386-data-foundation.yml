@@ -74,3 +74,5 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/g1-multisession-erasure-regression.sql
       - name: G1 NOOR session commit-time SQL fence
         run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/g1-noor-session-transaction-fence-regression.sql
+      - name: R386 representative save latency and parity
+        run: psql -X -v ON_ERROR_STOP=1 -f tools/data-foundation/r386/r386-save-performance-v4-regression.sql
