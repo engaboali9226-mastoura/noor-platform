@@ -82,29 +82,38 @@ LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $$
 DECLARE e jsonb; d jsonb; day jsonb; a jsonb; session jsonb; pol jsonb; prayer jsonb; context jsonb; mapping record; k text;
  due text; zone text; performed text; recovery text; kind text; status text; w numeric; ver numeric; mode text; timing text;
  policy_id text; share_matrix jsonb; idx jsonb;
+ defs jsonb; execs jsonb; days jsonb; contexts jsonb; defmap jsonb; execmap jsonb; daymap jsonb;
+ zone_cache jsonb:='{}'::jsonb; zone_key text;
 BEGIN
- IF jsonb_typeof(p_state->'definitions') IS DISTINCT FROM 'array'
- OR jsonb_typeof(p_state->'dailyExecution') IS DISTINCT FROM 'array'
- OR jsonb_typeof(p_state->'personalDays') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'R386_S4_COLLECTION'; END IF;
+ defs:=p_state->'definitions'; execs:=p_state->'dailyExecution'; days:=p_state->'personalDays'; contexts:=p_state->'islamicContexts';
+ IF jsonb_typeof(defs) IS DISTINCT FROM 'array'
+ OR jsonb_typeof(execs) IS DISTINCT FROM 'array'
+ OR jsonb_typeof(days) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'R386_S4_COLLECTION'; END IF;
  IF EXISTS(SELECT 1 FROM (
- SELECT value e FROM jsonb_array_elements(p_state->'definitions')
- UNION ALL SELECT value FROM jsonb_array_elements(p_state->'dailyExecution')
- UNION ALL SELECT value FROM jsonb_array_elements(p_state->'personalDays')) allrows
+ SELECT value e FROM jsonb_array_elements(defs)
+ UNION ALL SELECT value FROM jsonb_array_elements(execs)
+ UNION ALL SELECT value FROM jsonb_array_elements(days)) allrows
  WHERE jsonb_typeof(allrows.e) IS DISTINCT FROM 'object' OR allrows.e->>'userId' IS DISTINCT FROM p_owner
  OR NOT noor_r386_candidate.valid_id(allrows.e->>'id') OR jsonb_typeof(allrows.e->'id') IS DISTINCT FROM 'string')
  THEN RAISE EXCEPTION 'R386_S4_OWNER'; END IF;
- IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_state->'definitions') q(v) GROUP BY (v->>'id') COLLATE "C" HAVING count(*)>1)
- OR EXISTS(SELECT 1 FROM jsonb_array_elements(p_state->'dailyExecution') q(v) GROUP BY (v->>'id') COLLATE "C" HAVING count(*)>1)
- OR EXISTS(SELECT 1 FROM jsonb_array_elements(p_state->'personalDays') q(v) GROUP BY (v->>'id') COLLATE "C" HAVING count(*)>1)
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(defs) q(v) GROUP BY (v->>'id') COLLATE "C" HAVING count(*)>1)
+ OR EXISTS(SELECT 1 FROM jsonb_array_elements(execs) q(v) GROUP BY (v->>'id') COLLATE "C" HAVING count(*)>1)
+ OR EXISTS(SELECT 1 FROM jsonb_array_elements(days) q(v) GROUP BY (v->>'id') COLLATE "C" HAVING count(*)>1)
  THEN RAISE EXCEPTION 'R386_S4_DUPLICATE'; END IF;
- FOR e IN SELECT value FROM jsonb_array_elements(p_state->'dailyExecution') LOOP
-  SELECT value INTO d FROM jsonb_array_elements(p_state->'definitions') WHERE value->>'id'=e->>'definitionId';
-  IF NOT FOUND OR d->>'kind' IS DISTINCT FROM e->>'kind' THEN RAISE EXCEPTION 'R386_S4_DEFINITION_LINK'; END IF;
-  SELECT value INTO day FROM jsonb_array_elements(p_state->'personalDays') WHERE value->>'id'=e->>'personalDayId';
-  IF NOT FOUND THEN RAISE EXCEPTION 'R386_S4_DAY_LINK'; END IF;
+ -- Only build the maps after the existing shape, owner and duplicate checks.
+ SELECT coalesce(jsonb_object_agg(value->>'id',value),'{}'::jsonb) INTO defmap FROM jsonb_array_elements(defs);
+ SELECT coalesce(jsonb_object_agg(value->>'id',value),'{}'::jsonb) INTO execmap FROM jsonb_array_elements(execs);
+ SELECT coalesce(jsonb_object_agg(value->>'id',value),'{}'::jsonb) INTO daymap FROM jsonb_array_elements(days);
+ FOR e IN SELECT value FROM jsonb_array_elements(execs) LOOP
+  d:=defmap->(e->>'definitionId');
+  IF d IS NULL OR d->>'kind' IS DISTINCT FROM e->>'kind' THEN RAISE EXCEPTION 'R386_S4_DEFINITION_LINK'; END IF;
+  day:=daymap->(e->>'personalDayId');
+  IF day IS NULL THEN RAISE EXCEPTION 'R386_S4_DAY_LINK'; END IF;
   due:=noor_r386_candidate.s4_date(e->'scheduleOccurrenceKey');
   IF due IS DISTINCT FROM noor_r386_candidate.s4_date(day->'boundary'->'localDate') THEN RAISE EXCEPTION 'R386_S4_DAY_LINK'; END IF;
-  zone:=noor_r386_candidate.s4_zone(day->'boundary'->'timeZone');
+  zone_key:=(day->'boundary'->'timeZone')::text;
+  IF zone_cache ? zone_key THEN zone:=zone_cache->>zone_key;
+  ELSE zone:=noor_r386_candidate.s4_zone(day->'boundary'->'timeZone'); zone_cache:=zone_cache||jsonb_build_object(zone_key,zone); END IF;
   performed:=noor_r386_candidate.s4_date(e->'completionDateR367',false);
   recovery:=noor_r386_candidate.s4_date(e->'recoveredOnR331',false);
   kind:=e->>'kind'; status:=e->>'status';
@@ -126,11 +135,11 @@ BEGIN
    'sessionPlanObserved',d?'sessionPlan');
   RETURN NEXT;
  END LOOP;
- FOR d IN SELECT value FROM jsonb_array_elements(p_state->'definitions') LOOP
+ FOR d IN SELECT value FROM jsonb_array_elements(defs) LOOP
   IF d?'activityLog' AND jsonb_typeof(d->'activityLog') IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'R386_S4_ACTIVITY'; END IF;
   FOR a IN SELECT value FROM jsonb_array_elements(coalesce(d->'activityLog','[]'::jsonb)) LOOP
-   SELECT value INTO e FROM jsonb_array_elements(p_state->'dailyExecution') WHERE value->>'id'=a->>'executionId';
-   IF NOT FOUND OR e->>'definitionId' IS DISTINCT FROM d->>'id' THEN RAISE EXCEPTION 'R386_S4_ACTIVITY_LINK'; END IF;
+   e:=execmap->(a->>'executionId');
+   IF e IS NULL OR e->>'definitionId' IS DISTINCT FROM d->>'id' THEN RAISE EXCEPTION 'R386_S4_ACTIVITY_LINK'; END IF;
    performed:=noor_r386_candidate.s4_date(a->'achievementDateR367',false);
    recovery:=noor_r386_candidate.s4_date(a->'performedOnR331',false);
    IF a?'taskSessionId' AND d->>'kind'<>'Task' THEN RAISE EXCEPTION 'R386_S4_ACTIVITY_LINK'; END IF;
@@ -158,13 +167,15 @@ BEGIN
    RETURN NEXT;
   END LOOP;
  END LOOP;
- FOR day IN SELECT value FROM jsonb_array_elements(p_state->'personalDays') LOOP
+ FOR day IN SELECT value FROM jsonb_array_elements(days) LOOP
   due:=noor_r386_candidate.s4_date(day->'boundary'->'localDate');
-  zone:=noor_r386_candidate.s4_zone(day->'boundary'->'timeZone');
+  zone_key:=(day->'boundary'->'timeZone')::text;
+  IF zone_cache ? zone_key THEN zone:=zone_cache->>zone_key;
+  ELSE zone:=noor_r386_candidate.s4_zone(day->'boundary'->'timeZone'); zone_cache:=zone_cache||jsonb_build_object(zone_key,zone); END IF;
   pol:=day->'prayerScoreSnapshotR334'; policy_id:=NULL; share_matrix:=NULL;
   context:=NULL;
-  IF jsonb_typeof(p_state->'islamicContexts')='array' AND (SELECT count(*) FROM jsonb_array_elements(p_state->'islamicContexts') q(v) WHERE v->>'personalDayId'=day->>'id')=1 THEN
-   SELECT v INTO context FROM jsonb_array_elements(p_state->'islamicContexts') q(v) WHERE v->>'personalDayId'=day->>'id' AND v->'prayerTimes'->>'localDate'=due;
+  IF jsonb_typeof(contexts)='array' AND (SELECT count(*) FROM jsonb_array_elements(contexts) q(v) WHERE v->>'personalDayId'=day->>'id')=1 THEN
+   SELECT v INTO context FROM jsonb_array_elements(contexts) q(v) WHERE v->>'personalDayId'=day->>'id' AND v->'prayerTimes'->>'localDate'=due;
   END IF;
   IF pol IS NOT NULL THEN
    policy_id:=noor_r386_candidate.s4_id(pol->'policyId');
@@ -190,7 +201,7 @@ BEGIN
     THEN RAISE EXCEPTION 'R386_S4_PRAYER_ALIAS'; END IF;
     -- A deleted definition may still be named by an old day policy. Never
     -- recreate a candidate reference after authorized definition deletion.
-    IF NOT EXISTS(SELECT 1 FROM jsonb_array_elements(p_state->'definitions') q(v) WHERE v->>'id'=mapping.key) THEN CONTINUE; END IF;
+    IF NOT (defmap ? mapping.key) THEN CONTINUE; END IF;
     fact_kind:='prayer-alias'; entity_id:=noor_r386_candidate.s4_id(day->'id'); sub_id:=noor_r386_candidate.s4_id(to_jsonb(mapping.key)); definition_id:=sub_id;
     record:=jsonb_build_object('dueDate',due,'policyId',policy_id,'prayerKey',mapping.value,'scoringPolicyVersion','R334');
     RETURN NEXT;
@@ -216,6 +227,7 @@ END $$;
 CREATE FUNCTION noor_r386_candidate.s4_capture()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
 DECLARE enabled boolean; rolled boolean; facts jsonb; prior_events jsonb:='[]'::jsonb;
+ prior_ids jsonb; current_ids jsonb; fact_ids jsonb; current_events jsonb; current_days jsonb;
 BEGIN
  IF current_user<>'noor_r386_s3_tx' THEN RETURN NEW; END IF;
  SELECT shadow_enabled,rollback_only INTO enabled,rolled FROM noor_r386_candidate.s3_enrollment WHERE owner_id=NEW.owner_id;
@@ -239,18 +251,21 @@ BEGIN
   );
   RETURN NEW;
  END IF;
+ current_events:=NEW.state->'outbox'; current_days:=NEW.state->'personalDays';
+ SELECT coalesce(jsonb_object_agg(e->>'id',true),'{}'::jsonb) INTO prior_ids FROM jsonb_array_elements(prior_events) q(e);
+ SELECT coalesce(jsonb_object_agg(e->>'id',true),'{}'::jsonb) INTO current_ids FROM jsonb_array_elements(current_events) q(e);
  SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO facts FROM noor_r386_candidate.s4_extract(NEW.owner_id,NEW.state) x;
  IF EXISTS(SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,sub_id text) GROUP BY x.fact_kind,x.entity_id,x.sub_id HAVING count(*)>1)
  THEN RAISE EXCEPTION 'R386_S4_DUPLICATE'; END IF;
+ SELECT coalesce(jsonb_object_agg(jsonb_build_array(x.fact_kind,x.entity_id,x.sub_id)::text,true),'{}'::jsonb) INTO fact_ids
+ FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,sub_id text);
  -- A removed entity erases all its fact versions, including derived policy
  -- aliases. Changed retained entities receive a new correction observation.
  DELETE FROM noor_r386_candidate.s4_fact f WHERE f.owner_id=NEW.owner_id AND (
-  (f.fact_kind<>'execution-transition' AND NOT EXISTS(
-   SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,sub_id text)
-   WHERE (x.fact_kind,x.entity_id,x.sub_id)=(f.fact_kind,f.entity_id,f.sub_id)))
+  (f.fact_kind<>'execution-transition' AND NOT (fact_ids ? jsonb_build_array(f.fact_kind,f.entity_id,f.sub_id)::text))
   OR (f.fact_kind='execution-transition' AND (
-   NOT EXISTS(SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text) WHERE x.fact_kind='execution' AND x.entity_id=f.entity_id)
-   OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.state->'outbox') e WHERE e->>'id'=f.sub_id)
+   NOT (fact_ids ? jsonb_build_array('execution',f.entity_id,'-')::text)
+   OR NOT (current_ids ? f.sub_id)
   ))
  );
  INSERT INTO noor_r386_candidate.s4_fact(owner_id,fact_kind,entity_id,sub_id,definition_id,source_revision,observation,record)
@@ -275,15 +290,15 @@ BEGIN
    'performedDate',x.record->'performedDate','performedTimeZone',NULL,'performanceSource',x.record->'performanceSource',
    'legacyRecoveryDate',x.record->'legacyRecoveryDate','weightAtObservedTransition',x.record->'observedEligibilityWeight',
    'scoringRuleAtObservedTransition',x.record->'scoringPolicyVersion','status',x.record->'status')
- FROM jsonb_array_elements(NEW.state->'outbox') q(e)
+ FROM (SELECT e FROM jsonb_array_elements(current_events) q(e)
+       WHERE e->>'eventType' IN ('ExecutionCompleted','ExecutionMissed','ExecutionCancelled','ExecutionReopened')
+       AND NOT (prior_ids ? (e->>'id')) OFFSET 0) q
  JOIN jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,definition_id text,record jsonb)
  ON x.fact_kind='execution' AND x.entity_id=e->>'aggregateId'
  AND x.record->'executionVersion'=e->'aggregateVersion'
  AND x.record->>'dayId'=e->>'personalDayId'
  AND x.definition_id=e->'payload'->>'definitionId' AND x.record->>'status'=e->'payload'->>'executionStatus'
- JOIN jsonb_array_elements(NEW.state->'personalDays') z(d) ON d->>'id'=x.record->>'dayId'
- WHERE e->>'eventType' IN ('ExecutionCompleted','ExecutionMissed','ExecutionCancelled','ExecutionReopened')
- AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(prior_events) pold(ev) WHERE pold.ev->>'id'=e->>'id');
+ JOIN jsonb_array_elements(current_days) z(d) ON d->>'id'=x.record->>'dayId';
  RETURN NEW;
 END $$;
 CREATE TRIGGER r386_s4_capture AFTER INSERT OR UPDATE OF state ON noor_r386_lab.synthetic_source

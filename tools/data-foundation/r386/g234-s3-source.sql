@@ -15,15 +15,19 @@ REVOKE ALL ON noor_r386_candidate.s3_enrollment FROM PUBLIC,anon,authenticated,s
 -- must authorize the deletion; this SQL independently checks event transition.
 CREATE FUNCTION noor_r386_candidate.s3_matches(p_owner text,p_events jsonb)
 RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
+DECLARE expected_history jsonb; expected_delivery jsonb;
+ actual_history jsonb; actual_delivery jsonb; history_count bigint; delivery_count bigint;
 BEGIN
  PERFORM noor_r386_candidate.s2_validate(p_owner,p_events);
- IF (SELECT count(*) FROM noor_r386_candidate.event_history WHERE owner_id=p_owner)<>jsonb_array_length(p_events)
- OR (SELECT count(*) FROM noor_r386_candidate.delivery_outbox WHERE owner_id=p_owner)<>jsonb_array_length(p_events)
- OR EXISTS(SELECT 1 FROM jsonb_array_elements(p_events) x(e)
- LEFT JOIN noor_r386_candidate.event_history h ON h.owner_id=p_owner AND h.event_id=e->>'id'
- LEFT JOIN noor_r386_candidate.delivery_outbox d ON d.owner_id=h.owner_id AND d.event_id=h.event_id
- WHERE h.record IS DISTINCT FROM (e-'deliveryState') OR h.event_key IS DISTINCT FROM e->>'idempotencyKey'
- OR d.state IS DISTINCT FROM e->>'deliveryState')
+ SELECT coalesce(jsonb_object_agg(e->>'id',jsonb_build_array(e->>'idempotencyKey',e-'deliveryState')),'{}'::jsonb),
+        coalesce(jsonb_object_agg(e->>'id',to_jsonb(e->>'deliveryState')),'{}'::jsonb)
+ INTO expected_history,expected_delivery FROM jsonb_array_elements(p_events) x(e);
+ SELECT count(*),coalesce(jsonb_object_agg(h.event_id,jsonb_build_array(h.event_key,h.record)),'{}'::jsonb)
+ INTO history_count,actual_history FROM noor_r386_candidate.event_history h WHERE h.owner_id=p_owner;
+ SELECT count(*),coalesce(jsonb_object_agg(d.event_id,to_jsonb(d.state)),'{}'::jsonb)
+ INTO delivery_count,actual_delivery FROM noor_r386_candidate.delivery_outbox d WHERE d.owner_id=p_owner;
+ IF history_count<>jsonb_array_length(p_events) OR delivery_count<>jsonb_array_length(p_events)
+ OR actual_history IS DISTINCT FROM expected_history OR actual_delivery IS DISTINCT FROM expected_delivery
  THEN RAISE EXCEPTION 'R386_S3_SHADOW_DRIFT'; END IF;
 END $$;
 
@@ -38,6 +42,7 @@ DECLARE enrollment noor_r386_candidate.s3_enrollment%ROWTYPE;
  v_exists boolean; v_revision bigint; v_state jsonb; v_next bigint;
  v_empty constant jsonb:='{"historicalEvents":[],"notificationHistory":[],"fridayMosqueVisits":[],"locations":[],"prayerPolicies":[],"personalDays":[],"islamicContexts":[],"definitions":[],"dailyExecution":[],"outbox":[]}'::jsonb;
  v_changed boolean; v_time timestamptz;
+ v_before_events jsonb; v_after_events jsonb; v_after_ids jsonb;
 BEGIN
  IF NOT noor_r386_candidate.valid_id(p_owner) OR NOT EXISTS(SELECT 1 FROM noor_r386_candidate.g234_scope WHERE owner_id=p_owner)
  OR p_request IS NULL OR p_request !~ '^[A-Za-z0-9_-]{1,128}$'
@@ -74,7 +79,9 @@ BEGIN
  IF v_exists IS DISTINCT FROM p_expected_exists OR v_revision IS DISTINCT FROM p_expected_revision
  OR v_state IS DISTINCT FROM p_before THEN RETURN '{"kind":"conflict"}'::jsonb; END IF;
  IF jsonb_typeof(p_after) IS DISTINCT FROM 'object' THEN RAISE EXCEPTION 'R386_S3_STATE'; END IF;
- PERFORM noor_r386_candidate.s2_validate(p_owner,p_after->'outbox');
+ v_before_events:=v_state->'outbox'; v_after_events:=p_after->'outbox';
+ PERFORM noor_r386_candidate.s2_validate(p_owner,v_after_events);
+ SELECT coalesce(jsonb_object_agg(n->>'id',true),'{}'::jsonb) INTO v_after_ids FROM jsonb_array_elements(v_after_events) y(n);
  -- First integration of an existing source requires the completed S2 copy.
  -- After integration, reject legacy writes/drift rather than silently overwrite.
  IF NOT enrollment.rollback_only THEN
@@ -90,19 +97,24 @@ BEGIN
  -- Erasure refs are server-derived pre-deletion IDs, never client input.
  -- Require all and only matching events removed; reject key reuse or
  -- immutable content change even when mutable delivery state changes.
- IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_state->'outbox') x(e)
- LEFT JOIN jsonb_array_elements(p_after->'outbox') y(n) ON e->>'id'=n->>'id'
- WHERE (n IS NULL) IS DISTINCT FROM
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_before_events) x(e)
+ WHERE ((v_after_ids ? (e->>'id')) IS NOT TRUE) IS DISTINCT FROM
  (e->>'aggregateId'=ANY(p_delete_refs) OR EXISTS(SELECT 1 FROM jsonb_each(e->'payload') f
  WHERE jsonb_typeof(f.value)='string' AND (f.value#>>'{}')=ANY(p_delete_refs))))
  THEN RAISE EXCEPTION 'R386_S3_ERASURE_SCOPE'; END IF;
- IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_after->'outbox') x(e)
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_after_events) x(e)
  WHERE e->>'aggregateId'=ANY(p_delete_refs) OR EXISTS(SELECT 1 FROM jsonb_each(e->'payload') f
  WHERE jsonb_typeof(f.value)='string' AND (f.value#>>'{}')=ANY(p_delete_refs)))
  THEN RAISE EXCEPTION 'R386_S3_ERASURE_SCOPE'; END IF;
- IF EXISTS(SELECT 1 FROM jsonb_array_elements(v_state->'outbox') x(e)
- JOIN jsonb_array_elements(p_after->'outbox') y(n) ON e->>'id'=n->>'id' OR e->>'idempotencyKey'=n->>'idempotencyKey'
- WHERE (e-'deliveryState') IS DISTINCT FROM (n-'deliveryState'))
+ -- s2_validate above has already proved unique, non-null event IDs and keys.
+ -- Build both maps once; preserve the original OR-match rejection semantics.
+ IF EXISTS(WITH maps AS MATERIALIZED (
+  SELECT coalesce(jsonb_object_agg(n->>'id',n-'deliveryState'),'{}'::jsonb) AS by_id,
+   coalesce(jsonb_object_agg(n->>'idempotencyKey',n-'deliveryState'),'{}'::jsonb) AS by_key
+  FROM jsonb_array_elements(v_after_events) y(n))
+ SELECT 1 FROM jsonb_array_elements(v_before_events) x(e) CROSS JOIN maps
+ WHERE ((by_id ? (e->>'id')) AND (e-'deliveryState') IS DISTINCT FROM by_id->(e->>'id'))
+ OR ((by_key ? (e->>'idempotencyKey')) AND (e-'deliveryState') IS DISTINCT FROM by_key->(e->>'idempotencyKey')))
  THEN RAISE EXCEPTION 'R386_S3_IMMUTABLE_EVENT'; END IF;
 
  v_changed:=v_state IS DISTINCT FROM p_after;
@@ -114,13 +126,13 @@ BEGIN
   ELSE INSERT INTO public.noor_personal_foundations(user_id,schema_version,revision,state,updated_at) VALUES(p_owner,1,v_next,p_after,clock_timestamp()); END IF;
   IF NOT enrollment.rollback_only THEN
   DELETE FROM noor_r386_candidate.event_history h WHERE owner_id=p_owner
-  AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(p_after->'outbox') x(e) WHERE e->>'id'=h.event_id);
+  AND NOT (v_after_ids ? h.event_id);
   INSERT INTO noor_r386_candidate.event_history(owner_id,event_id,event_key,first_seen_revision,record)
   SELECT p_owner,e->>'id',e->>'idempotencyKey',v_next,e-'deliveryState'
-  FROM jsonb_array_elements(p_after->'outbox') x(e)
+  FROM jsonb_array_elements(v_after_events) x(e)
   WHERE NOT EXISTS(SELECT 1 FROM noor_r386_candidate.event_history h WHERE h.owner_id=p_owner AND h.event_id=e->>'id');
   INSERT INTO noor_r386_candidate.delivery_outbox(owner_id,event_id,state)
-  SELECT p_owner,e->>'id',e->>'deliveryState' FROM jsonb_array_elements(p_after->'outbox') x(e)
+  SELECT p_owner,e->>'id',e->>'deliveryState' FROM jsonb_array_elements(v_after_events) x(e)
   ON CONFLICT(owner_id,event_id) DO UPDATE SET state=excluded.state
   WHERE noor_r386_candidate.delivery_outbox.state IS DISTINCT FROM excluded.state;
   ELSIF cardinality(p_delete_refs)>0 THEN
@@ -130,7 +142,7 @@ BEGIN
   END IF;
  END IF;
  IF NOT enrollment.rollback_only THEN
-  PERFORM noor_r386_candidate.s3_matches(p_owner,p_after->'outbox');
+  PERFORM noor_r386_candidate.s3_matches(p_owner,v_after_events);
  END IF;
  -- Retire pre-integration cursor, not source. Retain receipts indefinitely
  -- until a replay horizon and late-ID rejection are approved.
