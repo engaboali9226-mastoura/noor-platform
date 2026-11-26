@@ -3,7 +3,7 @@ set -eu
 set -f
 LC_ALL=C
 
-# Noor Personal Publication Control — Gate Schema v2 / Hook Policy v3 hook installer.
+# Noor Personal Publication Control — exact-commit hook installer.
 # Installs the canonical pre-push hook from an exact reviewed commit.
 #
 # Modes:
@@ -14,7 +14,7 @@ LC_ALL=C
 #   install-hook.sh --check
 #       Verify the installed hook matches the canonical template.
 #   install-hook.sh --restore [--dry-run]
-#       Restore the backup hook from the most recent backup.
+#       Restore the exact backup named by APPROVED_HOOK_SHA256.
 #
 # The installer never writes to .git/config.
 
@@ -110,32 +110,44 @@ resolve_source_repository || deny "cannot resolve source repository"
 
 # Resolve git paths
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || deny "not a git repository"
-COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null) || deny "common dir unavailable"
-case "$COMMON_DIR" in
-    /*) ;;
-    *) COMMON_DIR=$REPO_ROOT/$COMMON_DIR ;;
-esac
-COMMON_DIR=$(cd "$COMMON_DIR" 2>/dev/null && pwd -P) || deny "cannot canonicalize common dir"
+COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    deny "cannot resolve the common Git directory"
 
 GATE_DIR=$COMMON_DIR/$GATE_DIR_NAME
 BACKUP_DIR=$GATE_DIR/$BACKUP_DIR_NAME
 HOOK_PATH=$COMMON_DIR/hooks/pre-push
+EFFECTIVE_HOOK_PATH=$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-path hooks/pre-push) ||
+    deny "cannot resolve the effective pre-push hook"
+[ "$EFFECTIVE_HOOK_PATH" = "$HOOK_PATH" ] && [ ! -L "$COMMON_DIR/hooks" ] ||
+    deny "effective pre-push hook path differs from the approved path"
+[ ! -L "$HOOK_PATH" ] || deny "pre-push hook path is a symlink"
 
 # Ensure runtime directories exist (bootstrap)
+[ ! -L "$GATE_DIR" ] && [ ! -L "$BACKUP_DIR" ] || deny "publication state path is a symlink"
 mkdir -p "$GATE_DIR" "$BACKUP_DIR"
 chmod 0700 "$GATE_DIR" "$BACKUP_DIR"
 
 # Verify persistent push URL sentinel is intact
-current_pushurl=$(git config --get remote.origin.pushurl 2>/dev/null || git config --get remote.origin.url 2>/dev/null)
-[ "$current_pushurl" = "$SENTINEL_URL" ] ||
+current_pushurl=$(git remote get-url --push --all origin 2>/dev/null && printf '.') ||
+    deny "cannot resolve effective origin push URLs"
+[ "$current_pushurl" = "$(printf '%s\n.' "$SENTINEL_URL")" ] ||
     deny "persistent push URL must remain no_push://noor-personal-dev"
+
+if [ "$MODE" != check ]; then
+    [ "$CONFIRM" -eq 1 ] || deny "explicit --confirm required"
+    printf '%s\n' "${APPROVED_HOOK_SHA256-}" | grep -Eq '^[0-9a-f]{64}$' ||
+        deny "APPROVED_HOOK_SHA256 must be an exact approved SHA-256"
+    STATE_LOCK="$GATE_DIR/state.lock"
+    mkdir "$STATE_LOCK" 2>/dev/null || deny "publication state lock is held"
+    TMP_HOOK=''
+    trap '[ -z "$TMP_HOOK" ] || rm -f "$TMP_HOOK"; rmdir "$STATE_LOCK"' 0
+    trap 'exit 1' 1 2 3 15
+    [ ! -e "$GATE_DIR/active.gate" ] && [ ! -L "$GATE_DIR/active.gate" ] ||
+        deny "revoke the active gate before changing the installed hook"
+fi
 
 case "$MODE" in
     from-commit)
-        [ "$CONFIRM" -eq 1 ] || deny "explicit --confirm required"
-        [ -n "${APPROVED_HOOK_SHA256-}" ] ||
-            deny "APPROVED_HOOK_SHA256 environment variable is required"
-
         printf '%s\n' "$FROM_COMMIT" | grep -Eq '^[0-9a-f]{40}$' ||
             deny "approved implementation commit must be a full 40-character lowercase hexadecimal object ID"
 
@@ -179,7 +191,7 @@ case "$MODE" in
 
         if [ -f "$HOOK_PATH" ] && [ ! -L "$HOOK_PATH" ]; then
             existing_sha=$(compute_sha256 "$HOOK_PATH" 2>/dev/null || echo "")
-            if [ "$existing_sha" = "$expected_sha" ]; then
+            if [ "$existing_sha" = "$expected_sha" ] && [ -x "$HOOK_PATH" ]; then
                 rm -f "$TMP_HOOK"
                 echo "install-hook: hook already matches canonical; nothing to do"
                 exit 0
@@ -201,8 +213,8 @@ case "$MODE" in
         fi
 
         if [ "$DRY_RUN" -eq 0 ]; then
+            chmod 0755 "$TMP_HOOK"
             mv "$TMP_HOOK" "$HOOK_PATH"
-            chmod 0755 "$HOOK_PATH"
         else
             rm -f "$TMP_HOOK"
         fi
@@ -233,7 +245,7 @@ case "$MODE" in
         canonical_sha=$(compute_sha256 "$TMP_HOOK")
         rm -f "$TMP_HOOK"
 
-        if [ -f "$HOOK_PATH" ] && [ ! -L "$HOOK_PATH" ]; then
+        if [ -f "$HOOK_PATH" ] && [ ! -L "$HOOK_PATH" ] && [ -x "$HOOK_PATH" ]; then
             installed_sha=$(compute_sha256 "$HOOK_PATH")
         else
             deny "no pre-push hook installed"
@@ -243,28 +255,24 @@ case "$MODE" in
             echo "install-hook: hook hash matches canonical"
             exit 0
         else
-            deny "hook hash drift detected; run install-hook.sh --restore"
+            deny "hook hash drift detected; reconcile against the approved hook SHA-256"
         fi
         ;;
 
     restore)
-        [ "$CONFIRM" -eq 1 ] || deny "explicit --confirm required"
-
-        # Find the most recent backup
-        latest=''
-        for f in "$BACKUP_DIR"/pre-push.*; do
-            [ -f "$f" ] && [ ! -L "$f" ] || continue
-            latest=$f
-        done
-        [ -n "$latest" ] || deny "no backup hook available to restore"
-
-        echo "install-hook: restoring from $latest"
+        backup="$BACKUP_DIR/pre-push.$APPROVED_HOOK_SHA256"
+        [ -f "$backup" ] && [ ! -L "$backup" ] || deny "approved hook backup is unavailable"
+        TMP_HOOK=$(mktemp "$GATE_DIR/.hook.restore.XXXXXX") || deny "cannot prepare hook restoration"
+        cp "$backup" "$TMP_HOOK"
+        [ "$(compute_sha256 "$TMP_HOOK")" = "$APPROVED_HOOK_SHA256" ] ||
+            deny "backup bytes differ from the approved hook SHA-256"
         if [ "$DRY_RUN" -eq 0 ]; then
-            chmod 0755 "$latest"
-            cp "$latest" "$HOOK_PATH"
-            chmod 0755 "$HOOK_PATH"
+            chmod 0755 "$TMP_HOOK"
+            mv "$TMP_HOOK" "$HOOK_PATH"
+            [ -x "$HOOK_PATH" ] && [ "$(compute_sha256 "$HOOK_PATH")" = "$APPROVED_HOOK_SHA256" ] ||
+                deny "restored hook verification failed"
         fi
-        echo "install-hook: restore complete"
+        echo "install-hook: exact approved backup verified (dry_run=$DRY_RUN)"
         exit 0
         ;;
 

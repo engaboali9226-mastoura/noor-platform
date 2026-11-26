@@ -4,9 +4,9 @@
  */
 import type { NoteR171 } from './noor-three-spaces-r171.js';
 
-export const NOOR_DEVELOPER_GITHUB_REPO_R282 = 'engaboali9226-mastoura/work-tracker_OS' as const;
+export const NOOR_DEVELOPER_GITHUB_REPO_R282 = 'engaboali9226-mastoura/noor-platform' as const;
 export const NOOR_DEVELOPER_GITHUB_ISSUES_R282 =
-  'https://github.com/engaboali9226-mastoura/work-tracker_OS/issues' as const;
+  'https://github.com/engaboali9226-mastoura/noor-platform/issues' as const;
 
 export type NoorDeveloperIssueInputR282 =
   Readonly<Pick<NoteR171,'kind'|'title'|'body'|'category'>>;

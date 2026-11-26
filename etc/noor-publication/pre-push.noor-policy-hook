@@ -3,17 +3,19 @@ set -eu
 set -f
 LC_ALL=C
 
-# Noor Personal publication-control v5 gate (permanent generic template).
+# Noor Personal publication-control v6 gate (permanent generic template).
 # Installed verbatim into .git/hooks/pre-push by install-hook.sh.
 # This template is the canonical hook policy for the publication-control
 # mechanism. It contains no per-publication commit hashes; all
 # per-publication values are read from active.gate.
 
 # Permanent constants (not per-publication):
-CANONICAL_URL='https://github.com/engaboali9226-mastoura/work-tracker_OS.git'
+CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
+CANONICAL_REPOSITORY='engaboali9226-mastoura/noor-platform'
+CANONICAL_REPOSITORY_ID=1284723703
 PROTECTED_REF='refs/heads/product/noor-personal-mvp'
 ZERO_OBJECT='0000000000000000000000000000000000000000'
-HOOK_POLICY_VERSION='5'
+HOOK_POLICY_VERSION='6'
 SCHEMA_VERSION='3'
 GATE_FILE_LINES=14
 PUB_RE='refs/heads/pub/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
@@ -27,10 +29,32 @@ AUDIT_LOG_NAME='audit.log'
 SENTINEL_URL='no_push://noor-personal-dev'
 
 deny() {
-    echo "Push blocked: Noor Personal publication-control v5 gate." >&2
+    echo "Push blocked: Noor Personal publication-control v6 gate." >&2
     echo "Push denied: $1." >&2
     exit 1
 }
+
+verify_repository_identity() {
+    # Disable user curl configuration and refuse to follow even one redirect.
+    response=$(curl --disable --silent --show-error --fail --location --max-redirs 0 \
+        --proto '=https' --connect-timeout 5 --max-time 15 \
+        --header 'Accept: application/vnd.github+json' \
+        --write-out '\n%{http_code}' \
+        "https://api.github.com/repos/$CANONICAL_REPOSITORY") ||
+        deny "canonical repository identity is unavailable"
+    status=$(printf '%s\n' "$response" | tail -n 1)
+    [ "$status" = 200 ] || deny "canonical repository did not give a direct HTTP 200"
+    printf '%s\n' "$response" | sed '$d' |
+        jq -es --arg name "$CANONICAL_REPOSITORY" --arg url "$CANONICAL_URL" \
+            --argjson id "$CANONICAL_REPOSITORY_ID" \
+            'length == 1 and (.[0] | type == "object" and .id == $id and .full_name == $name and .clone_url == $url)' \
+            >/dev/null || deny "canonical repository identity mismatch"
+}
+
+if [ "$#" -eq 1 ] && [ "$1" = '--check-identity' ]; then
+    verify_repository_identity
+    exit 0
+fi
 
 # Fail-closed check for Git URL rewrite rules (insteadOf / pushInsteadOf).
 # If any configured rewrite rule could match CANONICAL_URL, deny immediately.
@@ -224,7 +248,7 @@ validate_gate() {
                 [ "$line" = "AUTHORITY_ID=$v" ] || deny "field 12 malformed"
                 printf '%s' "$v" | grep -Eq '^[A-Z0-9][A-Z0-9._-]{0,126}$' || deny "authority_id format invalid"
                 AUTH_GATE="$v" ;;
-            13) [ "$line" = "HOOK_POLICY_VERSION=5" ] || deny "hook policy version mismatch" ;;
+            13) [ "$line" = "HOOK_POLICY_VERSION=6" ] || deny "hook policy version mismatch" ;;
             14) v=${line#GATE_FILE_SHA256=}
                 [ "$line" = "GATE_FILE_SHA256=$v" ] || deny "field 14 malformed"
                 printf '%s' "$v" | grep -Eq '^[0-9a-f]{64}$' || deny "sha256 format invalid"
@@ -253,17 +277,14 @@ validate_gate() {
 # path, alias, or config-controlled replacement is ever treated as an equivalent
 # to the canonical repository URL. The canonical URL is a compile-time constant.
 [ "$#" -eq 2 ] || deny "remote arguments invalid"
-authorized_remote=0
-for candidate in "$1" "$2"; do
-    [ "$candidate" = "$CANONICAL_URL" ] && authorized_remote=1 && break
-done
-[ "$authorized_remote" -eq 1 ] || deny "remote URL is not authorized: publishing requires the exact canonical repository URL"
+[ "$2" = "$CANONICAL_URL" ] || deny "remote URL is not authorized: publishing requires the exact canonical repository URL"
 [ "${GIT_PUSH_OPTION_COUNT-}" = "" ] || [ "${GIT_PUSH_OPTION_COUNT-}" = "0" ] ||
     deny "push options not authorized"
 
 # Verify persistent push URL sentinel is intact (tamper detection)
-configured_pushurl=$(git config --get remote.origin.pushurl 2>/dev/null || git config --get remote.origin.url 2>/dev/null)
-[ "$configured_pushurl" = "$SENTINEL_URL" ] ||
+configured_pushurl=$(git remote get-url --push --all origin 2>/dev/null && printf '.') ||
+    deny "cannot resolve effective origin push URLs"
+[ "$configured_pushurl" = "$(printf '%s\n.' "$SENTINEL_URL")" ] ||
     deny "persistent push URL sentinel has been altered"
 
 # Fail-closed: reject any Git URL rewrite rule that could redirect CANONICAL_URL
@@ -271,12 +292,8 @@ check_canonical_url_rewrite
 
 # Resolve git paths
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || deny "repository root unavailable"
-COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null) || deny "common dir unavailable"
-case "$COMMON_DIR" in
-    /*) ;;
-    *) COMMON_DIR=$REPO_ROOT/$COMMON_DIR ;;
-esac
-COMMON_DIR=$(cd "$COMMON_DIR" 2>/dev/null && pwd -P) || deny "cannot canonicalize common dir"
+COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    deny "cannot resolve the common Git directory"
 
 GATE_DIR=$COMMON_DIR/$GATE_DIR_NAME
 CONSUMED_DIR=$GATE_DIR/$CONSUMED_DIR_NAME
@@ -293,8 +310,20 @@ ACTIVE_GATE=$GATE_DIR/$ACTIVE_GATE_NAME
 # Acquire exclusive lock
 acquire_lock
 
-# Validate gate
+# Validate and bind the exact gate selected by publish-once under its lock.
 validate_gate
+[ "${NOOR_PUBLICATION_GATE_NONCE-}" = "$NONCE_GATE" ] ||
+    deny "active gate nonce differs from publication request"
+gate_sha=$(compute_sha256 "$ACTIVE_GATE")
+[ "${NOOR_PUBLICATION_GATE_SHA256-}" = "$gate_sha" ] &&
+    printf '%s\n' "$gate_sha" | grep -Eq '^[0-9a-f]{64}$' ||
+    deny "active gate SHA-256 differs from publication request"
+
+# Archived authorization identifiers remain reserved across all policy versions.
+CONSUMED_GATE=$CONSUMED_DIR/$NONCE_GATE.gate
+REVOKED_GATE=$REVOKED_DIR/$NONCE_GATE.gate
+[ ! -e "$CONSUMED_GATE" ] && [ ! -L "$CONSUMED_GATE" ] || deny "nonce already consumed"
+[ ! -e "$REVOKED_GATE" ] && [ ! -L "$REVOKED_GATE" ] || deny "nonce already revoked"
 
 # Read and validate stdin ref updates (exactly one)
 update_count=0
@@ -405,8 +434,15 @@ case "$OP_GATE" in
         ;;
 esac
 
-# Live remote check
-remote_line=$(git ls-remote -- "$CANONICAL_URL" "$DST_REF_GATE" 2>/dev/null || deny "live remote check failed")
+# A protected push must already have redirects disabled for its exact URL.
+redirect_policy=$(git config --type=bool --get-urlmatch http.followRedirects "$CANONICAL_URL") ||
+    deny "HTTPS redirect policy is unavailable"
+[ "$redirect_policy" = false ] || deny "HTTPS redirects must be disabled before the push"
+verify_repository_identity
+
+# Live remote check, with the same redirect policy enforced on this request.
+remote_line=$(git -c http.followRedirects=false -c "http.$CANONICAL_URL.followRedirects=false" \
+    ls-remote -- "$CANONICAL_URL" "$DST_REF_GATE" 2>/dev/null || deny "live remote check failed")
 
 case "$OP_GATE" in
     CREATE_NON_PROTECTED_BRANCH_EXACT_OBJECT)
@@ -430,13 +466,11 @@ case "$OP_GATE" in
         ;;
 esac
 
-# Re-validate gate integrity (defense in depth)
-computed2=$(head -13 "$ACTIVE_GATE" | compute_sha256)
-[ "$computed2" = "$GATESHA_GATE" ] || deny "gate integrity changed during validation"
+# Revalidate the original bytes immediately before taking ownership.
+[ "$(compute_sha256 "$ACTIVE_GATE")" = "$gate_sha" ] ||
+    deny "gate integrity changed during validation"
 
-# Consume the gate (fail-closed: only after ALL checks pass)
-CONSUMED_GATE=$CONSUMED_DIR/$NONCE_GATE.gate
-[ ! -e "$CONSUMED_GATE" ] && [ ! -L "$CONSUMED_GATE" ] || deny "nonce already consumed"
+# Consume the gate (fail-closed: only after ALL checks pass).
 
 mv "$ACTIVE_GATE" "$CONSUMED_GATE" || deny "gate consumption failed"
 
@@ -445,8 +479,8 @@ mv "$ACTIVE_GATE" "$CONSUMED_GATE" || deny "gate consumption failed"
 [ "$(stat -f '%u' "$CONSUMED_GATE")" = "$(id -u)" ] || deny "consumed owner invalid"
 [ "$(stat -f '%Lp' "$CONSUMED_GATE")" = 600 ] || deny "consumed mode invalid"
 [ "$(stat -f '%l' "$CONSUMED_GATE")" = 1 ] || deny "consumed link count invalid"
-consumed_sha=$(head -13 "$CONSUMED_GATE" | compute_sha256)
-[ "$consumed_sha" = "$computed2" ] || deny "consumed artifact integrity changed"
+[ "$(compute_sha256 "$CONSUMED_GATE")" = "$gate_sha" ] ||
+    deny "consumed artifact integrity changed"
 
 # Record consumption (not network outcome)
 echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') event=AUTHORITY_CONSUMED_PRE_PUSH nonce=$NONCE_GATE op=$OP_GATE src=$SRC_REF_GATE@$SRC_OBJ_GATE dst=$DST_REF_GATE remote_obj=$REQ_REMOTE_OBJ_GATE authority=$AUTH_GATE hook_policy=$HOOK_POLICY_VERSION" >> "$GATE_DIR/$AUDIT_LOG_NAME"

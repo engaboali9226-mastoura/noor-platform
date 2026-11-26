@@ -2,6 +2,7 @@
 set -eu
 set -f
 LC_ALL=C
+export GIT_ALLOW_PROTOCOL=file
 
 # Common test helpers for the Noor Personal publication-control acceptance suite.
 # These tests run ONLY against task-created temporary repositories and mock
@@ -10,10 +11,10 @@ LC_ALL=C
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-CANONICAL_URL='https://github.com/engaboali9226-mastoura/work-tracker_OS.git'
+CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
 ZERO_OBJECT='0000000000000000000000000000000000000000'
 SENTINEL_URL='no_push://noor-personal-dev'
-ACTIVE_HOOK_POLICY_VERSION=5
+ACTIVE_HOOK_POLICY_VERSION=6
 
 # Root of this repository (used for locating tracked artifacts).
 # Resolve from the live working tree rather than the shell invocation so source
@@ -92,7 +93,7 @@ assert_file_absent() {
 # ---------------------------------------------------------------------------
 # Test environment setup
 # ---------------------------------------------------------------------------
-TEST_BASE="${TMPDIR:-/tmp}/noor-pub-tests-$$"
+TEST_BASE=$(mktemp -d "${TMPDIR:-/tmp}/noor-pub-tests.XXXXXX")
 ORIGINAL_PATH="${PATH:-}"
 WORKSPACE=''
 MOCK_REMOTE=''
@@ -117,6 +118,7 @@ copy_publication_control_artifacts() {
     cp "$REPO_ROOT/etc/noor-publication/scripts/install-hook.sh" "$repo_dir/etc/noor-publication/scripts/install-hook.sh"
     cp "$REPO_ROOT/etc/noor-publication/scripts/generate-gate.sh" "$repo_dir/etc/noor-publication/scripts/generate-gate.sh"
     cp "$REPO_ROOT/etc/noor-publication/scripts/publish-once.sh" "$repo_dir/etc/noor-publication/scripts/publish-once.sh"
+    cp "$REPO_ROOT/etc/noor-publication/scripts/transport.sh" "$repo_dir/etc/noor-publication/scripts/"
     cp "$REPO_ROOT/etc/noor-publication/scripts/verify-publication.sh" "$repo_dir/etc/noor-publication/scripts/verify-publication.sh"
     cp "$REPO_ROOT/etc/noor-publication/POLICY.md" "$repo_dir/etc/noor-publication/POLICY.md" 2>/dev/null || true
 
@@ -216,6 +218,7 @@ setup_test_env() {
     git -C "$TEST_REPO" remote add origin "$MOCK_REMOTE"
     git -C "$TEST_REPO" config remote.origin.pushurl "$SENTINEL_URL"
     git -C "$TEST_REPO" config push.default nothing
+    git -C "$TEST_REPO" config http.followRedirects false
 
 # Set up test-only PATH-scoped Git transport shim.
     # This wrapper intercepts git commands that reference the canonical URL
@@ -226,10 +229,10 @@ setup_test_env() {
     NOOR_TEST_GIT_SHIM="$WORKSPACE/git-shim"
     mkdir -p "$NOOR_TEST_GIT_SHIM"
     cat > "$NOOR_TEST_GIT_SHIM/git" << 'GIT_SHIM_EOF'
-#!/bin/sh
+#!/usr/bin/env bash
 set -eu
-MOCK_REMOTE='__MOCK_REMOTE__'
-CANONICAL_URL='__CANONICAL_URL__'
+MOCK_REMOTE="$NOOR_TEST_MOCK_REMOTE"
+CANONICAL_URL="$NOOR_TEST_CANONICAL_URL"
 # Test-only transport shim: intercept git commands that reference the
 # canonical URL and redirect them to the mock remote. Only affects
 # ls-remote, push, and fetch. This shim does NOT use url.*.insteadOf or
@@ -243,6 +246,11 @@ CANONICAL_URL='__CANONICAL_URL__'
 # argument preservation. The REAL_GIT path is captured from the environment
 # before the shim directory is prepended to PATH, ensuring no recursion.
 REAL_GIT="$NOOR_TEST_REAL_GIT"
+git_config=()
+while [ "${1-}" = "-c" ]; do
+    git_config+=("$1" "$2")
+    shift 2
+done
 
 if [ "$#" -ge 3 ] && { [ "$1" = "ls-remote" ] || [ "$1" = "push" ] || [ "$1" = "fetch" ]; } then
     # Build a new argument list with the canonical URL replaced by the
@@ -260,14 +268,17 @@ if [ "$#" -ge 3 ] && { [ "$1" = "ls-remote" ] || [ "$1" = "push" ] || [ "$1" = "
     done
 
     if [ "$_found" -eq 1 ]; then
-        exec "$REAL_GIT" "${_new_args[@]}"
+        exec "$REAL_GIT" "${git_config[@]}" "${_new_args[@]}"
     fi
 fi
 
 # Pass through to real git with all arguments preserved unchanged
-exec "$REAL_GIT" "$@"
+exec "$REAL_GIT" "${git_config[@]}" "$@"
 GIT_SHIM_EOF
-    sed -i '' "s|__MOCK_REMOTE__|$MOCK_REMOTE|g; s|__CANONICAL_URL__|$CANONICAL_URL|g" "$NOOR_TEST_GIT_SHIM/git"
+    export NOOR_TEST_MOCK_REMOTE="$MOCK_REMOTE"
+    export NOOR_TEST_CANONICAL_URL="$CANONICAL_URL"
+    cp "$REPO_ROOT/tests/noor-publication/mock-curl.sh" "$NOOR_TEST_GIT_SHIM/curl"
+    chmod 0755 "$NOOR_TEST_GIT_SHIM/curl"
     chmod 0755 "$NOOR_TEST_GIT_SHIM/git"
     # Capture the REAL git binary path BEFORE prepending the shim to PATH,
     # so that 'command -v git' resolves to the real git, not the shim.
@@ -301,10 +312,12 @@ GIT_SHIM_EOF
     mkdir -p "$GATE_DIR/consumed" "$GATE_DIR/backups" "$GATE_DIR/revoked"
     chmod 0700 "$GATE_DIR" "$GATE_DIR/consumed" "$GATE_DIR/backups" "$GATE_DIR/revoked"
 
-    # publish-once resolves its verifier relative to the repository root.
+    # Copy a matching publisher, transport, hook, and verifier into the fixture.
     mkdir -p "$TEST_REPO/etc/noor-publication/scripts"
     cp "$REPO_ROOT/etc/noor-publication/scripts/generate-gate.sh" "$TEST_REPO/etc/noor-publication/scripts/generate-gate.sh"
     cp "$REPO_ROOT/etc/noor-publication/scripts/publish-once.sh" "$TEST_REPO/etc/noor-publication/scripts/publish-once.sh"
+    cp "$REPO_ROOT/etc/noor-publication/scripts/transport.sh" "$TEST_REPO/etc/noor-publication/scripts/"
+    cp "$HOOK_TEMPLATE" "$TEST_REPO/etc/noor-publication/"
     cp "$REPO_ROOT/etc/noor-publication/scripts/verify-publication.sh" "$TEST_REPO/etc/noor-publication/scripts/verify-publication.sh"
     chmod 0755 "$TEST_REPO/etc/noor-publication/scripts/generate-gate.sh" "$TEST_REPO/etc/noor-publication/scripts/publish-once.sh" "$TEST_REPO/etc/noor-publication/scripts/verify-publication.sh"
 }
@@ -418,6 +431,22 @@ make_tag_gate() {
         "$ACTIVE_HOOK_POLICY_VERSION"
 }
 
+# Snapshot gate expectations for fixture calls that invoke the hook directly.
+bind_fixture_gate() {
+    NOOR_PUBLICATION_GATE_NONCE=''
+    NOOR_PUBLICATION_GATE_SHA256=''
+    if [ -f "$GATE_DIR/active.gate" ]; then
+        NOOR_PUBLICATION_GATE_NONCE=$(sed -n '11s/^NONCE=//p' "$GATE_DIR/active.gate")
+        NOOR_PUBLICATION_GATE_SHA256=$(shasum -a 256 "$GATE_DIR/active.gate" | awk '{ print $1 }')
+    fi
+    export NOOR_PUBLICATION_GATE_NONCE NOOR_PUBLICATION_GATE_SHA256
+}
+
+fixture_gate_hook() (
+    bind_fixture_gate
+    .git/hooks/pre-push "$@"
+)
+
 # ---------------------------------------------------------------------------
 # Core test execution helper
 # ---------------------------------------------------------------------------
@@ -461,7 +490,7 @@ run_simulated_push() {
     echo "$local_ref $local_object $dest_ref $remote_object" | (
         cd "$TEST_REPO"
         set +e
-        .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" 2>&1
+        fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" 2>&1
         echo "HOOK_EXIT_CODE=$?"
     ) > "$WORKSPACE/.hook.out"
     # Extract hook exit
@@ -597,7 +626,10 @@ run_publish_once_with_candidate_hook() {
     {
         printf '%s\n' '#!/bin/sh'
         printf '%s\n' 'set -eu'
-        printf '%s\n' 'if [ "$#" -eq 3 ] && [ "$1" = "push" ]; then'
+        printf '%s\n' 'if [ "${1-}" = "-c" ] && [ "${2-}" = "http.followRedirects=false" ] && [ "${5-}" = "-c" ] && [ "${7-}" = "push" ]; then'
+        printf '%s\n' '    [ "$4" = "http.$NOOR_TEST_CANONICAL_URL.followRedirects=false" ]'
+        printf '%s\n' '    [ "$6" = "core.hooksPath=$(pwd -P)/.git/hooks" ]'
+        printf '%s\n' '    shift 6'
         printf '%s\n' '    remote_url=$2'
         printf '%s\n' '    refspec=$3'
         printf '%s\n' '    source_ref=${refspec%%:*}'
@@ -608,7 +640,7 @@ run_publish_once_with_candidate_hook() {
         printf '%s\n' '        remote_object=$("$NOOR_TEST_SHIM_GIT" ls-remote --refs -- "$remote_url" "$destination_ref" | awk "NR == 1 { print \$1 }")'
         printf '%s\n' '    else'
         printf '%s\n' '        source_object=$("$NOOR_TEST_REAL_GIT" rev-parse --verify "$source_ref")'
-        printf '%s\n' '        remote_object=$("$NOOR_TEST_REAL_GIT" ls-remote --refs -- "$remote_url" "$destination_ref" | awk "NR == 1 { print \$1 }")'
+        printf '%s\n' '        remote_object=$("$NOOR_TEST_SHIM_GIT" ls-remote --refs -- "$remote_url" "$destination_ref" | awk "NR == 1 { print \$1 }")'
         printf '%s\n' '    fi'
         printf '%s\n' '    [ -n "$remote_object" ] || remote_object=0000000000000000000000000000000000000000'
         printf '%s\n' '    printf "%s %s %s %s\\n" "$source_ref" "$source_object" "$destination_ref" "$remote_object" | .git/hooks/pre-push "$remote_url" "$NOOR_TEST_CANONICAL_URL"'
@@ -623,7 +655,7 @@ run_publish_once_with_candidate_hook() {
     chmod 0755 "$wrapper_dir/git"
 
     set +e
-    (cd "$TEST_REPO" && PATH="$wrapper_dir:$PATH" etc/noor-publication/scripts/publish-once.sh "$@" > "$publish_output" 2>&1)
+    (cd "$TEST_REPO" && PATH="$wrapper_dir:$PATH" "${NOOR_TEST_PUBLISHER_SCRIPT:-etc/noor-publication/scripts/publish-once.sh}" "$@" > "$publish_output" 2>&1)
     PUBLISH_ONCE_EXIT=$?
     set -e
 }

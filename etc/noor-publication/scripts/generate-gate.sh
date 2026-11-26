@@ -3,7 +3,7 @@ set -eu
 set -f
 LC_ALL=C
 
-# Noor Personal publication-control Policy-v5 gate generator.
+# Noor Personal publication-control Policy-v6 gate generator.
 # Creates a single-use active.gate for an authorized publication.
 #
 # Usage:
@@ -120,7 +120,9 @@ compute_sha256() {
 }
 
 # Constants
-CANONICAL_URL='https://github.com/engaboali9226-mastoura/work-tracker_OS.git'
+CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
+PUBLICATION_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+. "$PUBLICATION_SCRIPT_DIR/transport.sh"
 ZERO_OBJECT='0000000000000000000000000000000000000000'
 GATE_DIR_NAME='noor-publication-gate'
 STATE_LOCK_NAME='state.lock'
@@ -271,12 +273,8 @@ printf '%s' "$NONCE" | grep -Eq '^[0-9a-f]{32}$' || deny "invalid nonce"
 
 # Resolve git paths
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || deny "not a git repository"
-COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null) || deny "common dir unavailable"
-case "$COMMON_DIR" in
-    /*) ;;
-    *) COMMON_DIR=$REPO_ROOT/$COMMON_DIR ;;
-esac
-COMMON_DIR=$(cd "$COMMON_DIR" 2>/dev/null && pwd -P) || deny "cannot canonicalize common dir"
+COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    deny "cannot resolve the common Git directory"
 
 GATE_DIR=$COMMON_DIR/$GATE_DIR_NAME
 CONSUMED_DIR=$GATE_DIR/$CONSUMED_DIR_NAME
@@ -286,7 +284,10 @@ STATE_LOCK=$GATE_DIR/$STATE_LOCK_NAME
 ACTIVE_GATE=$GATE_DIR/$ACTIVE_GATE_NAME
 AUDIT_LOG=$GATE_DIR/$AUDIT_LOG_NAME
 
-# Ensure runtime directories exist
+# Keep the archive and lock inside the repository's actual state directory.
+[ ! -L "$GATE_DIR" ] && [ ! -L "$CONSUMED_DIR" ] &&
+    [ ! -L "$REVOKED_DIR" ] && [ ! -L "$BACKUP_DIR" ] ||
+    deny "publication state path is a symlink"
 mkdir -p "$GATE_DIR" "$CONSUMED_DIR" "$REVOKED_DIR" "$BACKUP_DIR"
 chmod 0700 "$GATE_DIR" "$CONSUMED_DIR" "$REVOKED_DIR" "$BACKUP_DIR"
 
@@ -299,6 +300,12 @@ trap 'rmdir "$STATE_LOCK" 2>/dev/null || true' 0 1 2 3 15
 # No-overwrite activation check
 [ ! -e "$ACTIVE_GATE" ] && [ ! -L "$ACTIVE_GATE" ] ||
     deny "active gate already present"
+
+# Compare against both archives atomically with activation.
+consumed_path="$CONSUMED_DIR/$NONCE.gate"
+revoked_path="$REVOKED_DIR/$NONCE.gate"
+[ ! -e "$consumed_path" ] && [ ! -L "$consumed_path" ] || deny "nonce already consumed"
+[ ! -e "$revoked_path" ] && [ ! -L "$revoked_path" ] || deny "nonce already revoked"
 
 # Compute timestamps
 now=$(date -u '+%s')
@@ -318,6 +325,8 @@ fi
 
 # Fail-closed: reject any Git URL rewrite rule that could redirect canonical URL
 check_canonical_url_rewrite
+
+require_canonical_repository
 
 # Validate operation-specific source, destination, and object invariants.
 case "$OPERATION" in
@@ -363,7 +372,7 @@ case "$OPERATION" in
                 deny "delete operation destination is not a branch ref"
                 ;;
         esac
-        remote_line=$(git ls-remote -- "$CANONICAL_URL" "$DESTINATION_REF" 2>/dev/null || deny "cannot verify remote state")
+        remote_line=$(canonical_git ls-remote -- "$CANONICAL_URL" "$DESTINATION_REF" 2>/dev/null || deny "cannot verify remote state")
         [ -n "$remote_line" ] || deny "destination ref not found on remote"
         set -- $remote_line
         [ "$#" -eq 2 ] || deny "remote state malformed"
@@ -375,9 +384,9 @@ esac
 # Build the gate file (lines 1-13 first)
 TMP_GATE="$GATE_DIR/.gate.tmp.$$"
 
-# All new gates use schema v3 and policy v5
+# All new gates use schema v3 and policy v6
 GATE_SCHEMA_VERSION=3
-GATE_POLICY_VERSION=5
+GATE_POLICY_VERSION=6
 
 cat > "$TMP_GATE" <<EOF
 SCHEMA_VERSION=$GATE_SCHEMA_VERSION

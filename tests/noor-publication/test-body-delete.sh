@@ -330,7 +330,7 @@ test_t41() {
     printf '%s %s %s %s\n' "(delete)" "$ZERO_OBJECT" "$dest_ref" "$TEST_COMMIT_IMPL" > "$stdin_file"
     printf '%s %s %s %s\n' "(delete)" "$ZERO_OBJECT" "$dest_ref" "$TEST_COMMIT_IMPL" >> "$stdin_file"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$stdin_file" > "$WORKSPACE/.t41.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$stdin_file" > "$WORKSPACE/.t41.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "multi-update delete gate rejection"
@@ -466,7 +466,7 @@ test_t46() {
 
     printf '%s %s %s %s\n' "(delete)" "$ZERO_OBJECT" "$dest_ref" "$TEST_COMMIT_IMPL" > "$WORKSPACE/update-delete.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/update-delete.stdin" > "$WORKSPACE/update-delete.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/update-delete.stdin" > "$WORKSPACE/update-delete.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "update gate must not authorize delete"
@@ -491,7 +491,7 @@ test_t47() {
 
     printf '%s %s %s %s\n' "(delete)" "$ZERO_OBJECT" "$tag_ref" "$TEST_TAG_OBJECT" > "$WORKSPACE/tag-delete.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/tag-delete.stdin" > "$WORKSPACE/tag-delete.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/tag-delete.stdin" > "$WORKSPACE/tag-delete.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "tag-create gate must not authorize delete"
@@ -517,7 +517,7 @@ test_t48() {
 
     printf '%s %s %s %s\n' "refs/heads/product/noor-personal-mvp" "$TEST_COMMIT_IMPL" "$dest_ref" "$ZERO_OBJECT" > "$WORKSPACE/delete-create.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-create.stdin" > "$WORKSPACE/delete-create.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-create.stdin" > "$WORKSPACE/delete-create.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "delete gate must not authorize create"
@@ -544,7 +544,7 @@ test_t49() {
 
     printf '%s %s %s %s\n' "refs/heads/product/noor-personal-mvp" "$TEST_CHILD_COMMIT" "$dest_ref" "$TEST_COMMIT_IMPL" > "$WORKSPACE/delete-update.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-update.stdin" > "$WORKSPACE/delete-update.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-update.stdin" > "$WORKSPACE/delete-update.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "delete gate must not authorize update"
@@ -569,7 +569,7 @@ test_t50() {
 
     printf '%s %s %s %s\n' "refs/tags/delete-tag-create" "$TEST_TAG_OBJECT" "$tag_ref" "$ZERO_OBJECT" > "$WORKSPACE/delete-tag-create.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-tag-create.stdin" > "$WORKSPACE/delete-tag-create.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-tag-create.stdin" > "$WORKSPACE/delete-tag-create.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "delete gate must not authorize tag create"
@@ -594,7 +594,7 @@ test_t51() {
 
     printf '%s %s %s %s\n' "(delete)" "$ZERO_OBJECT" "$tag_ref" "$TEST_TAG_OBJECT" > "$WORKSPACE/delete-tag-delete.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-tag-delete.stdin" > "$WORKSPACE/delete-tag-delete.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-tag-delete.stdin" > "$WORKSPACE/delete-tag-delete.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "delete gate must not authorize tag delete"
@@ -619,7 +619,7 @@ test_t52() {
 
     printf '%s %s %s %s\n' "(delete)" "$TEST_COMMIT_IMPL" "$dest_ref" "$TEST_COMMIT_IMPL" > "$WORKSPACE/delete-local-nonzero.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-local-nonzero.stdin" > "$WORKSPACE/delete-local-nonzero.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/delete-local-nonzero.stdin" > "$WORKSPACE/delete-local-nonzero.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "delete source object must be zero"
@@ -644,7 +644,7 @@ test_t53() {
 
     printf '%s %s %s %s\n' "refs/heads/product/noor-personal-mvp" "$ZERO_OBJECT" "$dest_ref" "$ZERO_OBJECT" > "$WORKSPACE/normal-zero.stdin"
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/normal-zero.stdin" > "$WORKSPACE/normal-zero.out" 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/normal-zero.stdin" > "$WORKSPACE/normal-zero.out" 2>&1)
     hook_rc=$?
     set -e
     assert_exit 1 "$hook_rc" "normal ref with zero object is invalid for delete"
