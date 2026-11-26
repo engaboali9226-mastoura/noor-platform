@@ -21,4 +21,4 @@
 | QA and regression | [263](https://github.com/engaboali9226-mastoura/noor-platform/issues/263) |
 | Operations and release | [264](https://github.com/engaboali9226-mastoura/noor-platform/issues/264) |
 
-The issues, not this index, contain changing status and audit evidence. Follow the governance registry for the next release and preserve closed release history. These links use the candidate repository name and become operational after the authorized rename and identity verification.
+The issues, not this index, contain changing status and audit evidence. Follow the governance registry for the next release and preserve closed release history. Links using `noor-platform` require the repository name and identity to be verified on GitHub before use.

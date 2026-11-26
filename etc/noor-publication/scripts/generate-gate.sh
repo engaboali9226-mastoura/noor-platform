@@ -22,82 +22,6 @@ deny() {
     exit 1
 }
 
-# Fail-closed check for Git URL rewrite rules (insteadOf / pushInsteadOf).
-# If any configured rewrite rule could match the canonical URL, deny immediately.
-# Checks local, global, and system Git config.
-check_canonical_url_rewrite() {
-    if [ -n "${GIT_CONFIG_COUNT-}" ]; then
-        _env_index=1
-        while [ "$_env_index" -le "${GIT_CONFIG_COUNT}" ]; do
-            _diag_index=$_env_index
-            eval "__env_key=\${GIT_CONFIG_KEY_$_env_index-}"
-            eval "__env_value=\${GIT_CONFIG_VALUE_$_env_index-}"
-            _env_index=$((_env_index + 1))
-            [ -n "${__env_key:-}" ] || continue
-            __env_key_norm=$(printf '%s' "$__env_key" | tr '[:upper:]' '[:lower:]')
-            case "$__env_key_norm" in
-                url.*.insteadof|url.*.pushinsteadof)
-                    case "$CANONICAL_URL" in
-                        "$__env_value"*)
-                            echo "PUBLICATION_CONTROL_URL_REWRITE_DETECTED" >&2
-                            deny "Git URL rewrite [GIT_CONFIG_KEY_${_diag_index}] targets canonical URL: $__env_key=$__env_value"
-                            ;;
-                    esac
-                    ;;
-            esac
-        done
-    fi
-
-    if [ -n "${GIT_CONFIG_PARAMETERS-}" ]; then
-        for _param in ${GIT_CONFIG_PARAMETERS}; do
-            case "$_param" in
-                *=*)
-                    _param_key=${_param%%=*}
-                    _param_value=${_param#*=}
-                    _param_key_norm=$(printf '%s' "$_param_key" | tr '[:upper:]' '[:lower:]')
-                    case "$_param_key_norm" in
-                        url.*.insteadof|url.*.pushinsteadof)
-                            case "$CANONICAL_URL" in
-                                "$_param_value"*)
-                                    echo "PUBLICATION_CONTROL_URL_REWRITE_DETECTED" >&2
-                                    deny "Git URL rewrite [GIT_CONFIG_PARAMETERS] targets canonical URL: $_param_key=$_param_value"
-                                    ;;
-                            esac
-                            ;;
-                    esac
-                    ;;
-            esac
-        done
-    fi
-
-    for _scope_args in "" "--global" "--system"; do
-        set +e
-        _config_output=$(git config $_scope_args --get-regexp 'url\.' 2>/dev/null)
-        _rc=$?
-        set -e
-        [ "$_rc" -ne 0 ] && continue
-        [ -z "$_config_output" ] && continue
-        while IFS= read -r _line; do
-            [ -n "$_line" ] || continue
-            _key=$(echo "$_line" | awk '{print $1}')
-            _value=$(echo "$_line" | awk '{print $2}')
-            _key_norm=$(printf '%s' "$_key" | tr '[:upper:]' '[:lower:]')
-            case "$_key_norm" in
-                url.*.insteadof|url.*.pushinsteadof)
-                    case "$CANONICAL_URL" in
-                        "$_value"*)
-                            echo "PUBLICATION_CONTROL_URL_REWRITE_DETECTED" >&2
-                            deny "Git URL rewrite [$_scope_args] targets canonical URL: $_key=$_value"
-                            ;;
-                    esac
-                    ;;
-            esac
-        done <<EOF
-$_config_output
-EOF
-    done
-}
-
 # SHA-256 utility with capability detection (macOS / GNU).
 compute_sha256() {
     if [ "$#" -gt 0 ] && [ -n "$1" ]; then
@@ -123,6 +47,7 @@ compute_sha256() {
 CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
 PUBLICATION_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 . "$PUBLICATION_SCRIPT_DIR/transport.sh"
+require_default_git_config
 ZERO_OBJECT='0000000000000000000000000000000000000000'
 GATE_DIR_NAME='noor-publication-gate'
 STATE_LOCK_NAME='state.lock'
@@ -322,9 +247,6 @@ else
     [ "$TTL" -le 86400 ] || deny "TTL exceeds maximum"
     expires=$((now_10 + TTL))
 fi
-
-# Fail-closed: reject any Git URL rewrite rule that could redirect canonical URL
-check_canonical_url_rewrite
 
 require_canonical_repository
 
