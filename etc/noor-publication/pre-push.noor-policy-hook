@@ -37,7 +37,7 @@ deny() {
 verify_repository_identity() {
     # Disable user curl configuration and refuse to follow even one redirect.
     response=$(curl --disable --silent --show-error --fail --location --max-redirs 0 \
-        --proto '=https' --connect-timeout 5 --max-time 15 \
+        --proto '=https' --proto-redir '=https' --connect-timeout 5 --max-time 15 \
         --header 'Accept: application/vnd.github+json' \
         --write-out '\n%{http_code}' \
         "https://api.github.com/repos/$CANONICAL_REPOSITORY") ||
@@ -56,81 +56,76 @@ if [ "$#" -eq 1 ] && [ "$1" = '--check-identity' ]; then
     exit 0
 fi
 
-# Fail-closed check for Git URL rewrite rules (insteadOf / pushInsteadOf).
-# If any configured rewrite rule could match CANONICAL_URL, deny immediately.
-# Checks local, global, and system Git config.
-check_canonical_url_rewrite() {
-    if [ -n "${GIT_CONFIG_COUNT-}" ]; then
-        _env_index=1
-        while [ "$_env_index" -le "${GIT_CONFIG_COUNT}" ]; do
-            _diag_index=$_env_index
-            eval "__env_key=\${GIT_CONFIG_KEY_$_env_index-}"
-            eval "__env_value=\${GIT_CONFIG_VALUE_$_env_index-}"
-            _env_index=$((_env_index + 1))
-            [ -n "${__env_key:-}" ] || continue
-            __env_key_norm=$(printf '%s' "$__env_key" | tr '[:upper:]' '[:lower:]')
-            case "$__env_key_norm" in
-                url.*.insteadof|url.*.pushinsteadof)
-                    case "$CANONICAL_URL" in
-                        "$__env_value"*)
-                            echo "PUBLICATION_CONTROL_URL_REWRITE_DETECTED" >&2
-                            deny "Git URL rewrite [GIT_CONFIG_KEY_${_diag_index}] targets canonical URL: $__env_key=$__env_value"
-                            ;;
-                    esac
-                    ;;
-            esac
-        done
+# Inspect the config loaded by Git, including conditional includes. Fail closed
+# on a read error and never include configuration values in diagnostics.
+deny_config_entries() {
+    if git config --includes --name-only --get-regexp "$1" >/dev/null 2>&1; then
+        deny "$2"
+    else
+        [ "$?" -eq 1 ] || deny "cannot inspect Git configuration"
     fi
-
-    if [ -n "${GIT_CONFIG_PARAMETERS-}" ]; then
-        for _param in ${GIT_CONFIG_PARAMETERS}; do
-            case "$_param" in
-                *=*)
-                    _param_key=${_param%%=*}
-                    _param_value=${_param#*=}
-                    _param_key_norm=$(printf '%s' "$_param_key" | tr '[:upper:]' '[:lower:]')
-                    case "$_param_key_norm" in
-                        url.*.insteadof|url.*.pushinsteadof)
-                            case "$CANONICAL_URL" in
-                                "$_param_value"*)
-                                    echo "PUBLICATION_CONTROL_URL_REWRITE_DETECTED" >&2
-                                    deny "Git URL rewrite [GIT_CONFIG_PARAMETERS] targets canonical URL: $_param_key=$_param_value"
-                                    ;;
-                            esac
-                            ;;
-                    esac
-                    ;;
-            esac
-        done
-    fi
-
-    for _scope_args in "" "--global" "--system"; do
-        set +e
-        _config_output=$(git config $_scope_args --get-regexp 'url\.' 2>/dev/null)
-        _rc=$?
-        set -e
-        [ "$_rc" -ne 0 ] && continue
-        [ -z "$_config_output" ] && continue
-        while IFS= read -r _line; do
-            [ -n "$_line" ] || continue
-            _key=$(echo "$_line" | awk '{print $1}')
-            _value=$(echo "$_line" | awk '{print $2}')
-            _key_norm=$(printf '%s' "$_key" | tr '[:upper:]' '[:lower:]')
-            case "$_key_norm" in
-                url.*.insteadof|url.*.pushinsteadof)
-                    case "$CANONICAL_URL" in
-                        "$_value"*)
-                            echo "PUBLICATION_CONTROL_URL_REWRITE_DETECTED" >&2
-                            deny "Git URL rewrite [$_scope_args] targets canonical URL: $_key=$_value"
-                            ;;
-                    esac
-                    ;;
-            esac
-        done <<EOF
-$_config_output
-EOF
-    done
 }
+
+check_persistent_hook_config() {
+    git config --includes --list >/dev/null 2>&1 || deny "cannot read Git configuration"
+    deny_config_entries '^hook\.' "configured Git hooks are not supported"
+}
+
+check_persistent_transport_config() (
+    unset GIT_CONFIG_COUNT
+    check_persistent_hook_config
+    deny_config_entries '^url\..*\.(insteadof|pushinsteadof)$' "Git URL rewrite is not supported"
+    deny_config_entries '^http\..+\.[^.]+$' "URL-scoped HTTP configuration is not supported"
+    deny_config_entries '^http\.(proxy|extraheader|curloptresolve)$' "HTTP transport override is not supported"
+    deny_config_entries '^remote\.https://github\.com/engaboali9226-mastoura/noor-platform\.git\.' "canonical URL used as configured remote name"
+    deny_config_entries '^core\.hookspath$' "custom core.hooksPath is not supported"
+
+    if tls_verify=$(git config --type=bool --get http.sslVerify 2>/dev/null); then
+        [ "$tls_verify" = true ] || deny "HTTPS certificate verification must stay enabled"
+    else
+        [ "$?" -eq 1 ] || deny "cannot inspect HTTPS certificate verification"
+    fi
+)
+
+check_config_environment() {
+    [ -z "${GIT_CONFIG+x}${GIT_CONFIG_PARAMETERS+x}${GIT_SSL_NO_VERIFY+x}" ] ||
+        deny "inherited Git config or TLS override is not supported"
+}
+
+check_canonical_push_context() {
+    check_config_environment
+    if [ -n "${GIT_CONFIG_COUNT+x}" ]; then
+        # Accept only the exact settings installed by the transport on its
+        # push invocation. Unset them only for persistent config inspection.
+        [ "$GIT_CONFIG_COUNT" = 3 ] &&
+            [ "${GIT_CONFIG_KEY_0-}" = http.followRedirects ] && [ "${GIT_CONFIG_VALUE_0-}" = false ] &&
+            [ "${GIT_CONFIG_KEY_1-}" = http.sslVerify ] && [ "${GIT_CONFIG_VALUE_1-}" = true ] &&
+            [ "${GIT_CONFIG_KEY_2-}" = core.hooksPath ] &&
+            [ "${GIT_CONFIG_VALUE_2-}" = "$COMMON_DIR/hooks" ] ||
+            deny "inherited Git config override is not supported"
+    fi
+    check_persistent_transport_config
+
+    redirect_policy=$(git config --type=bool --get-urlmatch http.followRedirects "$CANONICAL_URL" 2>/dev/null) ||
+        deny "HTTPS redirects must be disabled before the push"
+    [ "$redirect_policy" = false ] || deny "HTTPS redirects must be disabled before the push"
+}
+
+if [ "$#" -eq 1 ]; then
+    case "$1" in
+        --check-configured-hooks|--preflight-transport)
+            check_config_environment
+            [ -z "${GIT_CONFIG_COUNT+x}" ] || deny "inherited Git config override is not supported"
+            if [ "$1" = '--check-configured-hooks' ]; then
+                check_persistent_hook_config
+            else
+                check_persistent_transport_config
+                verify_repository_identity
+            fi
+            exit 0
+            ;;
+    esac
+fi
 
 # SHA-256 utility with capability detection (macOS / GNU).
 # Accepts an optional file argument; with no argument, hashes stdin.
@@ -276,24 +271,28 @@ validate_gate() {
 # repository URL grants publication authority. No url.*.insteadOf mapping, local
 # path, alias, or config-controlled replacement is ever treated as an equivalent
 # to the canonical repository URL. The canonical URL is a compile-time constant.
-[ "$#" -eq 2 ] || deny "remote arguments invalid"
-[ "$2" = "$CANONICAL_URL" ] || deny "remote URL is not authorized: publishing requires the exact canonical repository URL"
-[ "${GIT_PUSH_OPTION_COUNT-}" = "" ] || [ "${GIT_PUSH_OPTION_COUNT-}" = "0" ] ||
-    deny "push options not authorized"
+check_gate_only=0
+if [ "$#" -eq 1 ] && [ "$1" = '--check-gate' ]; then
+    check_gate_only=1
+else
+    [ "$#" -eq 2 ] || deny "remote arguments invalid"
+    [ "$2" = "$CANONICAL_URL" ] || deny "remote URL is not authorized: publishing requires the exact canonical repository URL"
+    [ "${GIT_PUSH_OPTION_COUNT-}" = "" ] || [ "${GIT_PUSH_OPTION_COUNT-}" = "0" ] ||
+        deny "push options not authorized"
+fi
 
-# Verify persistent push URL sentinel is intact (tamper detection)
+# Resolve the same common directory as the publisher before inspecting config.
+COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    deny "cannot resolve the common Git directory"
+if [ "$check_gate_only" -eq 0 ]; then
+    check_canonical_push_context
+fi
+
+# Verify persistent push URL sentinel is intact.
 configured_pushurl=$(git remote get-url --push --all origin 2>/dev/null && printf '.') ||
     deny "cannot resolve effective origin push URLs"
 [ "$configured_pushurl" = "$(printf '%s\n.' "$SENTINEL_URL")" ] ||
     deny "persistent push URL sentinel has been altered"
-
-# Fail-closed: reject any Git URL rewrite rule that could redirect CANONICAL_URL
-check_canonical_url_rewrite
-
-# Resolve git paths
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || deny "repository root unavailable"
-COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
-    deny "cannot resolve the common Git directory"
 
 GATE_DIR=$COMMON_DIR/$GATE_DIR_NAME
 CONSUMED_DIR=$GATE_DIR/$CONSUMED_DIR_NAME
@@ -307,23 +306,26 @@ ACTIVE_GATE=$GATE_DIR/$ACTIVE_GATE_NAME
 [ "$(stat -f '%u' "$GATE_DIR")" = "$(id -u)" ] || deny "gate dir owner invalid"
 [ "$(stat -f '%Lp' "$GATE_DIR")" = 700 ] || deny "gate dir mode invalid"
 
-# Acquire exclusive lock
-acquire_lock
-
-# Validate and bind the exact gate selected by publish-once under its lock.
+# For the read-only preflight the publisher already holds state.lock.
+if [ "$check_gate_only" -eq 0 ]; then
+    acquire_lock
+fi
 validate_gate
+
+# Archived authorization identifiers stay reserved across all policy versions.
+CONSUMED_GATE=$CONSUMED_DIR/$NONCE_GATE.gate
+REVOKED_GATE=$REVOKED_DIR/$NONCE_GATE.gate
+[ ! -e "$CONSUMED_GATE" ] && [ ! -L "$CONSUMED_GATE" ] || deny "nonce already consumed"
+[ ! -e "$REVOKED_GATE" ] && [ ! -L "$REVOKED_GATE" ] || deny "nonce already revoked"
+[ "$check_gate_only" -eq 0 ] || exit 0
+
+# Bind the exact gate selected by publish-once under its lock.
 [ "${NOOR_PUBLICATION_GATE_NONCE-}" = "$NONCE_GATE" ] ||
     deny "active gate nonce differs from publication request"
 gate_sha=$(compute_sha256 "$ACTIVE_GATE")
 [ "${NOOR_PUBLICATION_GATE_SHA256-}" = "$gate_sha" ] &&
     printf '%s\n' "$gate_sha" | grep -Eq '^[0-9a-f]{64}$' ||
     deny "active gate SHA-256 differs from publication request"
-
-# Archived authorization identifiers remain reserved across all policy versions.
-CONSUMED_GATE=$CONSUMED_DIR/$NONCE_GATE.gate
-REVOKED_GATE=$REVOKED_DIR/$NONCE_GATE.gate
-[ ! -e "$CONSUMED_GATE" ] && [ ! -L "$CONSUMED_GATE" ] || deny "nonce already consumed"
-[ ! -e "$REVOKED_GATE" ] && [ ! -L "$REVOKED_GATE" ] || deny "nonce already revoked"
 
 # Read and validate stdin ref updates (exactly one)
 update_count=0
@@ -434,14 +436,10 @@ case "$OP_GATE" in
         ;;
 esac
 
-# A protected push must already have redirects disabled for its exact URL.
-redirect_policy=$(git config --type=bool --get-urlmatch http.followRedirects "$CANONICAL_URL") ||
-    deny "HTTPS redirect policy is unavailable"
-[ "$redirect_policy" = false ] || deny "HTTPS redirects must be disabled before the push"
 verify_repository_identity
 
-# Live remote check, with the same redirect policy enforced on this request.
-remote_line=$(git -c http.followRedirects=false -c "http.$CANONICAL_URL.followRedirects=false" \
+# Remote read uses HTTPS only and the same redirect and TLS settings as the push.
+remote_line=$(GIT_ALLOW_PROTOCOL=https git -c http.followRedirects=false -c http.sslVerify=true \
     ls-remote -- "$CANONICAL_URL" "$DST_REF_GATE" 2>/dev/null || deny "live remote check failed")
 
 case "$OP_GATE" in
@@ -470,8 +468,10 @@ esac
 [ "$(compute_sha256 "$ACTIVE_GATE")" = "$gate_sha" ] ||
     deny "gate integrity changed during validation"
 
-# Consume the gate (fail-closed: only after ALL checks pass).
-
+# Consume the gate only after the audit destination is safe.
+audit_log="$GATE_DIR/$AUDIT_LOG_NAME"
+[ ! -L "$audit_log" ] && { [ ! -e "$audit_log" ] || [ -f "$audit_log" ]; } ||
+    deny "publication audit path is invalid"
 mv "$ACTIVE_GATE" "$CONSUMED_GATE" || deny "gate consumption failed"
 
 # Verify consumed gate metadata

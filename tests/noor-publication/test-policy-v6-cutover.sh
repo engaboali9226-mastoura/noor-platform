@@ -17,7 +17,11 @@ expect_rejection() {
         cat "$WORKSPACE/cutover.out" >&2
         exit 1
     fi
-    grep -F "$diagnostic" "$WORKSPACE/cutover.out" >/dev/null
+    if ! grep -F "$diagnostic" "$WORKSPACE/cutover.out" >/dev/null; then
+        printf "Expected diagnostic: %s\n" "$diagnostic" >&2
+        cat "$WORKSPACE/cutover.out" >&2
+        exit 1
+    fi
 }
 
 begin_test repository-identity
@@ -30,6 +34,11 @@ make_create_gate
     NOOR_TEST_REPOSITORY_ID=1 expect_rejection 'canonical repository identity mismatch' \
         etc/noor-publication/scripts/publish-once.sh
     NOOR_TEST_HTTP_STATUS=301 expect_rejection 'did not give a direct HTTP 200' \
+        etc/noor-publication/scripts/publish-once.sh
+    NOOR_TEST_IDENTITY_UNAVAILABLE=1 expect_rejection 'canonical repository identity is unavailable' \
+        etc/noor-publication/scripts/publish-once.sh
+    NOOR_TEST_REPOSITORY_NAME=engaboali9226-mastoura/work-tracker_OS \
+        expect_rejection 'canonical repository identity mismatch' \
         etc/noor-publication/scripts/publish-once.sh
     expect_rejection 'publication requires the exact canonical repository URL' \
         etc/noor-publication/scripts/publish-once.sh --remote-url "$MOCK_REMOTE"
@@ -62,9 +71,27 @@ make_create_gate
     chmod 0644 .git/hooks/pre-push
     expect_rejection 'missing or not executable' "$publisher"
     chmod 0755 .git/hooks/pre-push
+    mv .git/hooks/pre-push .git/hooks/saved
+    ln -s saved .git/hooks/pre-push
+    expect_rejection 'effective pre-push hook path differs' "$publisher"
+    rm .git/hooks/pre-push
+    mv .git/hooks/saved .git/hooks/pre-push
+    git config core.hooksPath "$TEST_REPO/.git/hooks"
+    expect_rejection 'custom core.hooksPath' "$publisher"
+    git config --unset core.hooksPath
     printf '\n# wrong hash\n' >> .git/hooks/pre-push
     expect_rejection 'SHA-256 differs' "$publisher"
+    cp "$HOOK_TEMPLATE" .git/hooks/pre-push
+
+    verifier=etc/noor-publication/scripts/verify-publication.sh
+    printf '\n# wrong verifier hash\n' >> "$verifier"
+    expect_rejection 'mandatory verifier is unavailable or differs' "$publisher"
+    cp "$SCRIPTS_DIR/verify-publication.sh" "$verifier"
+    chmod 0644 "$verifier"
+    expect_rejection 'mandatory verifier is unavailable or not executable' "$publisher"
 )
+assert_file_absent "$NOOR_TEST_PUSH_LOG"
+assert_eq "" "$(git ls-remote --refs -- "$MOCK_REMOTE" "refs/heads/pub/*")"
 assert_file_exists "$GATE_DIR/active.gate"
 assert_file_absent "$GATE_DIR/audit.log"
 pass
@@ -90,11 +117,13 @@ dest_ref="refs/heads/pub/$suffix"
     digest=$(shasum -a 256 "$WORKSPACE/v5-gate" | awk '{print $1}')
     printf 'GATE_FILE_SHA256=%s\n' "$digest" >> "$WORKSPACE/v5-gate"
     cat "$WORKSPACE/v5-gate" > "$GATE_DIR/active.gate"
+    expect_rejection 'hook policy version mismatch' etc/noor-publication/scripts/publish-once.sh
     expect_rejection 'hook policy version mismatch' \
         fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/input"
 )
 assert_file_exists "$GATE_DIR/active.gate"
 assert_file_absent "$GATE_DIR/consumed/$GATE_NONCE.gate"
+assert_file_absent "$NOOR_TEST_PUSH_LOG"
 pass
 cleanup_test_env
 
@@ -111,23 +140,24 @@ install_hook_in_test_repo
     printf 'a different backup\n' > "$GATE_DIR/backups/pre-push.zzzz"
     cp "$HOOK_TEMPLATE" "$backup"
     export APPROVED_HOOK_SHA256=$expected_v5_sha
-    expect_rejection 'backup bytes differ' "$SCRIPTS_DIR/install-hook.sh" --restore --confirm
+    expect_rejection 'approved backup bytes mismatch' "$SCRIPTS_DIR/install-hook.sh" --restore "$expected_v5_sha" --confirm
     cmp -s .git/hooks/pre-push "$HOOK_TEMPLATE"
     cp "$v5_fixture" "$backup"
     mkdir "$GATE_DIR/state.lock"
-    expect_rejection 'state lock is held' "$SCRIPTS_DIR/install-hook.sh" --restore --confirm
+    expect_rejection 'state lock held' "$SCRIPTS_DIR/install-hook.sh" --restore "$expected_v5_sha" --confirm
     rmdir "$GATE_DIR/state.lock"
     umask 077
     printf 'synthetic active authority\n' > "$GATE_DIR/active.gate"
-    expect_rejection 'revoke the active gate' "$SCRIPTS_DIR/install-hook.sh" --restore --confirm
+    expect_rejection 'pending authority or consume lock' "$SCRIPTS_DIR/install-hook.sh" --restore "$expected_v5_sha" --confirm
     rm "$GATE_DIR/active.gate"
-    "$SCRIPTS_DIR/install-hook.sh" --restore --confirm --dry-run
+    "$SCRIPTS_DIR/install-hook.sh" --restore "$expected_v5_sha" --confirm --dry-run
     cmp -s .git/hooks/pre-push "$HOOK_TEMPLATE"
-    "$SCRIPTS_DIR/install-hook.sh" --restore --confirm
+    "$SCRIPTS_DIR/install-hook.sh" --restore "$expected_v5_sha" --confirm
     test -x .git/hooks/pre-push
     cmp -s .git/hooks/pre-push "$v5_fixture"
     cmp -s "$GATE_DIR/consumed/history.gate" "$WORKSPACE/expected.history"
-    cmp -s "$GATE_DIR/audit.log" "$WORKSPACE/expected.audit"
+    head -n 1 "$GATE_DIR/audit.log" | cmp -s - "$WORKSPACE/expected.audit"
+    grep -F "event=HOOK_RESTORE_VERIFIED installed_sha256=$expected_v5_sha" "$GATE_DIR/audit.log" >/dev/null
     test "$(git config --get remote.origin.pushurl)" = "$SENTINEL_URL"
 )
 pass
@@ -228,4 +258,71 @@ grep -F 'publication verified and completed successfully' "$WORKSPACE/matching-v
 pass
 cleanup_test_env
 
-[ "$PASS_COUNT" -eq 8 ] && [ "$FAIL_COUNT" -eq 0 ]
+begin_test transport-config-rejection
+setup_test_env
+install_hook_in_test_repo
+make_create_gate
+(
+    cd "$TEST_REPO"
+    publisher=etc/noor-publication/scripts/publish-once.sh
+    generator=etc/noor-publication/scripts/generate-gate.sh
+    verifier=etc/noor-publication/scripts/verify-publication.sh
+    suffix=$(printf '%s' "$TEST_COMMIT_IMPL" | cut -c1-12)
+    dst="refs/heads/pub/$suffix"
+    git config --file "$WORKSPACE/transport.ini" "http.$CANONICAL_URL.followRedirects" true
+    git config include.path "$WORKSPACE/transport.ini"
+    expect_rejection 'URL-scoped HTTP configuration is not supported' "$publisher"
+    mv "$GATE_DIR/active.gate" "$WORKSPACE/fixture-gate"
+    expect_rejection 'URL-scoped HTTP configuration is not supported' "$generator" \
+        --operation CREATE_NON_PROTECTED_BRANCH_EXACT_OBJECT \
+        --source-ref refs/heads/product/noor-personal-mvp --source-object "$TEST_COMMIT_IMPL" \
+        --destination-ref "$dst" --required-remote-object "$ZERO_OBJECT"
+    test ! -e "$GATE_DIR/active.gate"
+    mv "$WORKSPACE/fixture-gate" "$GATE_DIR/active.gate"
+    expect_rejection 'URL-scoped HTTP configuration is not supported' "$verifier" \
+        --operation CREATE_NON_PROTECTED_BRANCH_EXACT_OBJECT \
+        --destination-ref "$dst" --expected-object "$TEST_COMMIT_IMPL"
+    expect_rejection 'URL-scoped HTTP configuration is not supported' \
+        fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < /dev/null
+    git config --unset include.path
+    git config url.https://example.invalid/.insteadOf "$CANONICAL_URL"
+    expect_rejection 'Git URL rewrite' "$publisher"
+    git config --unset url.https://example.invalid/.insteadOf
+    git config url.https://example.invalid/.pushInsteadOf "$CANONICAL_URL"
+    expect_rejection 'Git URL rewrite' "$publisher"
+    git config --unset url.https://example.invalid/.pushInsteadOf
+    git config "remote.$CANONICAL_URL.url" "$MOCK_REMOTE"
+    expect_rejection 'canonical URL used as configured remote name' "$publisher"
+    git config --unset "remote.$CANONICAL_URL.url"
+    GIT_CONFIG_COUNT=0 expect_rejection 'inherited Git config' "$publisher"
+    GIT_CONFIG_PARAMETERS="'core.hooksPath'='alternate'" expect_rejection 'inherited Git config' "$publisher"
+    GIT_SSL_NO_VERIFY=1 expect_rejection 'TLS override is not supported' "$publisher"
+    git config http.sslVerify false
+    expect_rejection 'HTTPS certificate verification must stay enabled' "$publisher"
+)
+assert_file_exists "$GATE_DIR/active.gate"
+assert_file_absent "$GATE_DIR/audit.log"
+assert_file_absent "$NOOR_TEST_PUSH_LOG"
+assert_eq "" "$(git ls-remote --refs -- "$MOCK_REMOTE" "refs/heads/pub/*")"
+pass
+cleanup_test_env
+
+begin_test uncertain-push-no-retry
+setup_test_env
+install_hook_in_test_repo
+make_create_gate
+cp "$GATE_DIR/active.gate" "$WORKSPACE/expected.gate"
+NOOR_TEST_PUSH_UNAVAILABLE=1 run_publish_once_with_candidate_hook "$WORKSPACE/uncertain.out"
+assert_exit 1 "$PUBLISH_ONCE_EXIT" "unverified outcome fails closed"
+grep -F "event=PUSH_OUTCOME_UNVERIFIED nonce=$GATE_NONCE" "$GATE_DIR/audit.log" >/dev/null
+run_publish_once_with_candidate_hook "$WORKSPACE/no-retry.out"
+assert_exit 1 "$PUBLISH_ONCE_EXIT" "uncertain nonce cannot be attempted again"
+grep -F 'nonce already attempted; reconcile remote state' "$WORKSPACE/no-retry.out" >/dev/null
+assert_eq 1 "$(wc -l < "$NOOR_TEST_PUSH_LOG" | tr -d ' ')"
+cmp -s "$WORKSPACE/expected.gate" "$GATE_DIR/active.gate"
+assert_file_absent "$GATE_DIR/consumed/$GATE_NONCE.gate"
+assert_eq "" "$(git ls-remote --refs -- "$MOCK_REMOTE" "refs/heads/pub/*")"
+pass
+cleanup_test_env
+
+[ "$PASS_COUNT" -eq 10 ] && [ "$FAIL_COUNT" -eq 0 ]

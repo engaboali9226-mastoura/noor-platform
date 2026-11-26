@@ -252,6 +252,9 @@ while [ "${1-}" = "-c" ]; do
     shift 2
 done
 
+if [ "${1-}" = push ]; then
+    printf '%s\n' 'push' >> "$NOOR_TEST_PUSH_LOG"
+fi
 if [ "$#" -ge 3 ] && { [ "$1" = "ls-remote" ] || [ "$1" = "push" ] || [ "$1" = "fetch" ]; } then
     # Build a new argument list with the canonical URL replaced by the
     # mock remote, preserving all other arguments exactly (count, order,
@@ -268,7 +271,7 @@ if [ "$#" -ge 3 ] && { [ "$1" = "ls-remote" ] || [ "$1" = "push" ] || [ "$1" = "
     done
 
     if [ "$_found" -eq 1 ]; then
-        exec "$REAL_GIT" "${git_config[@]}" "${_new_args[@]}"
+        GIT_ALLOW_PROTOCOL=file exec "$REAL_GIT" "${git_config[@]}" "${_new_args[@]}"
     fi
 fi
 
@@ -276,6 +279,7 @@ fi
 exec "$REAL_GIT" "${git_config[@]}" "$@"
 GIT_SHIM_EOF
     export NOOR_TEST_MOCK_REMOTE="$MOCK_REMOTE"
+    export NOOR_TEST_PUSH_LOG="$WORKSPACE/push-invocations"
     export NOOR_TEST_CANONICAL_URL="$CANONICAL_URL"
     cp "$REPO_ROOT/tests/noor-publication/mock-curl.sh" "$NOOR_TEST_GIT_SHIM/curl"
     chmod 0755 "$NOOR_TEST_GIT_SHIM/curl"
@@ -604,11 +608,8 @@ run_push() {
     run_simulated_push "$local_ref" "$dest_ref" 0 "$expected_exit"
 }
 
-# Run publish-once through the tracked hook candidate and one real local push.
-# The test URL rewrite maps CANONICAL_URL to MOCK_REMOTE, which makes Git pass
-# the rewritten local URL to a normal pre-push hook. The wrapper dispatches the
-# same candidate once with the canonical URL argument, then uses --no-verify
-# only to prevent Git from running that already-dispatched hook a second time.
+# Send the candidate the exact hook arguments and ref tuple, then use an
+# isolated local bare repository for the network outcome.
 PUBLISH_ONCE_EXIT=99
 
 run_publish_once_with_candidate_hook() {
@@ -616,42 +617,39 @@ run_publish_once_with_candidate_hook() {
     shift
     wrapper_dir="$WORKSPACE/publish-once-git-wrapper"
     mkdir -p "$wrapper_dir"
-    # NOOR_TEST_REAL_GIT is captured before shim PATH injection in
-    # copy_publication_control_artifacts(). Do not re-resolve 'git' here
-    # because at this point 'git' resolves to the shim, not the real git.
-    export NOOR_TEST_REAL_GIT="${NOOR_TEST_REAL_GIT:-}"
-    export NOOR_TEST_CANONICAL_URL="$CANONICAL_URL"
-    export NOOR_TEST_SHIM_GIT="${NOOR_TEST_GIT_SHIM:-$WORKSPACE/git-shim}/git"
+    export NOOR_TEST_SHIM_GIT="$NOOR_TEST_GIT_SHIM/git"
 
-    {
-        printf '%s\n' '#!/bin/sh'
-        printf '%s\n' 'set -eu'
-        printf '%s\n' 'if [ "${1-}" = "-c" ] && [ "${2-}" = "http.followRedirects=false" ] && [ "${5-}" = "-c" ] && [ "${7-}" = "push" ]; then'
-        printf '%s\n' '    [ "$4" = "http.$NOOR_TEST_CANONICAL_URL.followRedirects=false" ]'
-        printf '%s\n' '    [ "$6" = "core.hooksPath=$(pwd -P)/.git/hooks" ]'
-        printf '%s\n' '    shift 6'
-        printf '%s\n' '    remote_url=$2'
-        printf '%s\n' '    refspec=$3'
-        printf '%s\n' '    source_ref=${refspec%%:*}'
-        printf '%s\n' '    destination_ref=${refspec#*:}'
-        printf '%s\n' '    if [ -z "$source_ref" ]; then'
-        printf '%s\n' '        source_ref='"'"'(delete)'"'"''
-        printf '%s\n' '        source_object=0000000000000000000000000000000000000000'
-        printf '%s\n' '        remote_object=$("$NOOR_TEST_SHIM_GIT" ls-remote --refs -- "$remote_url" "$destination_ref" | awk "NR == 1 { print \$1 }")'
-        printf '%s\n' '    else'
-        printf '%s\n' '        source_object=$("$NOOR_TEST_REAL_GIT" rev-parse --verify "$source_ref")'
-        printf '%s\n' '        remote_object=$("$NOOR_TEST_SHIM_GIT" ls-remote --refs -- "$remote_url" "$destination_ref" | awk "NR == 1 { print \$1 }")'
-        printf '%s\n' '    fi'
-        printf '%s\n' '    [ -n "$remote_object" ] || remote_object=0000000000000000000000000000000000000000'
-        printf '%s\n' '    printf "%s %s %s %s\\n" "$source_ref" "$source_object" "$destination_ref" "$remote_object" | .git/hooks/pre-push "$remote_url" "$NOOR_TEST_CANONICAL_URL"'
-        printf '%s\n' '    exec "$NOOR_TEST_SHIM_GIT" push --no-verify "$remote_url" "$refspec"'
-        printf '%s\n' 'fi'
-        printf '%s\n' '# Chain non-push calls through the test transport shim'
-        printf '%s\n' 'if [ -n "${NOOR_TEST_SHIM_GIT-}" ] && [ -x "$NOOR_TEST_SHIM_GIT" ]; then'
-        printf '%s\n' '    exec "$NOOR_TEST_SHIM_GIT" "$@"'
-        printf '%s\n' 'fi'
-        printf '%s\n' 'exec "$NOOR_TEST_REAL_GIT" "$@"'
-    } > "$wrapper_dir/git"
+    cat > "$wrapper_dir/git" <<'PUSH_SHIM'
+#!/bin/sh
+set -eu
+if [ "${1-}" != push ]; then
+    exec "$NOOR_TEST_SHIM_GIT" "$@"
+fi
+printf '%s\n' push >> "$NOOR_TEST_PUSH_LOG"
+[ "$#" -eq 4 ] && [ "$2" = -- ] && [ "$3" = "$NOOR_TEST_CANONICAL_URL" ]
+[ "$GIT_ALLOW_PROTOCOL" = https ]
+[ "$GIT_CONFIG_COUNT" = 3 ]
+[ "$GIT_CONFIG_KEY_0=$GIT_CONFIG_VALUE_0" = http.followRedirects=false ]
+[ "$GIT_CONFIG_KEY_1=$GIT_CONFIG_VALUE_1" = http.sslVerify=true ]
+[ "$GIT_CONFIG_KEY_2=$GIT_CONFIG_VALUE_2" = "core.hooksPath=$(pwd -P)/.git/hooks" ]
+[ "${NOOR_TEST_PUSH_UNAVAILABLE-}" != 1 ] || exit 1
+refspec=$4
+source_ref=${refspec%%:*}
+destination_ref=${refspec#*:}
+if [ -z "$source_ref" ]; then
+    source_ref='(delete)'
+    source_object=0000000000000000000000000000000000000000
+else
+    source_object=$("$NOOR_TEST_REAL_GIT" rev-parse --verify "$source_ref")
+fi
+remote_object=$(GIT_ALLOW_PROTOCOL=file "$NOOR_TEST_REAL_GIT" ls-remote --refs -- \
+    "$NOOR_TEST_MOCK_REMOTE" "$destination_ref" | awk 'NR == 1 { print $1 }')
+remote_object=${remote_object:-0000000000000000000000000000000000000000}
+printf '%s %s %s %s\n' "$source_ref" "$source_object" "$destination_ref" "$remote_object" |
+    .git/hooks/pre-push "$NOOR_TEST_CANONICAL_URL" "$NOOR_TEST_CANONICAL_URL"
+# The fixture already invoked the approved hook with the canonical arguments.
+GIT_ALLOW_PROTOCOL=file exec "$NOOR_TEST_REAL_GIT" push --no-verify -- "$NOOR_TEST_MOCK_REMOTE" "$refspec"
+PUSH_SHIM
     chmod 0755 "$wrapper_dir/git"
 
     set +e
@@ -659,7 +657,6 @@ run_publish_once_with_candidate_hook() {
     PUBLISH_ONCE_EXIT=$?
     set -e
 }
-
 
 # ---------------------------------------------------------------------------
 # State helpers
