@@ -359,7 +359,7 @@ test_t10() {
     echo "refs/heads/feature-branch $feature_object refs/heads/feature-branch 0000000000000000000000000000000000000000" >> "$WORKSPACE/.stdin"
 
     set +e
-    (cd "$TEST_REPO" && .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/.stdin" > /dev/null 2>&1)
+    (cd "$TEST_REPO" && fixture_gate_hook "$CANONICAL_URL" "$CANONICAL_URL" < "$WORKSPACE/.stdin" > /dev/null 2>&1)
     actual=$?
     set -e
     assert_exit 1 "$actual" "multiple ref push"

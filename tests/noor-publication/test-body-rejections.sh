@@ -185,6 +185,9 @@ test_t16() {
     suffix=$(printf '%s' "$TEST_COMMIT_IMPL" | cut -c1-12)
     dest_ref="refs/heads/pub/$suffix"
 
+    # Both calls use the same snapshot before starting concurrently.
+    bind_fixture_gate
+
     # Run two simultaneous simulated pushes
     local_object=$(git -C "$TEST_REPO" rev-parse "refs/heads/product/noor-personal-mvp^{commit}")
 

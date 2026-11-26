@@ -1,3 +1,5 @@
+> Historical accepted Policy-v5 runtime specification. It remains live until an explicitly authorized Policy-v6 cutover. For the proposed successor identity and migration conditions see `etc/noor-publication/POLICY.md`. Historical hashes, URL, version and acceptance records below are intentionally preserved.
+
 # Noor Personal Publication Control
 
 Gate Schema v3 / Hook Policy v5 — Installed Live Runtime

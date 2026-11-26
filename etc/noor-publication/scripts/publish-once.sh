@@ -119,13 +119,15 @@ compute_sha256() {
 }
 
 # Constants
-CANONICAL_URL='https://github.com/engaboali9226-mastoura/work-tracker_OS.git'
+CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
+PUBLICATION_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+. "$PUBLICATION_SCRIPT_DIR/transport.sh"
 GATE_DIR_NAME='noor-publication-gate'
 STATE_LOCK_NAME='state.lock'
 ACTIVE_GATE_NAME='active.gate'
 AUDIT_LOG_NAME='audit.log'
 SENTINEL_URL='no_push://noor-personal-dev'
-VERIFY_SCRIPT_DIR='etc/noor-publication/scripts'
+EXPECTED_V6_HOOK_SHA256='a343f7cb57825a62fadf70b4c8d1bf8d557a01186b3ce02fff3c3679ea11224e'
 
 REMOTE_URL="$CANONICAL_URL"
 PROTECTED_REF='refs/heads/product/noor-personal-mvp'
@@ -144,14 +146,12 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
+[ "$REMOTE_URL" = "$CANONICAL_URL" ] || deny "publication requires the exact canonical repository URL"
+
 # Resolve git paths
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || deny "not a git repository"
-COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null) || deny "common dir unavailable"
-case "$COMMON_DIR" in
-    /*) ;;
-    *) COMMON_DIR=$REPO_ROOT/$COMMON_DIR ;;
-esac
-COMMON_DIR=$(cd "$COMMON_DIR" 2>/dev/null && pwd -P) || deny "cannot canonicalize common dir"
+COMMON_DIR=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    deny "cannot resolve the common Git directory"
 
 GATE_DIR=$COMMON_DIR/$GATE_DIR_NAME
 STATE_LOCK=$GATE_DIR/$STATE_LOCK_NAME
@@ -159,9 +159,24 @@ ACTIVE_GATE=$GATE_DIR/$ACTIVE_GATE_NAME
 AUDIT_LOG=$GATE_DIR/$AUDIT_LOG_NAME
 
 # Verify persistent push URL sentinel is intact
-configured_pushurl=$(git config --get remote.origin.pushurl 2>/dev/null || git config --get remote.origin.url 2>/dev/null)
-[ "$configured_pushurl" = "$SENTINEL_URL" ] ||
+configured_pushurl=$(git remote get-url --push --all origin 2>/dev/null && printf '.') ||
+    deny "cannot resolve effective origin push URLs"
+[ "$configured_pushurl" = "$(printf '%s\n.' "$SENTINEL_URL")" ] ||
     deny "persistent push URL sentinel has been altered"
+
+# Use the path Git resolves for the worktree root. Require the approved
+# common hook and pin that directory on the actual push invocation.
+HOOK_PATH="$COMMON_DIR/hooks/pre-push"
+EFFECTIVE_HOOK_PATH=$(git -C "$REPO_ROOT" rev-parse --path-format=absolute --git-path hooks/pre-push) ||
+    deny "cannot resolve the effective pre-push hook"
+[ "$EFFECTIVE_HOOK_PATH" = "$HOOK_PATH" ] && [ ! -L "$COMMON_DIR/hooks" ] ||
+    deny "effective pre-push hook path differs from the approved path"
+require_approved_hook() {
+    [ -f "$HOOK_PATH" ] && [ ! -L "$HOOK_PATH" ] && [ -x "$HOOK_PATH" ] ||
+        deny "approved pre-push hook is missing or not executable"
+    [ "$(compute_sha256 "$HOOK_PATH")" = "$EXPECTED_V6_HOOK_SHA256" ] ||
+        deny "effective pre-push hook SHA-256 differs from the approved v6 hook"
+}
 
 # Acquire the common lock
 if ! mkdir "$STATE_LOCK" 2>/dev/null; then
@@ -194,10 +209,16 @@ done < "$ACTIVE_GATE"
 [ -n "$DESTINATION_REF" ] || deny "gate missing destination ref"
 [ -n "$OPERATION" ] || deny "gate missing operation"
 [ -n "$SOURCE_OBJECT" ] || deny "gate missing source object"
-[ -n "$NONCE" ] || deny "gate missing nonce"
+printf '%s\n' "$NONCE" | grep -Eq '^[0-9a-f]{32}$' || deny "gate nonce format invalid"
+AUTHORIZED_GATE_SHA256=$(compute_sha256 "$ACTIVE_GATE") || deny "cannot hash the active gate"
+printf '%s\n' "$AUTHORIZED_GATE_SHA256" | grep -Eq '^[0-9a-f]{64}$' || deny "invalid active gate SHA-256"
+CONSUMED_GATE="$GATE_DIR/consumed/$NONCE.gate"
 
 # Fail-closed: reject any Git URL rewrite rule that could redirect canonical URL
 check_canonical_url_rewrite
+
+require_approved_hook
+sh "$HOOK_PATH" --check-identity || deny "canonical repository identity not verified"
 
 # Release the lock (so the hook can acquire it during git push)
 rmdir "$STATE_LOCK" 2>/dev/null || true
@@ -215,27 +236,33 @@ chmod 0600 "$AUDIT_LOG" 2>/dev/null || true
 # query failure) is a hard failure, never treated as "absence".
 CANONICAL_PRE_PUSH_OBJECT=''
 if [ "$OPERATION" = "DELETE_NON_PROTECTED_BRANCH_EXACT_OBJECT" ]; then
-    set +e
-    CANONICAL_PRE_PUSH_OBJECT=$(git ls-remote --refs -- "$CANONICAL_URL" "$PROTECTED_REF" 2>/dev/null | awk 'NR == 1 { print $1 }')
-    canonical_rc=$?
-    set -e
-    [ "$canonical_rc" -eq 0 ] || deny "cannot snapshot protected canonical object before delete"
-    [ -n "$CANONICAL_PRE_PUSH_OBJECT" ] || deny "protected canonical ref absent before delete"
+    snapshot=$(canonical_git ls-remote --refs -- "$CANONICAL_URL" "$PROTECTED_REF" 2>/dev/null) ||
+        deny "cannot snapshot protected canonical object before delete"
+    set -- $snapshot
+    [ "$#" -eq 2 ] && [ "$2" = "$PROTECTED_REF" ] ||
+        deny "protected canonical snapshot is missing or invalid"
+    printf '%s\n' "$1" | grep -Eq '^[0-9a-f]{40}$' || deny "protected canonical object is invalid"
+    CANONICAL_PRE_PUSH_OBJECT=$1
 fi
 
+# Pass the locked snapshot to the hook so any later gate replacement is rejected.
+require_approved_hook
+export NOOR_PUBLICATION_GATE_NONCE="$NONCE"
+export NOOR_PUBLICATION_GATE_SHA256="$AUTHORIZED_GATE_SHA256"
 # Execute exactly one explicit source-to-destination push
 # For deletion, use the delete refspec; for others, use source:destination
 if [ "$OPERATION" = "DELETE_NON_PROTECTED_BRANCH_EXACT_OBJECT" ]; then
     set +e
-    git push "$REMOTE_URL" ":$DESTINATION_REF" 2>"$GATE_DIR/.push.err.$$"
+    canonical_git -c "core.hooksPath=$COMMON_DIR/hooks" push "$REMOTE_URL" ":$DESTINATION_REF" 2>"$GATE_DIR/.push.err.$$"
     push_exit=$?
     set -e
 else
     set +e
-    git push "$REMOTE_URL" "$SOURCE_REF:$DESTINATION_REF" 2>"$GATE_DIR/.push.err.$$"
+    canonical_git -c "core.hooksPath=$COMMON_DIR/hooks" push "$REMOTE_URL" "$SOURCE_REF:$DESTINATION_REF" 2>"$GATE_DIR/.push.err.$$"
     push_exit=$?
     set -e
 fi
+unset NOOR_PUBLICATION_GATE_NONCE NOOR_PUBLICATION_GATE_SHA256
 detail=$(head -n 1 "$GATE_DIR/.push.err.$$" 2>/dev/null || echo "")
 rm -f "$GATE_DIR/.push.err.$$"
 
@@ -247,14 +274,11 @@ if ! mkdir "$STATE_LOCK" 2>/dev/null; then
 fi
 trap 'rmdir "$STATE_LOCK" 2>/dev/null || true' 0 1 2 3 15
 
-# Determine outcome
-if [ -e "$ACTIVE_GATE" ] || [ -L "$ACTIVE_GATE" ]; then
-    # active.gate still exists -> hook denied the push (gate not consumed)
-    outcome="PUSH_DENIED"
-    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') event=$outcome nonce=$NONCE exit_code=$push_exit detail=$detail" >> "$AUDIT_LOG"
-    echo "publish-once: push denied by hook; gate not consumed" >&2
-    echo "Gate state: not consumed. Generate a new gate to retry." >&2
-    exit 1
+# Require the exact gate read before the attempt to be in the consumed log.
+if [ ! -f "$CONSUMED_GATE" ] || [ -L "$CONSUMED_GATE" ] ||
+    [ "$(compute_sha256 "$CONSUMED_GATE")" != "$AUTHORIZED_GATE_SHA256" ]; then
+    echo "$(date -u '+%Y-%m-%dT%H:%M:%SZ') event=PUSH_OUTCOME_UNVERIFIED nonce=$NONCE op=$OPERATION exit_code=$push_exit" >> "$AUDIT_LOG"
+    deny "exact gate consumption was not verified; reconcile remote state before any retry"
 fi
 
 if [ "$push_exit" -eq 0 ]; then
@@ -265,7 +289,7 @@ if [ "$push_exit" -eq 0 ]; then
     rmdir "$STATE_LOCK" 2>/dev/null || true
     trap - 0 1 2 3 15
     # Run verify-publication.sh
-    verify_script="$REPO_ROOT/$VERIFY_SCRIPT_DIR/verify-publication.sh"
+    verify_script="$PUBLICATION_SCRIPT_DIR/verify-publication.sh"
     if [ ! -f "$verify_script" ] || [ -L "$verify_script" ] || [ ! -x "$verify_script" ]; then
         echo "publish-once: mandatory verifier is unavailable; publication outcome is unverified. Gate remains consumed; do not retry automatically." >&2
         exit 1
@@ -278,7 +302,7 @@ if [ "$push_exit" -eq 0 ]; then
             verify_exit=$?
             ;;
         CREATE_NON_PROTECTED_BRANCH_EXACT_OBJECT|UPDATE_NON_PROTECTED_BRANCH_FAST_FORWARD)
-            "$verify_script" --operation "$OPERATION" --destination-ref "$DESTINATION_REF" --expected-object "$(git rev-parse "$SOURCE_REF^{commit}" 2>/dev/null || echo '')" --remote-url "$REMOTE_URL"
+            "$verify_script" --operation "$OPERATION" --destination-ref "$DESTINATION_REF" --expected-object "$SOURCE_OBJECT" --remote-url "$REMOTE_URL"
             verify_exit=$?
             ;;
         DELETE_NON_PROTECTED_BRANCH_EXACT_OBJECT)

@@ -100,12 +100,15 @@ EOF
 }
 
 # Constants
-CANONICAL_URL='https://github.com/engaboali9226-mastoura/work-tracker_OS.git'
+CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
+PUBLICATION_SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
+. "$PUBLICATION_SCRIPT_DIR/transport.sh"
 
 DESTINATION_REF=''
 EXPECTED_OBJECT=''
 EXPECTED_PEELED_OBJECT=''
-PROTECTED_REF='refs/heads/product/noor-personal-mvp'
+CANONICAL_PROTECTED_REF='refs/heads/product/noor-personal-mvp'
+PROTECTED_REF=$CANONICAL_PROTECTED_REF
 PROTECTED_CANONICAL_OBJECT=''
 OPERATION=''
 REMOTE_URL="$CANONICAL_URL"
@@ -162,6 +165,8 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
+[ "$REMOTE_URL" = "$CANONICAL_URL" ] || deny "verification requires the exact canonical repository URL"
+
 if [ "$CHECK_MODE" -eq 1 ]; then
     [ "$CONFIRM" -eq 1 ] || deny "explicit --confirm required"
     echo "verify-publication: check mode accepted"
@@ -192,7 +197,7 @@ case "$OPERATION" in
         ;;
     DELETE_NON_PROTECTED_BRANCH_EXACT_OBJECT)
         case "$DESTINATION_REF" in refs/heads/*) ;; *) deny "delete operation destination is not a branch ref" ;; esac
-        git check-ref-format "$PROTECTED_REF" || deny "invalid protected canonical ref"
+        [ "$PROTECTED_REF" = "$CANONICAL_PROTECTED_REF" ] || deny "verification requires the canonical protected ref"
         [ -n "$PROTECTED_CANONICAL_OBJECT" ] || deny "required protected canonical object missing"
         printf '%s' "$PROTECTED_CANONICAL_OBJECT" | grep -Eq '^[0-9a-f]{40}$' || deny "invalid protected canonical object"
         ;;
@@ -201,9 +206,10 @@ case "$OPERATION" in
         ;;
 esac
 
-# Verify remote state
+# Verify repository identity and then remote state.
+require_canonical_repository
 set +e
-remote_line=$(git ls-remote --refs -- "$REMOTE_URL" "$DESTINATION_REF" 2>/dev/null)
+remote_line=$(canonical_git ls-remote --refs -- "$REMOTE_URL" "$DESTINATION_REF" 2>/dev/null)
 remote_rc=$?
 set -e
 [ "$remote_rc" -eq 0 ] || deny "remote verification failed"
@@ -223,7 +229,7 @@ case "$OPERATION" in
         [ "$1" = "$EXPECTED_OBJECT" ] || deny "remote object does not match expected"
         [ "$2" = "$DESTINATION_REF" ] || deny "remote ref does not match expected"
         set +e
-        peeled_line=$(git ls-remote -- "$REMOTE_URL" "$DESTINATION_REF^{}" 2>/dev/null)
+        peeled_line=$(canonical_git ls-remote -- "$REMOTE_URL" "$DESTINATION_REF^{}" 2>/dev/null)
         peeled_rc=$?
         set -e
         [ "$peeled_rc" -eq 0 ] || deny "remote peeled verification failed"
@@ -236,7 +242,7 @@ case "$OPERATION" in
     DELETE_NON_PROTECTED_BRANCH_EXACT_OBJECT)
         [ -z "$remote_line" ] || deny "destination ref still exists on remote after deletion"
         set +e
-        protected_line=$(git ls-remote --refs -- "$REMOTE_URL" "$PROTECTED_REF" 2>/dev/null)
+        protected_line=$(canonical_git ls-remote --refs -- "$REMOTE_URL" "$PROTECTED_REF" 2>/dev/null)
         protected_rc=$?
         set -e
         [ "$protected_rc" -eq 0 ] || deny "remote protected canonical verification failed"

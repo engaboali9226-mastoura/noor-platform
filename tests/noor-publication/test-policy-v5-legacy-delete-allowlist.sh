@@ -2,23 +2,23 @@
 set -eu
 set -f
 LC_ALL=C
+export GIT_ALLOW_PROTOCOL=file
 
 REPO_ROOT=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 GENERATOR="$REPO_ROOT/etc/noor-publication/scripts/generate-gate.sh"
 HOOK_TEMPLATE="$REPO_ROOT/etc/noor-publication/pre-push.noor-policy-hook"
 
-CANONICAL_URL='https://github.com/engaboali9226-mastoura/work-tracker_OS.git'
+CANONICAL_URL='https://github.com/engaboali9226-mastoura/noor-platform.git'
 PROTECTED_REF='refs/heads/product/noor-personal-mvp'
 SENTINEL_URL='no_push://noor-personal-dev'
 ZERO_OBJECT='0000000000000000000000000000000000000000'
 REAL_GIT=$(command -v git)
 
-BASE="${TMPDIR:-/tmp}/noor-policy-v5-legacy-delete-behavior-$$"
-mkdir -p "$BASE"
+BASE=$(mktemp -d "${TMPDIR:-/tmp}/noor-policy-v6-legacy-delete-behavior.XXXXXX")
 trap 'rm -rf "$BASE"' EXIT HUP INT TERM
 
 fail() {
-    echo "policy-v5-legacy-delete-behavior: FAIL: $1" >&2
+    echo "policy-v6-legacy-delete-behavior: FAIL: $1" >&2
     exit 1
 }
 
@@ -47,6 +47,7 @@ setup_case_repo() {
 
     "$REAL_GIT" -C "$CASE_DIR/repo" remote add origin "$CANONICAL_URL"
     "$REAL_GIT" -C "$CASE_DIR/repo" config remote.origin.pushurl "$SENTINEL_URL"
+    "$REAL_GIT" -C "$CASE_DIR/repo" config http.followRedirects false
 
     mkdir -p \
         "$CASE_DIR/repo/.git/noor-publication-gate/consumed" \
@@ -66,7 +67,8 @@ setup_case_repo() {
 
     cat > "$CASE_DIR/shim/git" <<'SHIM'
 #!/bin/sh
-if [ "${1-}" = "ls-remote" ]; then
+if [ "${1-}" = "-c" ] && [ "${2-}" = "http.followRedirects=false" ] && [ "${5-}" = "ls-remote" ]; then
+    shift 4
     _url=''
     _ref=''
     for _arg in "$@"; do
@@ -84,7 +86,8 @@ if [ "${1-}" = "ls-remote" ]; then
 fi
 exec "$NOOR_REAL_GIT" "$@"
 SHIM
-    chmod 0755 "$CASE_DIR/shim/git"
+    cp "$REPO_ROOT/tests/noor-publication/mock-curl.sh" "$CASE_DIR/shim/curl"
+    chmod 0755 "$CASE_DIR/shim/git" "$CASE_DIR/shim/curl"
 }
 
 run_generator_case() {
@@ -150,7 +153,7 @@ write_delete_gate() {
         echo "EXPIRES_AT=$_expires"
         echo "NONCE=$_nonce"
         echo "AUTHORITY_ID=TEST_AUTHORITY"
-        echo "HOOK_POLICY_VERSION=5"
+        echo "HOOK_POLICY_VERSION=6"
     } > "$_tmp"
 
     _sha=$(sha256_file "$_tmp")
@@ -187,6 +190,8 @@ run_hook_case() {
         NOOR_CANONICAL_URL="$CANONICAL_URL" \
         NOOR_FAKE_REF="$_ref" \
         NOOR_FAKE_OBJECT="$_remote_object" \
+        NOOR_PUBLICATION_GATE_NONCE="$_nonce" \
+        NOOR_PUBLICATION_GATE_SHA256="$(sha256_file .git/noor-publication-gate/active.gate)" \
         .git/hooks/pre-push "$CANONICAL_URL" "$CANONICAL_URL" \
             >/dev/null 2>&1
     )
@@ -266,12 +271,12 @@ run_generator_case tag \
 run_hook_case tag \
     refs/tags/not-authorized "$WRONG_OBJ" "$WRONG_OBJ" 1
 
-echo "POLICY_V5_EXACT_ALLOWLIST_GENERATOR_BEHAVIOR=PASS"
-echo "POLICY_V5_EXACT_ALLOWLIST_HOOK_BEHAVIOR=PASS"
-echo "POLICY_V5_WRONG_OBJECT_REJECTED=YES"
-echo "POLICY_V5_UNKNOWN_CODEX_REJECTED=YES"
-echo "POLICY_V5_UNKNOWN_AGENTS_REJECTED=YES"
-echo "POLICY_V5_ARBITRARY_BRANCH_REJECTED=YES"
-echo "POLICY_V5_PROTECTED_CANONICAL_REJECTED=YES"
-echo "POLICY_V5_TAG_DELETE_REJECTED=YES"
-echo "policy-v5-legacy-delete-behavior: PASS"
+echo "POLICY_V6_EXACT_ALLOWLIST_GENERATOR_BEHAVIOR=PASS"
+echo "POLICY_V6_EXACT_ALLOWLIST_HOOK_BEHAVIOR=PASS"
+echo "POLICY_V6_WRONG_OBJECT_REJECTED=YES"
+echo "POLICY_V6_UNKNOWN_CODEX_REJECTED=YES"
+echo "POLICY_V6_UNKNOWN_AGENTS_REJECTED=YES"
+echo "POLICY_V6_ARBITRARY_BRANCH_REJECTED=YES"
+echo "POLICY_V6_PROTECTED_CANONICAL_REJECTED=YES"
+echo "POLICY_V6_TAG_DELETE_REJECTED=YES"
+echo "policy-v6-legacy-delete-behavior: PASS"

@@ -106,7 +106,7 @@ test_t33() {
     verifier="$TEST_REPO/etc/noor-publication/scripts/verify-publication.sh"
 
     set +e
-    (cd "$TEST_REPO" && "$verifier" --operation CREATE_ANNOTATED_TAG_EXACT_OBJECT --destination-ref "refs/tags/$TEST_TAG_NAME" --expected-object "$different_object" --expected-peeled-object "$TEST_TAG_PEELED" --remote-url "$MOCK_REMOTE" > /dev/null 2>&1)
+    (cd "$TEST_REPO" && "$verifier" --operation CREATE_ANNOTATED_TAG_EXACT_OBJECT --destination-ref "refs/tags/$TEST_TAG_NAME" --expected-object "$different_object" --expected-peeled-object "$TEST_TAG_PEELED" --remote-url "$CANONICAL_URL" > /dev/null 2>&1)
     mismatch_rc=$?
     set -e
     assert_exit 1 "$mismatch_rc" "direct tag-object mismatch rejected"
@@ -117,7 +117,7 @@ test_t33() {
     mv "$hook_backup" "$TEST_REPO/.git/hooks/pre-push"
     chmod 0755 "$TEST_REPO/.git/hooks/pre-push"
     set +e
-    (cd "$TEST_REPO" && "$verifier" --operation CREATE_ANNOTATED_TAG_EXACT_OBJECT --destination-ref refs/tags/lightweight-remote --expected-object "$TEST_COMMIT_IMPL" --expected-peeled-object "$TEST_COMMIT_IMPL" --remote-url "$MOCK_REMOTE" > /dev/null 2>&1)
+    (cd "$TEST_REPO" && "$verifier" --operation CREATE_ANNOTATED_TAG_EXACT_OBJECT --destination-ref refs/tags/lightweight-remote --expected-object "$TEST_COMMIT_IMPL" --expected-peeled-object "$TEST_COMMIT_IMPL" --remote-url "$CANONICAL_URL" > /dev/null 2>&1)
     lightweight_rc=$?
     set -e
     assert_exit 1 "$lightweight_rc" "lightweight remote tag rejected"

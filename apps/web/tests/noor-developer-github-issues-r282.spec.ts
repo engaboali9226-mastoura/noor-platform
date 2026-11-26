@@ -20,13 +20,13 @@ test('R282 GitHub issue draft encodes only the chosen development note and no cr
  const url=createNoorDeveloperGitHubIssueUrlR282(draft,true);
  const u=new URL(url);
  assert.equal(u.origin,'https://github.com');
- assert.equal(u.pathname,'/engaboali9226-mastoura/work-tracker_OS/issues/new');
+ assert.equal(u.pathname,'/engaboali9226-mastoura/noor-platform/issues/new');
  assert.equal(u.searchParams.get('title'),'[NOOR Development] تصحيح عطل المؤقت');
  assert.match(u.searchParams.get('body')??'',/المؤقت لا يبدأ/);
  assert.match(u.searchParams.get('body')??'',/بلاغ عن مشكلة/);
  assert.match(u.searchParams.get('body')??'',/\n/);
  assert.doesNotMatch(url,/token|password|sessionId|service_role/iu);
- assert.equal(NOOR_DEVELOPER_GITHUB_ISSUES_R282,'https://github.com/engaboali9226-mastoura/work-tracker_OS/issues');
+ assert.equal(NOOR_DEVELOPER_GITHUB_ISSUES_R282,'https://github.com/engaboali9226-mastoura/noor-platform/issues');
 });
 
 test('R282 long URL fails closed instead of truncating',()=>{
