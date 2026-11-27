@@ -1,3 +1,5 @@
+import {withNoorDeadline} from "./noor-transport-deadline.js";
+import {readNoorResumeToday} from "./noor-resume-transport.js";
 import type {PrayerKeyR331,PrayerModeR331,PrayerTimingR331} from "../../noor-personal/src/domain/completion-r331.js";
 export type NoorQuranHabitPlanR289=Readonly<{anchorDate:string;firstQuarter:number;repeatOccurrences:number}>;
 export type NoorCountdownPlanR301=Readonly<{kind:"task"|"event"|"appointment";date:string;time:string}>;
@@ -37,7 +39,7 @@ export type NoorPersonalCommandInput =
   | import("../../noor-personal/src/domain/completion-r331.js").PrayerScoreApprovalR334
   | Readonly<{type:"recover-task-session-r331";executionId:string;localDate:string;performedOn?:string;taskSessionId:string;entryId:string;amount:number;note:string}>
   | Readonly<{type:"recover-historical-execution";executionId:string;localDate:string;performedOn?:string;expectedStatus:"Missed"|"Pending"|"Planned"|"InProgress"}>
-  | Readonly<{type:"record-prayer-r331";localDate:string;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;expectedRecordedAt:string|null;habitExecutionId?:string}>
+  | Readonly<{type:"record-prayer-r331";localDate:string;key:PrayerKeyR331;mode:PrayerModeR331|null;timing:PrayerTimingR331|null;lateGroupExcuse?:"excused"|"unexcused";expectedRecordedAt:string|null;habitExecutionId?:string}>
   | Readonly<{type:"configure-reminder";definitionId:string;expectedRevisionId:string;
       plan:import("../../noor-personal/src/domain/reminder-plan-r314.js").NoorReminderPlanR314|null}>
   | Readonly<{type:"set-friday-mosque-hour";hour:1|2|3|4|5|null;expectedHour:1|2|3|4|5|null}>
@@ -171,7 +173,7 @@ function observeR386Capability(response:Response,fetcher:typeof fetch):void{
  if(response.headers.get("X-Noor-Atomic-Save")==="r386")r386AtomicReaders.add(fetcher);
 }
 async function fetchNoorPersonalTodayOnce(
-  fetcher: typeof fetch,
+  fetcher: typeof fetch, signal:AbortSignal,
 ): Promise<NoorPersonalTodayResult> {
   try {
     const response = await fetcher(
@@ -184,9 +186,11 @@ async function fetchNoorPersonalTodayOnce(
           "Content-Type": "application/json",
         },
         body: "{}",
+        signal,
       },
     );
 
+    if(signal.aborted)return {kind:"unavailable"};
     if(response.status===200||response.status===409)observeR386Capability(response,fetcher);
     if (response.status === 409) {
       return {
@@ -201,6 +205,7 @@ async function fetchNoorPersonalTodayOnce(
     }
 
     const today = await response.json();
+    if(signal.aborted)return {kind:"unavailable"};
 
     return isTodayDashboard(today)
       ? {
@@ -218,7 +223,7 @@ async function fetchNoorPersonalTodayOnce(
 }
 
 export function fetchNoorPersonalToday(
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch = fetch, timeoutMs=30000,
 ): Promise<NoorPersonalTodayResult> {
   const existing = inFlightTodayRequests.get(fetcher);
 
@@ -228,7 +233,7 @@ export function fetchNoorPersonalToday(
 
   let pending: Promise<NoorPersonalTodayResult>;
 
-  pending = fetchNoorPersonalTodayOnce(fetcher)
+  pending = withNoorDeadline<NoorPersonalTodayResult>(timeoutMs,signal=>fetchNoorPersonalTodayOnce(fetcher,signal),()=>({kind:"unavailable"}))
     .finally(
       () => {
         if (inFlightTodayRequests.get(fetcher) === pending) {
@@ -242,7 +247,7 @@ export function fetchNoorPersonalToday(
 }
 
 async function fetchNoorPersonalWorkspaceOnce(
-  fetcher: typeof fetch,
+  fetcher: typeof fetch, signal:AbortSignal,
 ): Promise<NoorPersonalWorkspaceResult> {
   try {
     const response = await fetcher(
@@ -255,9 +260,11 @@ async function fetchNoorPersonalWorkspaceOnce(
           "Content-Type": "application/json",
         },
         body: "{}",
+        signal,
       },
     );
 
+    if(signal.aborted)return {kind:"unavailable"};
     if(response.status===200)observeR386Capability(response,fetcher);
     if (!response.ok || !isJsonResponse(response)) {
       return {
@@ -266,6 +273,7 @@ async function fetchNoorPersonalWorkspaceOnce(
     }
 
     const workspace = await response.json();
+    if(signal.aborted)return {kind:"unavailable"};
 
     return isWorkspace(workspace)
       ? {
@@ -283,7 +291,7 @@ async function fetchNoorPersonalWorkspaceOnce(
 }
 
 export function fetchNoorPersonalWorkspace(
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch = fetch, timeoutMs=30000,
 ): Promise<NoorPersonalWorkspaceResult> {
   const existing = inFlightWorkspaceRequests.get(fetcher);
 
@@ -293,7 +301,7 @@ export function fetchNoorPersonalWorkspace(
 
   let pending: Promise<NoorPersonalWorkspaceResult>;
 
-  pending = fetchNoorPersonalWorkspaceOnce(fetcher)
+  pending = withNoorDeadline<NoorPersonalWorkspaceResult>(timeoutMs,signal=>fetchNoorPersonalWorkspaceOnce(fetcher,signal),()=>({kind:"unavailable"}))
     .finally(
       () => {
         if (inFlightWorkspaceRequests.get(fetcher) === pending) {
@@ -306,6 +314,40 @@ export function fetchNoorPersonalWorkspace(
   return pending;
 }
 
+/** R386 resume transport: only a validated embedded, owner-matched snapshot is ready.
+ * Legacy split snapshots remain on the existing read path until their owner fence is reviewed. */
+export function fetchNoorPersonalResumeToday(expectedOwner:string,signal:AbortSignal,fetcher:typeof fetch=fetch,timeoutMs=12000){
+  return readNoorResumeToday({fetcher,signal,timeoutMs,expectedOwner,
+    validate:(body:unknown)=>isRecord(body)&&isTodayDashboard(body)&&isRecord(body.personalDay)&&isWorkspace(body.workspace)?body:null,
+    ownerOf:body=>isRecord(body.personalDay)&&typeof body.personalDay.userId==='string'?body.personalDay.userId:null,
+    observeResponse:response=>{if(response.status===200||response.status===409)observeR386Capability(response,fetcher);},
+  });
+}
+/** Legacy split reads must prove both snapshots belong to the mounted owner.
+ * The actual workspace contract supplies finance.userId even for an empty ledger.
+ * Do not expose either snapshot until both reads have succeeded. */
+export async function fetchNoorPersonalResumeLegacy(expectedOwner:string,signal:AbortSignal,fetcher:typeof fetch=fetch,timeoutMs=12000){
+  const observeResponse=(response:Response)=>{if(response.status===200||response.status===409)observeR386Capability(response,fetcher);};
+  const workspaceOwner=(body:unknown)=>isRecord(body)&&isRecord(body.finance)&&typeof body.finance.userId==="string"?body.finance.userId:null;
+  const first=await readNoorResumeToday({fetcher,signal,timeoutMs,expectedOwner,
+    validate:(body:unknown)=>isRecord(body)&&isTodayDashboard(body)&&isRecord(body.personalDay)?body:null,
+    ownerOf:body=>isRecord(body.personalDay)&&typeof body.personalDay.userId==="string"?body.personalDay.userId:null,observeResponse});
+  if(first.kind!=="ready")return first;
+  if(signal.aborted)return {kind:"cancelled"} as const;
+  if(first.snapshot.workspace!==undefined){
+    if(!isWorkspace(first.snapshot.workspace))return {kind:"terminal"} as const;
+    if(workspaceOwner(first.snapshot.workspace)!==expectedOwner)return {kind:"owner-mismatch"} as const;
+    return first;
+  }
+  // An atomic endpoint must not silently downgrade to split reads.
+  if(supportsR386AtomicSave(fetcher))return {kind:"terminal"} as const;
+  const second=await readNoorResumeToday({fetcher,signal,timeoutMs,expectedOwner,endpoint:"/api/noor/personal/workspace",
+    validate:(body:unknown)=>isRecord(body)&&isWorkspace(body)?body:null,ownerOf:workspaceOwner,observeResponse});
+  if(second.kind!=="ready")return second;
+  if(signal.aborted)return {kind:"cancelled"} as const;
+  if(supportsR386AtomicSave(fetcher))return {kind:"terminal"} as const;
+  return {kind:"ready",snapshot:{...first.snapshot,workspace:second.snapshot}} as const;
+}
 export function invalidateNoorPersonalReads(fetcher:typeof fetch=fetch):void{inFlightTodayRequests.delete(fetcher);inFlightWorkspaceRequests.delete(fetcher);}
 /** Refresh only the owner-scoped workspace after a rejected note mutation.
  * Invalidate any in-flight pre-conflict read so it cannot hide the newer note.
@@ -322,21 +364,31 @@ export type R386CommandIntent=Readonly<{requestId:string|null;body:string;requir
 export function createR386CommandIntent(command:NoorPersonalCommandInput,fetcher:typeof fetch=fetch,requiresAtomic=supportsR386AtomicSave(fetcher)):R386CommandIntent{
  return Object.freeze({requestId:typeof globalThis.crypto?.randomUUID==="function"?"client-"+globalThis.crypto.randomUUID():null,body:JSON.stringify(command),requiresAtomic});
 }
-export function sendR386CommandIntentRaw(intent:R386CommandIntent,fetcher:typeof fetch=fetch):Promise<Response>{
- return fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(intent.requestId?{"X-Noor-Request-Id":intent.requestId}:{}),...(intent.requiresAtomic?{"X-Noor-Require-Atomic-Save":"r386"}:{})},body:intent.body});
+export function sendR386CommandIntentRaw(intent:R386CommandIntent,fetcher:typeof fetch=fetch,signal?:AbortSignal):Promise<Response>{
+ return fetcher("/api/noor/personal/command",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json",...(intent.requestId?{"X-Noor-Request-Id":intent.requestId}:{}),...(intent.requiresAtomic?{"X-Noor-Require-Atomic-Save":"r386"}:{})},body:intent.body,...(signal?{signal}:{})});
 }
-export async function sendR386CommandIntent(intent:R386CommandIntent,fetcher:typeof fetch=fetch):Promise<NoorPersonalCommandReply>{
+export async function sendR386CommandIntent(intent:R386CommandIntent,fetcher:typeof fetch=fetch,timeoutMs?:number):Promise<NoorPersonalCommandReply>{
+ let acknowledged=false;
+ const attempt=async(signal?:AbortSignal):Promise<NoorPersonalCommandReply>=>{
  try{
-  const response=await sendR386CommandIntentRaw(intent,fetcher);
+  const response=await sendR386CommandIntentRaw(intent,fetcher,signal);
+  if(signal?.aborted)return {kind:"unavailable"};
+  if(response.status===200||response.status===204)acknowledged=true;
   if(response.status===204){invalidateNoorPersonalReads(fetcher);return {kind:"success"};}
   if(response.status===200){
    invalidateNoorPersonalReads(fetcher);
    // Acknowledged saves stay successful even if response projection cannot be decoded.
-   try{const body:unknown=await response.json();if(isRecord(body)&&isWorkspace(body.workspace)&&Array.isArray(body.executions)&&(body.personalDayId===null||typeof body.personalDayId==="string")&&typeof body.materializationRequired==="boolean")return {kind:"success",workspace:body.workspace,executions:body.executions,personalDayId:body.personalDayId,materializationRequired:body.materializationRequired};}catch{}
+   try{const body:unknown=await response.json();if(signal?.aborted)return {kind:"success"};if(isRecord(body)&&isWorkspace(body.workspace)&&Array.isArray(body.executions)&&(body.personalDayId===null||typeof body.personalDayId==="string")&&typeof body.materializationRequired==="boolean")return {kind:"success",workspace:body.workspace,executions:body.executions,personalDayId:body.personalDayId,materializationRequired:body.materializationRequired};}catch{}
    return {kind:"success"};
   }
   return {kind:response.status===409?"conflict":"unavailable"};
- }catch{return {kind:"unavailable"};}
+ }catch{return {kind:acknowledged?"success":"unavailable"};}
+ };
+ // Only receipt-backed writes are bounded here. Never automatically replay.
+ // After a 200/204 the write is acknowledged even if projection parsing stalls.
+ return intent.requiresAtomic&&intent.requestId&&timeoutMs!==undefined
+   ?withNoorDeadline<NoorPersonalCommandReply>(timeoutMs,attempt,()=>({kind:acknowledged?"success":"unavailable"}))
+   :attempt();
 }
 // Existing callers pass a new command object for a new user intent. Retain
 // identity on ambiguous results only while that exact object remains alive.

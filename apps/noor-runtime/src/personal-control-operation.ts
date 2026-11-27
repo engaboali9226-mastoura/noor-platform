@@ -438,6 +438,8 @@ implements PersonalControlExecutor {
   }
 
   private candidateFailure(error:unknown):Readonly<{status:409|503}> {
+    // Known rejected domain transactions are conflicts; unknown aborts remain unavailable.
+    if(error instanceof ProductionAdapterError && error.code==="PersistenceTransactionAborted" && error.cause instanceof PersonalControlError)return empty(409);
     if(error instanceof PersonalControlError || error instanceof AccountLocationChangeConflict ||
        error instanceof ProductionAdapterError && error.code==="PersistenceConflict" ||
        error instanceof Error && (/^TASK_SESSION_[A-Z_]+$/u.test(error.message)||error.message==="R386_RECEIPT_COLLISION"||error.message==="R386_INITIALIZATION_ALREADY_CONFIGURED"))

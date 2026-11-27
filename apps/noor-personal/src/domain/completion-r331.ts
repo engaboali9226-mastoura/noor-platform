@@ -30,11 +30,11 @@ export function prayerHabitCandidateR334(raw:string):PrayerKeyR331|null{
 }
 export type PrayerModeR331="group"|"excused"|"unexcused";
 export type PrayerTimingR331="ontime"|"late";
-export type PrayerRecordR331=Readonly<{key:PrayerKeyR331;mode:PrayerModeR331;timing:PrayerTimingR331;recordedAt:string}>;
+export type PrayerRecordR331=Readonly<{key:PrayerKeyR331;mode:PrayerModeR331;timing:PrayerTimingR331;lateGroupExcuse?:"excused"|"unexcused";recordedAt:string}>;
 export function validPrayerRecordR331(value:unknown):value is PrayerRecordR331{
  if(!value||typeof value!=="object")return false;
  const r=value as Record<string,unknown>;
- return R331_PRAYERS.includes(r.key as PrayerKeyR331)&&["group","excused","unexcused"].includes(String(r.mode))&&["ontime","late"].includes(String(r.timing))&&typeof r.recordedAt==="string"&&Number.isFinite(Date.parse(r.recordedAt));
+ return R331_PRAYERS.includes(r.key as PrayerKeyR331)&&["group","excused","unexcused"].includes(String(r.mode))&&["ontime","late"].includes(String(r.timing))&&(!Object.hasOwn(r,"lateGroupExcuse")||(r.mode==="group"&&r.timing==="late"&&(r.lateGroupExcuse==="excused"||r.lateGroupExcuse==="unexcused")))&&typeof r.recordedAt==="string"&&Number.isFinite(Date.parse(r.recordedAt));
 }
 export function completedShareR331(e:{status:string;scheduleOccurrenceKey:string;recoveredOnR331?:string;completionDateR367?:string}):number{
  if(e.status!=="Completed")return 0;

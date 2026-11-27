@@ -1,3 +1,4 @@
+import {fetchNoorPersonalToday} from "../src/noor-personal-today-client.js";
 import {NoorContextHelp} from "../src/noor-context-help-r382.js";
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -543,7 +544,7 @@ test("R259: returning to Personal refreshes cross-device workspace only after id
  const originalDateNow=Date.now;let clock=originalDateNow(),visible=true,workspaceReads=0,todayReads=0;
  Date.now=()=>clock;
  Object.defineProperty(t.dom.window.document,"visibilityState",{configurable:true,get:()=>visible?"visible":"hidden"});
- const remoteWorkspace={...workspace.workspace,definitions:workspace.workspace.definitions.map(d=>
+ const remoteWorkspace={...workspace.workspace,finance:{userId:"user",currency:"SAR",accounts:[],debts:[],entries:[],requests:[]},definitions:workspace.workspace.definitions.map(d=>
    d.id==="d1"?{...d,title:"عنوان المهمة من الآيفون"}:d)};
  const json=(value:unknown)=>new Response(JSON.stringify(value),{status:200,headers:{"content-type":"application/json; charset=utf-8"}});
  Object.defineProperty(globalThis,"fetch",{configurable:true,writable:true,value:async(url:unknown)=>{
@@ -860,5 +861,356 @@ test("NOOR 1.0.1 calendar header exposes one accessible date per calendar withou
   const resolve=createRequire(import.meta.url);t.dom.window.eval(readFileSync(resolve.resolve('axe-core/axe.min.js'),'utf8'));
   const result=await (t.dom.window as any).axe.run(t.container,{runOnly:{type:'rule',values:['aria-prohibited-attr']}});
   assert.equal(result.violations.flatMap((x:any)=>x.nodes).filter((n:any)=>n.target.some((v:any)=>String(v).includes('np-header-date-main')||String(v).includes('.hijri'))).length,0);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("N6 mounted remaining count 13 to 12 immediately and rolls back to 13 on rejected save",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const date=today.today.personalDay.boundary.localDate;
+ const def={...workspace.workspace.definitions[0]!,weight:4,measurement:{target:12,unit:"صفحة"},
+  sessionPlan:{distribution:"equal",sessions:Array.from({length:12},(_,i)=>({
+   id:`s-${i}`,title:`الجلسة ${i+1}`,objective:"",target:1,rangeStart:null,rangeEnd:null,scheduledDate:date,
+   order:i+1,note:"",revision:0,createdAt:date+"T00:00:00Z",updatedAt:date+"T00:00:00Z",completedAt:null,
+  }))}};
+ const heavyHabit={...today.today.habits[0]!,weight:99};
+ const input={...today,today:{...today.today,habits:[heavyHabit],tasks:[{...today.today.tasks[0]!,weight:4}]}};
+ const fetcher=globalThis.fetch;
+ let resolve:(response:Response)=>void=()=>{};
+ globalThis.fetch=async(url,options)=>String(url).includes("/command")
+  ?new Promise<Response>(r=>{resolve=r;})
+  :fetcher(url,options);
+ const remaining=()=>Number((t.container.querySelector('[data-testid="r286-remaining-trigger"] strong')?.textContent??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))));
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:input,initialWorkspace:{...workspace,workspace:{...workspace.workspace,definitions:[def,workspace.workspace.definitions[1]!]}}})));
+  assert.equal(remaining(),13);
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('.np-today-task-button')!.click());
+  await act(async()=>document.querySelector<HTMLInputElement>('[data-testid="r285-session-complete-s-0"]')!.click());
+  assert.equal(remaining(),12);
+  await act(async()=>resolve(new Response(null,{status:503})));
+  assert.equal(remaining(),13);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+
+// N7: real mounted R386 path; legacy R259 fixture retains its previous contract.
+for(const denied of [401,403,200] as const)test(denied===200?"N7 mounted mismatched owner never appears":`N7 mounted ${denied} hides private data without retry`,async()=>{
+ const t=installDom(),root=createRoot(t.container);let reads=0;
+ const body={...today.today,workspace:workspace.workspace};
+ Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});
+ const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{"content-type":"application/json","X-Noor-Atomic-Save":"r386"}});
+ globalThis.fetch=async(url)=>String(url)==="/api/noor/personal/today"?(++reads===1?json(body):json({...body,personalDay:{...body.personalDay,userId:"other-owner"}},denied)):json({current:{temperature_2m:29}});
+ try{
+  await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  assert.ok(t.container.querySelector('[data-testid="today-summary"]'));
+  await act(async()=>t.dom.window.dispatchEvent(new t.dom.window.Event("online")));
+  assert.equal(reads,2);
+  assert.ok(t.container.querySelector('[data-testid="n7-access-blocked"]'));
+  assert.equal(t.container.querySelector('[data-testid="today-summary"]'),null);
+  assert.doesNotMatch(t.container.textContent??"",/تمرين|المشي|other-owner/);
+  await act(async()=>t.dom.window.dispatchEvent(new t.dom.window.Event("online")));
+  assert.equal(reads,2);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+test("N7 mounted retry on online keeps Personal and coalesces focus",async()=>{
+ const t=installDom(),root=createRoot(t.container);let reads=0;
+ Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});
+ const body={...today.today,workspace:workspace.workspace};
+ const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{"content-type":"application/json","X-Noor-Atomic-Save":"r386"}});
+ globalThis.fetch=async(url)=>String(url)==="/api/noor/personal/today"?(++reads===2?json({},503):json(body)):json({current:{temperature_2m:29}});
+ try{
+  await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>{t.dom.window.dispatchEvent(new t.dom.window.Event("online"));t.dom.window.dispatchEvent(new t.dom.window.Event("focus"));});
+  assert.ok(t.container.querySelector('[data-testid="today-summary"]'));
+  assert.equal(reads,2);
+  await act(async()=>{await new Promise(r=>setTimeout(r,1150));});
+  assert.equal(reads,3);
+  assert.ok(t.container.querySelector('[data-testid="today-summary"]'));
+  assert.equal(t.container.querySelector('[data-testid="n7-access-blocked"]'),null);
+  assert.equal(t.container.querySelector('.np-reconnect-notice-r296'),null);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+test("N7 mounted recovery waits for pending save",async()=>{
+ const t=installDom(),root=createRoot(t.container);let reads=0;let rejectSave:(r:Response)=>void=()=>{};
+ Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});
+ const body={...today.today,workspace:workspace.workspace};
+ const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{"content-type":"application/json","X-Noor-Atomic-Save":"r386"}});
+ globalThis.fetch=async(url)=>{const path=String(url);if(path==="/api/noor/personal/today"){reads++;return json(body);}if(path.includes("/command"))return new Promise<Response>(r=>{rejectSave=r;});return json({current:{temperature_2m:29}});};
+ try{
+  await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>t.container.querySelector<HTMLInputElement>('input[aria-label="إتمام عادة المشي اليوم"]')!.click());
+  await act(async()=>t.dom.window.dispatchEvent(new t.dom.window.Event("online")));
+  assert.equal(reads,1);
+  await act(async()=>rejectSave(json({},503)));
+  assert.equal(reads,2);
+  assert.ok(t.container.querySelector('.np-failed-save'));
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+// N3: an older failure must not silently erase a more recent absolute completion.
+for(const atomic of [false,true])test(`N3 latest cancel survives failed predecessor (${atomic?"atomic":"legacy"})`,async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const requests:{command:any;id:string|null;resolve:(r:Response)=>void}[]=[];
+ const checkbox=()=>t.container.querySelector<HTMLInputElement>('[aria-label="إتمام عادة المشي اليوم"]')!;
+ const retry=()=>[...t.container.querySelectorAll<HTMLButtonElement>('.np-failed-save button')].find(b=>b.textContent==='إعادة المحاولة')!;
+ const headers={"content-type":"application/json",...(atomic?{"X-Noor-Atomic-Save":"r386"}:{})};
+ const reply=(completed:boolean)=>new Response(JSON.stringify({workspace:workspace.workspace,executions:[...today.today.tasks,...today.today.habits.map(e=>({...e,status:completed?'Completed':'Pending'}))],personalDayId:'day',materializationRequired:false}),{status:200,headers});
+ globalThis.fetch=async(url,init)=>{
+   if(String(url).includes('/command'))return new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(init?.body)),id:new Headers(init?.headers).get('X-Noor-Request-Id'),resolve}));
+   if(String(url)==='/api/noor/personal/today')return new Response(JSON.stringify({...today.today,workspace:workspace.workspace}),{status:200,headers});
+   return new Response('{}',{status:503});
+ };
+ try{
+  if(atomic)await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>checkbox().click());
+  await act(async()=>checkbox().click());
+  assert.equal(checkbox().checked,false);assert.equal(requests.length,1);
+  await act(async()=>requests[0]!.resolve(new Response('{}',{status:503})));
+  assert.equal(requests.length,1,'do not automatically dispatch after an ambiguous save');
+  assert.match(t.container.querySelector('[data-testid="n3-latest-choice"]')?.textContent??'',/إلغاء الإتمام/);
+  await act(async()=>retry().click());
+  assert.equal(requests.length,2);
+  if(atomic){
+    assert.ok(requests[0]!.id);assert.equal(requests[1]!.id,requests[0]!.id);
+    assert.deepEqual(requests[1]!.command,requests[0]!.command);
+    assert.equal(checkbox().checked,false,'old receipt must not flash checked');
+    await act(async()=>requests[1]!.resolve(reply(true)));
+    assert.equal(requests.length,3);assert.notEqual(requests[2]!.id,requests[0]!.id);
+  }
+  assert.equal(requests.at(-1)!.command.completed,false);
+  await act(async()=>requests.at(-1)!.resolve(reply(false)));
+  assert.equal(checkbox().checked,false);assert.equal(t.container.querySelector('.np-failed-save'),null);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+test('N4 plain task completion remains interactive while saving',async()=>{
+ const t=installDom(),root=createRoot(t.container),requests:{command:any;resolve:(r:Response)=>void}[]=[];
+ const button=()=>t.dom.window.document.querySelector<HTMLButtonElement>('.np-r331-task-done')!;
+ globalThis.fetch=async(url,init)=>String(url).includes('/command')?new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(init?.body)),resolve})):new Response('{}',{status:503});
+ const reply=(completed:boolean)=>new Response(JSON.stringify({workspace:workspace.workspace,executions:[...today.today.tasks.map(e=>({...e,status:completed?'Completed':'Planned'})),...today.today.habits],personalDayId:'day',materializationRequired:false}),{status:200});
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('.np-today-task-button')!.click());
+  await act(async()=>button().click());assert.equal(button().disabled,false);assert.equal(button().getAttribute('aria-busy'),'true');
+  await act(async()=>button().click());assert.equal(requests.length,1);
+  await act(async()=>requests[0]!.resolve(reply(true)));assert.equal(requests.length,2);assert.equal(requests[1]!.command.completed,false);
+  await act(async()=>requests[1]!.resolve(reply(false)));assert.equal(button().getAttribute('aria-pressed'),'false');
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+// Real legacy workspace responses include the owner-scoped finance ledger.
+for(const scenario of ["transient","401","403","owner-mismatch","workspace-missing-owner"] as const)test(`N7 legacy split ${scenario}`,async()=>{
+ const t=installDom(),root=createRoot(t.container);let todayReads=0,workspaceReads=0;
+ Object.defineProperty(document,"visibilityState",{configurable:true,get:()=>"visible"});
+ const remote={...workspace.workspace,finance:{userId:scenario==="owner-mismatch"?"other-owner":"user",currency:"SAR",accounts:[],debts:[],entries:[],requests:[]},definitions:workspace.workspace.definitions.map(d=>d.id==="d1"?{...d,title:"عنوان خارجي محدث"}:d)};
+ const json=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{"content-type":"application/json"}});
+ globalThis.fetch=async(url)=>{
+  if(String(url)==="/api/noor/personal/today"){todayReads++;return json({...today.today,tasks:today.today.tasks.map(task=>({...task,title:"عنوان خارجي محدث"}))});}
+  if(String(url)==="/api/noor/personal/workspace"){
+   workspaceReads++;
+   if(scenario==="transient"&&workspaceReads===1)return json({},503);
+   if(scenario==="401"||scenario==="403")return json({},Number(scenario));
+   return json(scenario==="workspace-missing-owner"?{...remote,finance:undefined}:remote);
+  }
+  return json({current:{temperature_2m:29}});
+ };
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>{t.dom.window.dispatchEvent(new t.dom.window.Event("online"));t.dom.window.dispatchEvent(new t.dom.window.Event("focus"));});
+  assert.equal(todayReads,1);assert.equal(workspaceReads,1);
+  if(scenario==="transient"){
+   assert.ok(t.container.querySelector('[data-testid="today-summary"]'));
+   assert.doesNotMatch(t.container.textContent??"",/عنوان خارجي محدث/);
+   await act(async()=>{await new Promise(r=>setTimeout(r,1150));});
+   assert.equal(todayReads,2);assert.equal(workspaceReads,2);
+   assert.ok(t.container.querySelector('[data-testid="today-summary"]'));
+   assert.equal(t.container.querySelector('.np-reconnect-notice-r296'),null);
+   assert.match(t.container.textContent??"",/عنوان خارجي محدث/);
+  }else{
+   assert.ok(t.container.querySelector('[data-testid="n7-access-blocked"]'));
+   assert.equal(t.container.querySelector('[data-testid="today-summary"]'),null);
+   assert.doesNotMatch(t.container.textContent??"",/تمرين|المشي|عنوان خارجي محدث/);
+  }
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("N4 separate due sessions can complete while first acknowledgement is pending",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const date=today.today.personalDay.boundary.localDate;
+ const def={...workspace.workspace.definitions[0]!,weight:4,measurement:{target:2,unit:"صفحة"},
+  sessionPlan:{distribution:"equal",sessions:Array.from({length:2},(_,i)=>({
+   id:`batch-s-${i}`,title:`الجلسة ${i+1}`,objective:"",target:1,rangeStart:null,rangeEnd:null,scheduledDate:date,
+   order:i+1,note:"",revision:0,createdAt:date+"T00:00:00Z",updatedAt:date+"T00:00:00Z",completedAt:null,
+  }))}};
+ const requests:{command:any;resolve:(r:Response)=>void}[]=[];
+ const fetcher=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>String(url).includes("/command")
+  ?new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(options?.body)),resolve}))
+  :fetcher(url,options);
+ const checkbox=(i:number)=>document.querySelector<HTMLInputElement>(`[data-testid="r285-session-complete-batch-s-${i}"]`)!;
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:{...workspace,workspace:{...workspace.workspace,definitions:[def,workspace.workspace.definitions[1]!]}}})));
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('.np-today-task-button')!.click());
+  await act(async()=>checkbox(0).click());
+  assert.equal(checkbox(0).checked,true);assert.equal(checkbox(1).disabled,false);
+  await act(async()=>checkbox(1).click());assert.equal(checkbox(1).checked,true);
+  assert.equal(requests.length,1,"server writes remain serialized");
+  await act(async()=>requests[0]!.resolve(new Response(null,{status:503})));
+  assert.equal(requests.length,2);assert.equal(requests[1]!.command.taskSessionId,"batch-s-1");
+  assert.equal(checkbox(0).checked,false);assert.equal(checkbox(1).checked,true);
+  await act(async()=>requests[1]!.resolve(new Response(null,{status:503})));
+  assert.equal(checkbox(1).checked,false);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("N5 seven prayer choices and explicit late group excuse",async()=>{
+ const {parsePersonalCommand}=await import("../../noor-personal/src/application/personal-control.js");
+ const {validPrayerRecordR331}=await import("../../noor-personal/src/domain/completion-r331.js");
+ const c={type:"record-prayer-r331",localDate:"2026-10-24",key:"fajr",mode:"group",timing:"late",expectedRecordedAt:null};
+ for(const excuse of ["excused","unexcused"]){const p={...c,lateGroupExcuse:excuse};assert.deepEqual(parsePersonalCommand(p),p);assert.equal(validPrayerRecordR331({key:"fajr",mode:"group",timing:"late",lateGroupExcuse:excuse,recordedAt:"2026-10-24T12:00:00Z"}),true);}
+ assert.deepEqual(parsePersonalCommand(c),c);assert.equal(parsePersonalCommand({...c,timing:"ontime",lateGroupExcuse:"excused"}),null);assert.equal(parsePersonalCommand({...c,mode:"excused",lateGroupExcuse:"excused"}),null);assert.equal(parsePersonalCommand({...c,lateGroupExcuse:"invalid"}),null);
+ const t=installDom(),root=createRoot(t.container),commands:any[]=[];let resolve!:(r:Response)=>void;
+ const fetcher=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>String(url).includes("/command")?new Promise<Response>(r=>{commands.push(JSON.parse(String(options?.body)));resolve=r;}):fetcher(url,options);
+ const date=today.today.personalDay.boundary.localDate;
+ const habit={...workspace.workspace.definitions[1]!,title:"صلاة الفجر"};
+ const input={...workspace,workspace:{...workspace.workspace,definitions:[workspace.workspace.definitions[0]!,habit],prayerHistoryR331:[{date,records:[{key:"fajr",mode:"group",timing:"late",recordedAt:"2026-10-24T12:00:00Z"}]}]}};
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:input})));
+  const checkbox=t.container.querySelector<HTMLButtonElement>('[role="checkbox"][aria-label="تسجيل أداء صلاة الفجر"]')!;
+  await act(async()=>checkbox.click());const dialog=document.querySelector('.np-prayer-record-dialog')!;assert.ok(dialog);
+  assert.equal(dialog.querySelectorAll('button[aria-pressed]').length,7);assert.equal(dialog.querySelectorAll('button[aria-pressed="true"]').length,0);
+  const click=async(text:string)=>act(async()=>[...dialog.querySelectorAll<HTMLButtonElement>('button')].find(b=>b.textContent===text)!.click());
+  await click('حفظ الأداء');assert.equal(commands.length,0);
+  await click('جماعة بعد وقتها بعذر');await click('حفظ الأداء');assert.equal(commands[0]?.lateGroupExcuse,'excused');assert.equal(commands[0]?.mode,'group');assert.equal(commands[0]?.timing,'late');
+  await act(async()=>resolve(new Response(null,{status:503})));
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("N3 new choice after lone uncertain atomic completion retains original receipt",async()=>{
+ const t=installDom(),root=createRoot(t.container),requests:{command:any;id:string|null;resolve:(r:Response)=>void}[]=[];
+ const headers={"content-type":"application/json","X-Noor-Atomic-Save":"r386"};
+ const check=()=>t.container.querySelector<HTMLInputElement>('[aria-label="إتمام عادة المشي اليوم"]')!;
+ const reply=(completed:boolean)=>new Response(JSON.stringify({workspace:workspace.workspace,executions:[...today.today.tasks,...today.today.habits.map(e=>({...e,status:completed?'Completed':'Pending'}))],personalDayId:'day',materializationRequired:false}),{status:200,headers});
+ globalThis.fetch=async(url,init)=>{
+   if(String(url).includes('/command'))return new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(init?.body)),id:new Headers(init?.headers).get('X-Noor-Request-Id'),resolve}));
+   if(String(url)==='/api/noor/personal/today')return new Response(JSON.stringify({...today.today,workspace:workspace.workspace}),{status:200,headers});
+   return new Response('{}',{status:503});
+ };
+ try{
+  await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  await act(async()=>check().click());
+  await act(async()=>requests[0]!.resolve(new Response('{}',{status:503})));
+  assert.equal(check().checked,false);assert.ok(requests[0]!.id);
+  await act(async()=>check().click());assert.equal(requests.length,1);
+  assert.match(t.container.querySelector('[data-testid="n3-latest-choice"]')?.textContent??'',/إتمام/);
+  await act(async()=>[...t.container.querySelectorAll<HTMLButtonElement>('.np-failed-save button')].find(b=>b.textContent==='إعادة المحاولة')!.click());
+  assert.equal(requests.length,2);assert.equal(requests[1]!.id,requests[0]!.id);assert.deepEqual(requests[1]!.command,requests[0]!.command);
+  await act(async()=>requests[1]!.resolve(reply(true)));
+  // The latest absolute value is already satisfied by the confirmed receipt.
+  assert.equal(requests.length,2,'same intended value does not need a second write');
+  assert.equal(check().checked,true);assert.equal(t.container.querySelector('.np-failed-save'),null);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("N2 direct location save warns before leaving until request settles",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const current={...today,today:{...today.today,personalDay:{...today.today.personalDay,boundary:{...today.today.personalDay.boundary,locationRevisionId:"old-rev"}},location:{revisionId:"old-rev",name:"الرياض، السعودية",timeZone:"Asia/Riyadh",latitude:24.71,longitude:46.68}}};
+ let submit!:(r:Response)=>void;
+ globalThis.fetch=async url=>String(url).includes('/command')?new Promise<Response>(r=>{submit=r;}):new Response('{}',{status:503});
+ const click=async(selector:string,label?:string)=>act(async()=>{const b=[...t.container.querySelectorAll<HTMLButtonElement>(selector)].find(b=>!label||b.textContent?.trim()===label);assert.ok(b);assert.equal(b.disabled,false);b.click();});
+ const routeWarned=()=>{const e=new t.dom.window.Event("noor:before-route-leave",{cancelable:true});t.dom.window.dispatchEvent(e);return e.defaultPrevented;};
+ const warned=()=>{const e=new t.dom.window.Event('beforeunload',{cancelable:true});t.dom.window.dispatchEvent(e);return e.defaultPrevented;};
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:current,initialWorkspace:workspace})));
+  assert.equal(warned(),false);assert.equal(routeWarned(),false);
+  await click('[aria-label="الضبط"]');await click('.np-r356-overview-card','التوقيت والموقع');await click('.np-r312-city-buttons button','دبي');await click('.np-r358-location-save button','حفظ الموقع');
+  assert.ok(submit);assert.equal(warned(),true);assert.equal(routeWarned(),true);
+  await click('[data-testid="r324-nav-home"]');
+  await act(async()=>submit(new Response(null,{status:409})));
+  assert.equal(warned(),false);assert.equal(routeWarned(),false);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+test("N3 uncertain prayer receipt cannot be replaced by another choice",async()=>{
+ const t=installDom(),root=createRoot(t.container),requests:{command:any;id:string|null;resolve:(r:Response)=>void}[]=[];
+ const input={...workspace,workspace:{...workspace.workspace,definitions:[workspace.workspace.definitions[0]!,{...workspace.workspace.definitions[1]!,title:"صلاة الفجر"}]}};
+ const initialResult={...today,today:{...today.today,islamicContext:{...today.today.islamicContext,prayerTimes:{...today.today.islamicContext.prayerTimes,fajr:new Date(Date.now()-60_000).toISOString()}}}};
+ const headers={"content-type":"application/json","X-Noor-Atomic-Save":"r386"};
+ globalThis.fetch=async(url,init)=>{
+  if(String(url).includes('/command'))return new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(init?.body)),id:new Headers(init?.headers).get('X-Noor-Request-Id'),resolve}));
+  if(String(url).endsWith('/today'))return new Response(JSON.stringify({...initialResult.today,workspace:input.workspace}),{status:200,headers});
+  return new Response('{}',{status:503});
+ };
+ const choice=()=>t.container.querySelector<HTMLButtonElement>('[role="checkbox"][aria-label="تسجيل أداء صلاة الفجر"]')!;
+ const click=async(label:string,selector='.np-prayer-record-dialog button')=>act(async()=>{const b=[...document.querySelectorAll<HTMLButtonElement>(selector)].find(b=>b.textContent?.trim()===label);assert.ok(b,label);b.click();});
+ try{
+  await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult,initialWorkspace:input})));
+  await act(async()=>choice().click());await click('جماعة بعد وقتها بعذر');await click('حفظ الأداء');
+  assert.equal(requests.length,1);assert.ok(requests[0]!.id);
+  await act(async()=>requests[0]!.resolve(new Response('{}',{status:503})));
+  await act(async()=>choice().click());await click('جماعة بعد وقتها بغير عذر');await click('حفظ الأداء');
+  assert.equal(requests.length,1);assert.ok(t.container.querySelector('.np-failed-save'));
+  await act(async()=>document.querySelector<HTMLButtonElement>('[aria-label="إغلاق تسجيل الصلاة"]')!.click());
+  await click('إعادة المحاولة','.np-failed-save button');
+  assert.equal(requests.length,2);assert.equal(requests[1]!.id,requests[0]!.id);assert.deepEqual(requests[1]!.command,requests[0]!.command);
+  const confirmed={...input.workspace,prayerHistoryR331:[{date:requests[0]!.command.localDate,records:[{key:'fajr',mode:'group',timing:'late',lateGroupExcuse:'excused',recordedAt:new Date().toISOString()}]}]};
+  await act(async()=>requests[1]!.resolve(new Response(JSON.stringify({workspace:confirmed,executions:[...initialResult.today.tasks,...initialResult.today.habits.map(e=>({...e,status:'Completed'}))],personalDayId:'day',materializationRequired:false}),{status:200,headers})));
+  assert.equal(t.container.querySelector('.np-failed-save'),null);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+test("N2 uncertain direct location command retries original receipt and warns before leaving",async()=>{
+ const t=installDom(),root=createRoot(t.container),requests:{command:any;id:string|null;resolve:(r:Response)=>void}[]=[];
+ const current={...today,today:{...today.today,personalDay:{...today.today.personalDay,boundary:{...today.today.personalDay.boundary,locationRevisionId:"old-rev"}},location:{revisionId:"old-rev",name:"الرياض، السعودية",timeZone:"Asia/Riyadh",latitude:24.71,longitude:46.68}}};
+ globalThis.fetch=async(url,init)=>{
+  if(String(url).includes('/command'))return new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(init?.body)),id:new Headers(init?.headers).get('X-Noor-Request-Id'),resolve}));
+  if(String(url).endsWith('/today')&&!requests.length)return new Response(JSON.stringify({...current.today,workspace:workspace.workspace}),{status:200,headers:{"X-Noor-Atomic-Save":"r386","content-type":"application/json"}});
+  return new Response('{}',{status:503});
+ };
+ const click=async(selector:string,label?:string)=>act(async()=>{const b=[...t.container.querySelectorAll<HTMLButtonElement>(selector)].find(b=>!label||b.textContent?.trim()===label);assert.ok(b,label??selector);assert.equal(b.disabled,false);b.click();});
+ const warned=()=>{const e=new t.dom.window.Event('beforeunload',{cancelable:true});t.dom.window.dispatchEvent(e);return e.defaultPrevented;};
+ try{
+  await fetchNoorPersonalToday();
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:current,initialWorkspace:workspace})));
+  await click('[aria-label="الضبط"]');await click('.np-r356-overview-card','التوقيت والموقع');await click('.np-r312-city-buttons button','دبي');await click('.np-r358-location-save button','حفظ الموقع');
+  assert.equal(requests.length,1);assert.ok(requests[0]!.id);
+  await act(async()=>requests[0]!.resolve(new Response('{}',{status:503})));
+  assert.ok(t.container.querySelector('[data-testid="noor-direct-receipt"]'));assert.equal(warned(),true);
+  await click('[data-testid="noor-direct-receipt"] button','إعادة محاولة الطلب');
+  assert.equal(requests.length,2);assert.equal(requests[1]!.id,requests[0]!.id);assert.deepEqual(requests[1]!.command,requests[0]!.command);
+  await act(async()=>requests[1]!.resolve(new Response(null,{status:409})));
+  assert.equal(t.container.querySelector('[data-testid="noor-direct-receipt"]'),null);assert.equal(warned(),false);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+test("N2 task notes update instantly and failed draft remains available while another session saves",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ const date=today.today.personalDay.boundary.localDate;
+ const def={...workspace.workspace.definitions[0]!,revisionId:"note-parent-rev",weight:4,taskGeneralNote:"ملاحظة سابقة",
+  sessionPlan:{distribution:"equal",sessions:Array.from({length:2},(_,i)=>({
+   id:`note-s-${i}`,title:`الجلسة ${i+1}`,objective:"",target:null,rangeStart:null,rangeEnd:null,scheduledDate:date,
+   order:i+1,note:"",revision:0,createdAt:date+"T00:00:00Z",updatedAt:date+"T00:00:00Z",completedAt:null,
+  }))}};
+ const requests:{command:any;resolve:(r:Response)=>void}[]=[];
+ globalThis.fetch=async(url,options)=>String(url).includes("/command")?new Promise<Response>(resolve=>requests.push({command:JSON.parse(String(options?.body)),resolve})):new Response('{}',{status:503});
+ const textarea=()=>document.querySelector<HTMLTextAreaElement>('.nts-general-note textarea')!;
+ const complete=()=>document.querySelector<HTMLInputElement>('[data-testid="r285-session-complete-note-s-1"]')!;
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:{...workspace,workspace:{...workspace.workspace,definitions:[def,workspace.workspace.definitions[1]!]}}})))
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('.np-today-task-button')!.click());
+  assert.ok(textarea());assert.equal(textarea().value,"ملاحظة سابقة");
+  await act(async()=>{textarea().value="مسودة جديدة";textarea().dispatchEvent(new t.dom.window.Event('input',{bubbles:true}));});
+  await act(async()=>[...document.querySelectorAll<HTMLButtonElement>('.nts-general-note button')].find(b=>b.textContent==="حفظ الملاحظة العامة")!.click());
+  assert.equal(requests.length,1);assert.equal(requests[0]!.command.type,"edit-task-general-note");assert.equal(requests[0]!.command.note,"مسودة جديدة");
+  assert.equal(textarea().value,"مسودة جديدة");assert.equal(complete().disabled,false);
+  await act(async()=>complete().click());assert.equal(complete().checked,true);assert.equal(requests.length,1);
+  await act(async()=>requests[0]!.resolve(new Response(null,{status:503})));
+  assert.equal(requests.length,2);assert.equal(complete().checked,true);
+  assert.ok([...t.container.querySelectorAll('.np-failed-save')].some(n=>n.textContent?.includes("مسودة جديدة")));
+  await act(async()=>requests[1]!.resolve(new Response(null,{status:503})));
+  assert.equal(complete().checked,false);
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
