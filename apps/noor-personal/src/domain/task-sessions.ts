@@ -42,6 +42,11 @@ export function sessionProgress(log: readonly ActivityEntry[], id: string): numb
 export function taskCumulativeProgress(log: readonly ActivityEntry[]): number {
     return Math.round(log.reduce((sum, entry) => sum + entry.amount, 0) * SCALE) / SCALE;
 }
+/** A legacy undated session has an unambiguous historical due date only on a one-time parent. */
+export function taskSessionRecoveryDueR288(scheduledDate:string|null|undefined,oneTimeDate:string|null,dueDate:string):boolean{
+ return (scheduledDate??oneTimeDate)===dueDate;
+}
+
 export function sessionStatus(session: TaskSession, log: readonly ActivityEntry[]): TaskSessionStatus {
     if (session.completedAt || session.target !== null && sessionProgress(log, session.id) >= session.target) return "Completed";
     return sessionProgress(log, session.id) > 0 ? "InProgress" : "Planned";

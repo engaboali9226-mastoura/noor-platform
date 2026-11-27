@@ -45,12 +45,29 @@ export function completedShareR331(e:{status:string;scheduleOccurrenceKey:string
 // R334 preparation: pure scoring only. No default coefficients, activation date,
 // storage mutation or runtime wiring until the policy and legacy mappings are approved.
 export type PrayerScoreSnapshotR334=Readonly<{
+ sevenCasesR288?:true;
  policyId:string;
  effectiveFromDate:string;
  weights:Readonly<Record<PrayerKeyR331,number>>;
  shares:Readonly<Record<PrayerModeR331,Readonly<Record<PrayerTimingR331,number>>>>;
  legacyHabitKeys:Readonly<Record<string,PrayerKeyR331>>;
 }>;
+// #288: approved internal adherence coefficients, not a religious verdict.
+export const APPROVED_PRAYER_SHARES_R288 = Object.freeze({group:Object.freeze({ontime:1,late:.5}),excused:Object.freeze({ontime:1,late:1}),unexcused:Object.freeze({ontime:.75,late:.25})});
+export function approvedPrayerSharesR288(shares:Readonly<Record<PrayerModeR331,Readonly<Record<PrayerTimingR331,number>>>>):boolean{
+ return (["group","excused","unexcused"] as const).every(m=>(["ontime","late"] as const).every(t=>shares[m]?.[t]===APPROVED_PRAYER_SHARES_R288[m][t]));
+}
+export type PrayerCaseR288="group-ontime"|"individual-excused-ontime"|"individual-unexcused-ontime"|"group-excused-late"|"group-unexcused-late"|"individual-excused-late"|"individual-unexcused-late"|"group-late-unspecified"|"unrecorded";
+export function prayerCaseR288(record:PrayerRecordR331|undefined):PrayerCaseR288{
+ if(!record)return "unrecorded";
+ if(record.mode==="group")return record.timing==="ontime"?"group-ontime":record.lateGroupExcuse==="excused"?"group-excused-late":record.lateGroupExcuse==="unexcused"?"group-unexcused-late":"group-late-unspecified";
+ return record.mode==="excused"?(record.timing==="ontime"?"individual-excused-ontime":"individual-excused-late"):(record.timing==="ontime"?"individual-unexcused-ontime":"individual-unexcused-late");
+}
+export function prayerRecordCreditR288(record:PrayerRecordR331,snapshot:PrayerScoreSnapshotR334):number{
+ // Unknown historical group/late records retain their existing matrix value, never infer an excuse.
+ return snapshot.sevenCasesR288===true&&record.mode==="group"&&record.timing==="late"&&record.lateGroupExcuse==="excused"?1:snapshot.shares[record.mode][record.timing];
+}
+
 export type PrayerDayScoreR334=Readonly<{
  rows:readonly Readonly<{key:PrayerKeyR331;weight:number;credit:number;recorded:boolean}>[];
  excludedHabitDefinitionIds:readonly string[];
@@ -86,7 +103,7 @@ export function prayerDayScoreR334(input:Readonly<{
  }
  const rows=R331_PRAYERS.filter(key=>due.has(key)).map(key=>{
   const record=byKey.get(key);
-  return {key,weight:snapshot.weights[key],credit:record?snapshot.shares[record.mode][record.timing]:0,recorded:!!record};
+  return {key,weight:snapshot.weights[key],credit:record?prayerRecordCreditR288(record,snapshot):0,recorded:!!record};
  });
  const weight=rows.reduce((n,r)=>n+r.weight,0),earnedWeight=rows.reduce((n,r)=>n+r.weight*r.credit,0);
  if(!Number.isFinite(weight)||!Number.isFinite(earnedWeight))return null;
@@ -189,11 +206,13 @@ export function validPrayerScoreSnapshotR334(value:unknown):value is PrayerScore
   const share=v.shares[mode]?.[timing];
   if(typeof share!=="number"||!Number.isFinite(share)||share<0||share>1)return false;
  }
+ if(Object.hasOwn(v,"sevenCasesR288")&&(v.sevenCasesR288!==true||!approvedPrayerSharesR288(v.shares)))return false;
  return Object.entries(v.legacyHabitKeys).every(([id,key])=>!!id.trim()&&R331_PRAYERS.includes(key));
 }
 
 export type PrayerScoreApprovalR334=Readonly<{
  type:"configure-prayer-score-r334";
+ sevenCasesR288?:true;
  expectedPolicyId:string|null;
  baseWeight:number;
  shares:PrayerScoreSnapshotR334["shares"];
@@ -204,7 +223,7 @@ const plainR334=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==="object
 const exactR334=(v:Record<string,unknown>,keys:readonly string[])=>Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const idR334=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=200&&v.trim()===v&&!["__proto__","prototype","constructor"].includes(v);
 export function parsePrayerScoreApprovalR334(value:unknown):PrayerScoreApprovalR334|null{
- if(!plainR334(value)||!exactR334(value,["type","expectedPolicyId","baseWeight","shares","mappings","confirm"])||value.type!=="configure-prayer-score-r334"||value.confirm!==true||!(value.expectedPolicyId===null||idR334(value.expectedPolicyId))||typeof value.baseWeight!=="number"||!Number.isSafeInteger(value.baseWeight)||value.baseWeight<1||value.baseWeight>1000||!plainR334(value.shares)||!exactR334(value.shares,["group","excused","unexcused"])||!Array.isArray(value.mappings)||value.mappings.length>500)return null;
+ if(!plainR334(value)||!exactR334(value,["type","expectedPolicyId","baseWeight","shares","mappings","confirm",...(Object.hasOwn(value,"sevenCasesR288")?["sevenCasesR288"]:[])])||(Object.hasOwn(value,"sevenCasesR288")&&value.sevenCasesR288!==true)||value.type!=="configure-prayer-score-r334"||value.confirm!==true||!(value.expectedPolicyId===null||idR334(value.expectedPolicyId))||typeof value.baseWeight!=="number"||!Number.isSafeInteger(value.baseWeight)||value.baseWeight<1||value.baseWeight>1000||!plainR334(value.shares)||!exactR334(value.shares,["group","excused","unexcused"])||!Array.isArray(value.mappings)||value.mappings.length>500)return null;
  const shares=value.shares;
  for(const mode of ["group","excused","unexcused"] as const){
   const m=shares[mode];
@@ -213,13 +232,14 @@ export function parsePrayerScoreApprovalR334(value:unknown):PrayerScoreApprovalR
   if(Number(m.late)>Number(m.ontime))return null;
  }
  const approved=shares as PrayerScoreSnapshotR334["shares"];
- if(approved.group.ontime!==1||approved.group.ontime<approved.excused.ontime||approved.excused.ontime<approved.unexcused.ontime||approved.group.late<approved.excused.late||approved.excused.late<approved.unexcused.late)return null;
+ if(value.sevenCasesR288===true){if(!approvedPrayerSharesR288(approved))return null;}
+ else if(approved.group.ontime!==1||approved.group.ontime<approved.excused.ontime||approved.excused.ontime<approved.unexcused.ontime||approved.group.late<approved.excused.late||approved.excused.late<approved.unexcused.late)return null;
  const mappings:{definitionId:string;key:PrayerKeyR331}[]=[];
  for(const m of value.mappings){
   if(!plainR334(m)||!exactR334(m,["definitionId","key"])||!idR334(m.definitionId)||!R331_PRAYERS.includes(m.key as PrayerKeyR331)||mappings.some(x=>x.definitionId===m.definitionId))return null;
   mappings.push({definitionId:m.definitionId,key:m.key as PrayerKeyR331});
  }
- return {type:"configure-prayer-score-r334",expectedPolicyId:value.expectedPolicyId,baseWeight:value.baseWeight,shares:structuredClone(approved),mappings,confirm:true};
+ return {type:"configure-prayer-score-r334",expectedPolicyId:value.expectedPolicyId,baseWeight:value.baseWeight,shares:structuredClone(approved),...(value.sevenCasesR288===true?{sevenCasesR288:true as const}:{}),mappings,confirm:true};
 }
 export function issuePrayerScoreSnapshotR334(input:Readonly<{policyId:string;effectiveFromDate:string;approval:PrayerScoreApprovalR334;definitions:readonly Readonly<{id:string;userId:string;kind:string;state:string;weight:number}>[];userId:string}>):PrayerScoreSnapshotR334|null{
  const {approval,definitions,userId}=input;
@@ -229,8 +249,44 @@ export function issuePrayerScoreSnapshotR334(input:Readonly<{policyId:string;eff
  const aliases=Object.fromEntries(approval.mappings.map(m=>[m.definitionId,m.key])) as Record<string,PrayerKeyR331>;
  if(owned.some(d=>["Active","Paused"].includes(d.state)&&!Object.hasOwn(aliases,d.id)&&(!Number.isFinite(d.weight)||d.weight>=approval.baseWeight)))return null;
  const weights=Object.fromEntries(R331_PRAYERS.map(key=>[key,approval.baseWeight])) as Record<PrayerKeyR331,number>;
- return {policyId:input.policyId,effectiveFromDate:input.effectiveFromDate,weights,shares:structuredClone(approval.shares),legacyHabitKeys:aliases};
+ return {policyId:input.policyId,effectiveFromDate:input.effectiveFromDate,weights,shares:structuredClone(approval.shares),...(approval.sevenCasesR288===true?{sevenCasesR288:true as const}:{}),legacyHabitKeys:aliases};
 }
 export function ordinaryWeightPermittedR334(policy:PrayerScoreSnapshotR334|null|undefined,id:string,kind:string,weight:number):boolean{
  return !policy||(kind==="Habit"&&Object.hasOwn(policy.legacyHabitKeys,id))||weight<Math.min(...R331_PRAYERS.map(k=>policy.weights[k]));
+}
+
+export type MeasuredRecoveryEntryR288=Readonly<{executionId:string;amount:number;localDate:string;at?:string;achievementDateR367?:string;taskRecoveryTargetR288?:number;taskRecoveryBaselineR288?:number}>;
+export function measuredRecoveryTargetR288(log:readonly MeasuredRecoveryEntryR288[],id:string,target:number):number{
+ return log.find(e=>e.executionId===id&&e.taskRecoveryTargetR288!==undefined)?.taskRecoveryTargetR288??target;
+}
+export function measuredRecoveryRemainingR288(log:readonly MeasuredRecoveryEntryR288[],id:string,target:number):number{
+ const frozen=measuredRecoveryTargetR288(log,id,target);
+ return Math.max(0,Math.round(Math.min(target-log.reduce((n,e)=>n+e.amount,0),frozen-log.filter(e=>e.executionId===id).reduce((n,e)=>n+e.amount,0))*1e6)/1e6);
+}
+export function measuredRecoveryBaselineR288(log:readonly MeasuredRecoveryEntryR288[],id:string,target:number,boundary?:Readonly<{startAt:string;endAt:string}>):number{
+ const prior=log.find(e=>e.executionId===id&&e.taskRecoveryTargetR288!==undefined);
+ if(prior)return prior.taskRecoveryBaselineR288??0;
+ if(!boundary||!Number.isFinite(target)||target<=0)return 0;
+ const start=Date.parse(boundary.startAt),end=Date.parse(boundary.endAt);
+ if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return 0;
+ // A historical entry recorded outside its original day without an explicit
+ // performance date is unknown, not automatically credited as on-time.
+ return Math.min(1,log.filter(e=>e.executionId===id&&e.at&&Date.parse(e.at)>=start&&Date.parse(e.at)<end).reduce((n,e)=>n+e.amount,0)/target);
+}
+export function measuredRecoveryScoreR288(log:readonly MeasuredRecoveryEntryR288[],id:string){
+ const entries=log.filter(e=>e.executionId===id),first=entries.find(e=>e.taskRecoveryTargetR288!==undefined);
+ const target=first?.taskRecoveryTargetR288;
+ if(!first||target===undefined||!Number.isFinite(target)||target<=0)return null;
+ const baseline=first.taskRecoveryBaselineR288;
+ if(baseline===undefined||!Number.isFinite(baseline)||baseline<0||baseline>1)return null;
+ let earned=baseline,recovered=0,amount=0;
+ for(const e of entries){
+  if(!Number.isFinite(e.amount)||e.amount<0||e.taskRecoveryTargetR288!==undefined&&e.taskRecoveryTargetR288!==target)return null;
+  amount+=e.amount;
+  if(e.taskRecoveryTargetR288===undefined)continue;
+  if(e.taskRecoveryBaselineR288!==baseline||!e.achievementDateR367)return null;
+  const factor=recoveryCreditR367(e.localDate,e.achievementDateR367);
+  earned+=e.amount/target*factor;recovered+=e.amount/target*factor;
+ }
+ return {target,amount,credit:Math.min(1,earned),recoveredShare:Math.min(1,recovered),finished:Math.round(amount*1e6)>=Math.round(target*1e6)};
 }

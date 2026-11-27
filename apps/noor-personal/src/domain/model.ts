@@ -208,6 +208,8 @@ export interface TargetLevels {
 export interface ActivityEntry {
     readonly performedOnR331?: LocalDate;
     readonly achievementDateR367?: LocalDate;
+    readonly taskRecoveryTargetR288?: number; // frozen denominator for dated measured-task recovery only
+    readonly taskRecoveryBaselineR288?: number; // verified original-day progress fraction
     readonly id: string;
     readonly executionId: string;
     readonly localDate: LocalDate;
