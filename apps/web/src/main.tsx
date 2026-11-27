@@ -1,3 +1,4 @@
+import {startPersonalEntry,cancelPersonalEntry} from "./noor-entry-timing.js";
 import "./noor-context-help-r382.css";
 import "./noor-personal-initial-setup-r321.css";
 import "./noor-ios-viewport-r230.css";
@@ -152,6 +153,14 @@ applyDocumentLocalization(
   navigator.language,
 );
 
+// Start access evidence in the navigation turn, not after a second React effect.
+// The controller still gates the application on fresh positive authorization.
+function navigateNoor(pathname:string):void {
+ if(history.pathname()==="/"&&pathname==="/personal")startPersonalEntry();
+ else if(pathname!=="/personal")cancelPersonalEntry();
+ history.push(pathname);
+ routeAccessController.selectPathname(history.pathname());
+}
 function ShellFoundation() {
   const pathname =
     useSyncExternalStore(
@@ -182,6 +191,7 @@ function ShellFoundation() {
 
   useEffect(
     () => {
+      if(pathname!=="/personal")cancelPersonalEntry();
       routeAccessController
         .selectPathname(
           pathname,
@@ -230,7 +240,7 @@ function ShellFoundation() {
   return (
     <PlatformShell
       state={state}
-      navigate={history.push}
+      navigate={navigateNoor}
       signIn={authenticationController.signIn}
       authenticationState={authentication.kind}
       accountService={noorAccountServiceR312}

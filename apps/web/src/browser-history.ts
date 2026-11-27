@@ -30,9 +30,27 @@ export function createBrowserHistory(
       }
     };
 
+  // A SPA route change does not fire beforeunload. Ask mounted views to
+  // signal pending work without transferring private data to the shell.
+  let acceptedUrl=browserWindow.location.href;
+  let acceptedState:unknown=browserWindow.history.state;
+  const allowLeave=(nextUrl:string):boolean=>{
+    if(new URL(nextUrl,acceptedUrl).pathname===new URL(acceptedUrl).pathname)return true;
+    const event=browserWindow.document.createEvent("Event");
+    event.initEvent("noor:before-route-leave",false,true);
+    if(browserWindow.dispatchEvent(event))return true;
+    return browserWindow.confirm("توجد تغييرات لم يتأكد حفظها. قد تفقدها عند المغادرة. هل تريد المتابعة؟");
+  };
+  const remember=()=>{acceptedUrl=browserWindow.location.href;acceptedState=browserWindow.history.state;};
   const observePopState =
     () => {
-      notify();
+      if(!allowLeave(browserWindow.location.href)){
+        // popstate is not cancelable. Restore the mounted route before notifying
+        // React. A canceled Back/Forward creates a new current history entry.
+        browserWindow.history.pushState(acceptedState,"",acceptedUrl);
+        return;
+      }
+      remember();notify();
     };
 
   const pathname =
@@ -43,26 +61,28 @@ export function createBrowserHistory(
     (
       nextPathname: string,
     ) => {
+      if(!allowLeave(nextPathname))return;
       browserWindow.history.pushState(
         null,
         "",
         nextPathname,
       );
 
-      notify();
+      remember();notify();
     };
 
   const replace =
     (
       nextPathname: string,
     ) => {
+      if(!allowLeave(nextPathname))return;
       browserWindow.history.replaceState(
         null,
         "",
         nextPathname,
       );
 
-      notify();
+      remember();notify();
     };
 
   const subscribe =

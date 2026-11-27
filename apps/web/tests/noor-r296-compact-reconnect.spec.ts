@@ -65,7 +65,24 @@ test("R296: recover an asleep server from the current page without navigation or
  assert.match(src,/connectionWarning \? <p className="np-reconnect-notice-r296"/);
  assert.match(src,/title="نور غير متصل" onRetry=/);
  assert.match(src,/onReconnect=\{\(\)=>\{void reconnect\(\);\}\}/);
- assert.equal((src.match(/window.location.replace\("\/"\)/g)??[]).length,1); // logout only
+ // N7 adds an explicit re-login action after session/access denial; normal recovery must not navigate.
+ const logoutStart=src.indexOf("const signOut=async()=>{");
+ const logoutEnd=src.indexOf("const refreshEpoch=",logoutStart);
+ assert.ok(logoutStart>=0&&logoutEnd>logoutStart);
+ const logout=src.slice(logoutStart,logoutEnd);
+ assert.match(logout,/await revokeNoorBrowserSessionR269\(\)/);
+ assert.equal((logout.match(/window\.location\.replace\("\/"\)/g)??[]).length,1);
+ const blocked=src.split("\n").find(line=>line.includes('if(resumeAccessBlocked)return'));
+ assert.ok(blocked);
+ assert.match(blocked,/data-testid="n7-access-blocked"/);
+ assert.match(blocked,/window\.confirm\(/);
+ assert.match(blocked,/window\.location\.replace\("\/"\)/);
+ assert.match(blocked,/تسجيل الدخول/);
+ const reconnectStart=src.indexOf("const reconnect=async()=>{");
+ const reconnectEnd=src.indexOf("const refreshInBackground=",reconnectStart);
+ assert.ok(reconnectStart>=0&&reconnectEnd>reconnectStart);
+ assert.doesNotMatch(src.slice(reconnectStart,reconnectEnd),/window\.location\./);
+ assert.equal((src.match(/window\.location\.replace\("\/"\)/g)??[]).length,2); // only confirmed logout and explicit blocked-session re-login
 });
 
 test("R296: clicking recovery after a sleeping service retries live reads without navigating or losing the mounted app",async()=>{

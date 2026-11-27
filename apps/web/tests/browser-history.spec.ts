@@ -266,3 +266,19 @@ test(
     );
   },
 );
+
+test("N2 SPA navigation warns before leaving pending work, including Back",()=>{
+ const dom=new JSDOM("<!doctype html><html></html>",{url:"https://shell.noor.test/"});
+ try{
+  const w=dom.window;const history=createBrowserHistory(w as unknown as Window);let pending=false,accept=false,confirmations=0;const paths:string[]=[];
+  w.confirm=()=>{confirmations++;return accept;};
+  w.addEventListener("noor:before-route-leave",e=>{if(pending)e.preventDefault();});
+  history.subscribe(()=>paths.push(history.pathname()));history.push("/personal");pending=true;
+  history.push("/work");assert.equal(history.pathname(),"/personal");
+  history.replace("/");assert.equal(history.pathname(),"/personal");
+  w.history.replaceState(null,"","/");w.dispatchEvent(new w.PopStateEvent("popstate"));
+  assert.equal(history.pathname(),"/personal");assert.deepEqual(paths,["/personal"]);assert.equal(confirmations,3);
+  accept=true;history.push("/work");assert.equal(history.pathname(),"/work");
+  pending=false;history.push("/personal");assert.equal(confirmations,4);assert.deepEqual(paths,["/personal","/work","/personal"]);
+ }finally{dom.window.close();}
+});

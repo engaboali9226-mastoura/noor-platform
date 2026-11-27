@@ -21,7 +21,7 @@ import type { NoorAccountSelfServiceR312 } from "./noor-account-self-service-r31
 import { noorRecoveryRedirectR312 } from "./noor-account-self-service-r312.js";
 
 // Product release number: update once for each approved release, not the internal npm package version.
-export const NOOR_RELEASE_VERSION = "1.0.1";
+export const NOOR_RELEASE_VERSION = "1.0.2";
 
 export type PlatformShellProps =
 Readonly<{
