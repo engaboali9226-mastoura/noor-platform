@@ -564,3 +564,14 @@
   .noor-r323-gateway[data-auth-mode="picker"] .noor-r332-auth { padding-block: 12px !important; }
   .noor-picker-heading { margin-bottom: 10px; }
 }
+
+/* Product release metadata, visible in the common Personal/Work picker. */
+.noor-r323-gateway[data-auth-mode="picker"] .noor-release-version {
+  display: block;
+  margin-block-start: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ng-ink);
+}

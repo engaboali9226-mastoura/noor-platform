@@ -70,3 +70,52 @@ test("R267 accepts external school portal lesson checkpoints while retaining pri
  assert.equal(validNoorWorkStateR264({...work,lessonChecks:[{...work.lessonChecks[0]!,attendanceRecorded:"yes"}]}),false,"checkbox status is never untrusted text");
  assert.equal(validNoorWorkStateR264({...work,assessmentChecks:[{...work.assessmentChecks[0]!,assessmentId:"wrong_exam"}]}),false);
 });
+
+test("NOOR 1.0.1 strict Work dates, instants, statuses and write denial",async()=>{
+ const base=fixture(); const observed={reads:0}; const op=operation("allow",observed);
+ const invalid:unknown[]=[];
+ for(const date of ["2026-02-29","2026-02-30","2026-04-31","2026-13-01","0000-01-01"]){
+  invalid.push({...base,preparations:[{...base.preparations[0]!,date}]});
+  invalid.push({...base,attendance:[{...base.attendance[0]!,date}]});
+  invalid.push({...base,assessments:[{...base.assessments[0]!,date}]});
+  invalid.push({...base,workdays:[{id:"day_one",date,checkIn:"",checkOut:""}]});
+  invalid.push({...base,lessonChecks:[{id:"check_one",slotId:"lesson_one",date,prepared:false,attendanceRecorded:false}]});
+ }
+ invalid.push({...base,termStartDate:"2026-02-29"});
+ for(const checkIn of ["2026-02-30T08:00:00.000Z","2026-11-08T24:00:00.000Z","2026-11-08T08:00:60.000Z"])
+  invalid.push({...base,workdays:[{id:"day_one",date:"2026-11-08",checkIn,checkOut:""}]});
+ for(const status of [["present"],[["absent"]],{status:"late"},null,1])
+  invalid.push({...base,attendance:[{...base.attendance[0]!,status}]});
+ for(const state of invalid){assert.equal(validNoorWorkStateR264(state),false);assert.equal((await op.write("cookie",{expectedRevision:1,state})).status,400);}
+ assert.equal(observed.reads,0);
+ for(const date of ["2024-02-29","2026-02-28","2026-04-30"])
+  assert.equal(validNoorWorkStateR264({...base,attendance:[{...base.attendance[0]!,date}]}),true);
+ for(const status of ["present","absent","late","excused"])
+  assert.equal(validNoorWorkStateR264({...base,attendance:[{...base.attendance[0]!,status}]}),true);
+ assert.equal(validNoorWorkStateR264({...base,workdays:[{id:"day_one",date:"2024-02-29",checkIn:"2024-02-29T08:00:00.000Z",checkOut:"2024-02-29T12:00:00.000Z"}]}),true);
+ assert.equal(validNoorWorkStateR264({...base,termStartDate:"2026-11-08"}),true);
+});
+test("NOOR 1.0.1 legacy invalid row remains readable without mutation; new invalid write denied",async()=>{
+ const old={...fixture(),attendance:[{...fixture().attendance[0]!,status:["present"],date:"2026-02-30"}]};
+ let reads=0;
+ const op=new NoorWorkTeacherOperationR264({isRuntimeRunning:()=>true,
+  resolveSession:{execute:async()=>({accountId:"fixture"})},authorize:{execute:async()=>{}},
+  accountUserResolver:{resolve:async()=>({toString:()=>"synthetic-owner"})},
+  client:{from:()=>{reads++;return {select:()=>({eq:()=>({limit:async()=>({error:null,data:[{revision:7,state:old}]})})})};}}
+ } as unknown as NoorWorkTeacherDependenciesR264);
+ const result=await op.read("cookie");assert.equal(result.status,200);assert.deepEqual(result.body,{revision:7,state:old});
+ assert.equal((await op.write("cookie",{expectedRevision:7,state:old})).status,400);assert.equal(reads,1);
+});
+test("NOOR 1.0.1 corrected valid Work state commits through the scoped write path",async()=>{
+ const state=fixture();state.attendance[0]!.date="2024-02-29";state.attendance[0]!.status="excused";
+ let saved:unknown=null;const filters:unknown[]=[];
+ const chain={eq:(key:string,value:unknown)=>{filters.push([key,value]);return chain;},select:async()=>({error:null,data:[{revision:8}]})};
+ const op=new NoorWorkTeacherOperationR264({isRuntimeRunning:()=>true,
+  resolveSession:{execute:async()=>({accountId:"fixture"})},authorize:{execute:async()=>{}},
+  accountUserResolver:{resolve:async()=>({toString:()=>"synthetic-owner"})},
+  client:{from:()=>({update:(v:unknown)=>{saved=v;return chain;}})}
+ } as unknown as NoorWorkTeacherDependenciesR264);
+ assert.deepEqual(await op.write("cookie",{expectedRevision:7,state}),{status:200,body:{revision:8}});
+ assert.deepEqual(filters,[["user_id","synthetic-owner"],["revision",7]]);
+ assert.deepEqual((saved as any).state,state);
+});

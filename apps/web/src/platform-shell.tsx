@@ -20,6 +20,9 @@ import type {
 import type { NoorAccountSelfServiceR312 } from "./noor-account-self-service-r312.js";
 import { noorRecoveryRedirectR312 } from "./noor-account-self-service-r312.js";
 
+// Product release number: update once for each approved release, not the internal npm package version.
+export const NOOR_RELEASE_VERSION = "1.0.1";
+
 export type PlatformShellProps =
 Readonly<{
   state:
@@ -326,6 +329,7 @@ function SmartGateway({
                 );
               })}
             </nav>
+            <small className="noor-release-version" data-testid="noor-release-version">الإصدار <bdi dir="ltr">{NOOR_RELEASE_VERSION}</bdi></small>
           </div>
         )}
         <a className="noor-r322-admin-entry" href="/admin/security" aria-label="دخول مدير منصة نور">
