@@ -1,6 +1,6 @@
 import {NoorContextHelp} from "./noor-context-help-r382.js";
 import {useState,type ReactElement} from "react";
-import {R331_PRAYERS,parsePrayerScoreApprovalR334,prayerHabitCandidateR334,type PrayerScoreSnapshotR334,type PrayerModeR331,type PrayerTimingR331,type PrayerKeyR331} from "../../noor-personal/src/domain/completion-r331.js";
+import {R331_PRAYERS,APPROVED_PRAYER_SHARES_R288,parsePrayerScoreApprovalR334,prayerHabitCandidateR334,type PrayerScoreSnapshotR334,type PrayerModeR331,type PrayerTimingR331,type PrayerKeyR331} from "../../noor-personal/src/domain/completion-r331.js";
 import type {NoorPersonalCommandInput} from "./noor-personal-today-client.js";
 
 export type HabitWeightDefinition=Readonly<{id:string;revisionId:string;kind:"Habit"|"Task";title:string;category:string;importance:string;weight:number;state:string}>;
@@ -42,6 +42,7 @@ export function NoorPrayerScoreApprovalR334({definitions,policy,busy,onCommand}:
   excused:{ontime:policy?String(Math.round(policy.shares.excused.ontime*10000)/100):"",late:policy?String(Math.round(policy.shares.excused.late*10000)/100):""},
   unexcused:{ontime:policy?String(Math.round(policy.shares.unexcused.ontime*10000)/100):"",late:policy?String(Math.round(policy.shares.unexcused.late*10000)/100):""}
  }));
+ const [sevenCases,setSevenCases]=useState(policy?.sevenCasesR288===true);
  const [choices,setChoices]=useState<Record<string,string>>(()=>({...policy?.legacyHabitKeys}));
  const [confirmed,setConfirmed]=useState(false),[saving,setSaving]=useState(false),[feedback,setFeedback]=useState("");
  const active=definitions.filter(d=>["Active","Paused"].includes(d.state));
@@ -54,7 +55,7 @@ export function NoorPrayerScoreApprovalR334({definitions,policy,busy,onCommand}:
   group:{ontime:Number(shares.group.ontime)/100,late:Number(shares.group.late)/100},
   excused:{ontime:Number(shares.excused.ontime)/100,late:Number(shares.excused.late)/100},
   unexcused:{ontime:Number(shares.unexcused.ontime)/100,late:Number(shares.unexcused.late)/100}
- },mappings,confirm:true}):null;
+ },...(sevenCases?{sevenCasesR288:true}:{}),mappings,confirm:true}):null;
  const ready=!!command&&command.baseWeight>maximum&&reviewed&&confirmed;
  const save=async()=>{if(!ready||!command||busy||saving)return;setSaving(true);setFeedback("");try{
   const ok=await onCommand(command);
@@ -65,11 +66,13 @@ export function NoorPrayerScoreApprovalR334({definitions,policy,busy,onCommand}:
  <summary>اعتماد سياسة إنجاز الصلوات</summary>
  <p className="np-cc-help">{policy?"السياسة المعتمدة، بدءًا من "+policy.effectiveFromDate:"لم تُعتمد سياسة للصلاة في هذا الحساب حتى الآن."} لا تتغير النتائج التاريخية. الدرجات مؤشر تنظيمي وليست حكمًا شرعيًا على الصلاة.</p>
  <div style={{display:"grid",gap:9}}>
+ <button type="button" className="np-cc-button" data-testid="r288-approved-prayer-preset" disabled={busy||saving} onClick={()=>{setWeight(String(Math.max(25,maximum+1)));setShares({group:{ontime:"100",late:"50"},excused:{ontime:"100",late:"100"},unexcused:{ontime:"75",late:"25"}});setSevenCases(true);setConfirmed(false);}}>الجدول المعتمد للصلوات</button>
  <label className="np-cc-help">وزن كل صلاة (أعلى من {maximum}) <input data-testid="r334-prayer-base-weight" className="np-input" type="number" min={maximum+1} max={1000} step={1} placeholder="حدد الوزن" value={weight} disabled={busy||saving} onChange={e=>{setWeight(e.currentTarget.value);setConfirmed(false);}}/></label>
  <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.1fr) repeat(2,minmax(0,1fr))",gap:6,alignItems:"center"}}><small>طريقة الأداء</small><small>في وقتها %</small><small>بعد الوقت %</small>
- {MODES_R334.flatMap(([mode,label])=>[<span key={mode}>{label}</span>,...TIMINGS_R334.map(([timing,description])=><input key={mode+timing} data-testid={"r334-share-"+mode+"-"+timing} aria-label={label+" "+description+" %"} className="np-input" style={{minWidth:0,width:"100%"}} type="number" min={0} max={100} step={0.01} placeholder="—" value={shares[mode][timing]} readOnly={mode==="group"&&timing==="ontime"} disabled={busy||saving} onChange={e=>{const value=e.currentTarget.value;setShares(old=>({...old,[mode]:{...old[mode],[timing]:value}}));setConfirmed(false);}}/>)])}
+ {MODES_R334.flatMap(([mode,label])=>[<span key={mode}>{label}</span>,...TIMINGS_R334.map(([timing,description])=><input key={mode+timing} data-testid={"r334-share-"+mode+"-"+timing} aria-label={label+" "+description+" %"} className="np-input" style={{minWidth:0,width:"100%"}} type="number" min={0} max={100} step={0.01} placeholder="—" value={shares[mode][timing]} readOnly={sevenCases||(mode==="group"&&timing==="ontime")} disabled={busy||saving} onChange={e=>{const value=e.currentTarget.value;setShares(old=>({...old,[mode]:{...old[mode],[timing]:value}}));setConfirmed(false);}}/>)])}
  </div>
- <NoorContextHelp label="مساعدة: 100% هي الدرجة المرجعية">100% هي الدرجة المرجعية للأداء في جماعة وفي الوقت. أدخل بقية المعاملات بنفسك؛ لا تزيد درجة التأخير عن الأداء في الوقت، ولا تزيد درجة الانفراد دون عذر عن الانفراد بعذر.</NoorContextHelp>
+ {sevenCases?<p data-testid="r288-late-group-excuse">جماعة بعد الوقت بعذر: 100% · دون عذر: {APPROVED_PRAYER_SHARES_R288.group.late*100}%</p>:null}
+ <NoorContextHelp label="مساعدة: 100% هي الدرجة المرجعية">100% هي الدرجة المرجعية للأداء في جماعة وفي الوقت. في الجدول المعتمد لا خصم مع العذر؛ لا تتغير المعاملات التاريخية. ويمكن مراجعة الربط والوزن قبل الاعتماد.</NoorContextHelp>
  <strong>ربط العادات القديمة<NoorContextHelp label="مساعدة: حدّد العادات التي تمثل الصلاة">حدّد العادات التي تمثل الصلاة نفسها فقط. تبقى سجلاتها القديمة محفوظة، ويُستبعد وزنها من الإنجاز الموحد بعد بدء السياسة. المطابقات بالاسم تتطلب اختيارًا صريحًا.</NoorContextHelp></strong>
  {habits.map(d=><label key={d.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:8,alignItems:"center"}}><span>{d.title} <small>({d.weight})</small>{prayerHabitCandidateR334(d.title)?<small style={{display:"block"}}>مطابقة محتملة — راجعها</small>:null}</span><select data-testid={"r334-prayer-mapping-"+d.id} aria-label={"ربط "+d.title} className="np-select" value={choices[d.id]??""} disabled={busy||saving} onChange={e=>{const value=e.currentTarget.value;setChoices(old=>({...old,[d.id]:value}));setConfirmed(false);}}><option value="">{prayerHabitCandidateR334(d.title)?"اختر صراحة":"غير محدد"}</option><option value="none">ليست الصلاة نفسها</option>{R331_PRAYERS.map(p=><option key={p} value={p}>{PRAYER_NAMES_R334[p]}</option>)}</select></label>)}
  <label style={{display:"flex",gap:8,alignItems:"flex-start"}}><input data-testid="r334-policy-confirm" type="checkbox" checked={confirmed} disabled={busy||saving} onChange={e=>setConfirmed(e.currentTarget.checked)}/><span>راجعت الأوزان والمعاملات والربط، وأوافق على تطبيقها من اليوم التالي فقط.</span></label>

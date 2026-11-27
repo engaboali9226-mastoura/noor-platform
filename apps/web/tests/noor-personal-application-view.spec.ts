@@ -281,6 +281,57 @@ test("a recovered session updates the selected day once, and retries the same sa
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
 
+test("R288 undated one-time session appears in recovery and preserves due-day points",async()=>{
+ const t=installDom(),root=createRoot(t.container),date="2026-10-23",currentDate="2026-10-24";
+ const definition={...workspace.workspace.definitions[0]!,weight:10,effectiveFromDate:date,schedule:{kind:"OneTime",localDate:date},sessionPlan:{distribution:"custom",sessions:[{
+  id:"missed-session",title:"جلسة أمس",objective:"",target:null,rangeStart:null,rangeEnd:null,scheduledDate:null,
+  order:1,note:"",revision:0,createdAt:date+"T00:00:00Z",updatedAt:date+"T00:00:00Z",completedAt:null,
+ }]}};
+ const initialWorkspace={...workspace,workspace:{...workspace.workspace,definitions:[definition,workspace.workspace.definitions[1]!],
+  statistics:{currentDate,rows:[{date,id:"past-session-task",definitionId:definition.id,kind:"Task",title:definition.title,
+    status:"Missed",weight:10,sessionWeight:10,amount:0,unit:"",credit:0}]}}};
+ const fetcher=globalThis.fetch;
+ const sent:unknown[]=[];
+ let respond:(response:Response)=>void=()=>{};
+ globalThis.fetch=async(url,options)=>{
+  if(!String(url).includes("/command"))return fetcher(url,options);
+  sent.push(JSON.parse(String(options?.body)));
+  return new Promise<Response>(resolve=>{respond=resolve;});
+ };
+ const tile=()=>t.container.querySelector<HTMLButtonElement>(".np-r339-recovery")!;
+ const points=()=>t.container.querySelector('[data-testid="daily-recovery-points"]')?.textContent;
+ const currentRate=()=>t.container.querySelector(`[data-week-date="${currentDate}"]`)?.getAttribute("data-week-rate");
+ const dueRate=()=>t.container.querySelector(`[data-week-date="${date}"]`)?.getAttribute("data-week-rate");
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace})));
+  assert.equal(tile().querySelector("strong")?.textContent,"1");
+  const before=currentRate();
+  await act(async()=>tile().click());
+  await act(async()=>document.querySelector<HTMLButtonElement>('.np-r331-recovery-row button')!.click());
+  const editor=document.querySelector(".np-recovery-date-sheet")!;
+  await act(async()=>editor.querySelector<HTMLInputElement>(`input[value="${currentDate}"]`)!.click());
+  await act(async()=>editor.querySelector("form")!.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
+  assert.equal(document.querySelector(".np-recovery-date-sheet"),null);
+  assert.equal(tile().querySelector("strong")?.textContent,"0");
+  assert.equal(points(),undefined,"Recovery must never be shown as today’s points");
+  assert.equal(currentRate(),before);
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('[data-testid="week-history-previous"]')!.click());
+  assert.equal(dueRate(),"70");
+  await act(async()=>t.container.querySelector<HTMLButtonElement>(`[data-week-date="${date}"]`)!.click());
+  assert.match(points()??"",/7 نقطة/);
+  await act(async()=>respond(new Response(null,{status:503})));
+  assert.equal(points(),undefined);
+  assert.equal(dueRate(),"0");
+  assert.equal(tile().querySelector("strong")?.textContent,"1");
+  await act(async()=>t.container.querySelector<HTMLButtonElement>(".np-failed-save button")!.click());
+  assert.equal(sent.length,2);
+  assert.deepEqual(sent[0],sent[1]);
+  assert.equal(dueRate(),"70");
+  assert.match(points()??"",/7 نقطة/);
+  await act(async()=>respond(new Response(null,{status:503})));
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
 test("R367 quick add changes form inside one centered overlay",async()=>{
  const t=installDom(),root=createRoot(t.container);
  try{
@@ -1212,5 +1263,24 @@ test("N2 task notes update instantly and failed draft remains available while an
   assert.ok([...t.container.querySelectorAll('.np-failed-save')].some(n=>n.textContent?.includes("مسودة جديدة")));
   await act(async()=>requests[1]!.resolve(new Response(null,{status:503})));
   assert.equal(complete().checked,false);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});
+
+
+test("R288 measured task appears in recovery and receives partial due-date credit",async()=>{
+ const t=installDom(),root=createRoot(t.container),date="2026-10-23",currentDate="2026-10-24";
+ const def={...workspace.workspace.definitions[0]!,title:"Measured R288",effectiveFromDate:date,schedule:{kind:"OneTime",localDate:date},weight:10,measurement:{target:20,unit:"صفحة"},activityLog:[{id:"prior",executionId:"past-measured",localDate:date,at:date+"T10:00:00Z",amount:10,note:"",endReason:null}]};
+ const initialWorkspace={...workspace,workspace:{...workspace.workspace,definitions:[def,workspace.workspace.definitions[1]!],statistics:{currentDate,rows:[{date,id:"past-measured",definitionId:def.id,kind:"Task",title:def.title,status:"Missed",weight:10,amount:10,unit:"صفحة",credit:0,measuredRecoveryBaselineR288:.5}]}}};
+ const fetcher=globalThis.fetch;let respond:(r:Response)=>void=()=>{};let command:unknown;
+ globalThis.fetch=async(url,options)=>{if(!String(url).includes("/command"))return fetcher(url,options);command=JSON.parse(String(options?.body));return new Promise<Response>(resolve=>{respond=resolve;});};
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace})));
+  const tile=t.container.querySelector<HTMLButtonElement>(".np-r339-recovery")!;assert.equal(tile.querySelector("strong")?.textContent,"1");
+  await act(async()=>tile.click());await act(async()=>document.querySelector<HTMLButtonElement>(".np-r331-recovery-row button")!.click());
+  const editor=document.querySelector(".np-recovery-date-sheet")!;assert.equal(editor.querySelector<HTMLInputElement>('[data-testid="r288-measured-recovery-amount"]')?.value,"10");
+  await act(async()=>editor.querySelector<HTMLInputElement>(`input[value="${currentDate}"]`)!.click());await act(async()=>editor.querySelector("form")!.dispatchEvent(new t.dom.window.Event("submit",{bubbles:true,cancelable:true})));
+  assert.equal((command as {type:string}).type,"record-historical-progress");assert.equal((command as {performedOn:string}).performedOn,currentDate);assert.equal(tile.querySelector("strong")?.textContent,"0");
+  await act(async()=>t.container.querySelector<HTMLButtonElement>('[data-testid="week-history-previous"]')!.click());assert.equal(t.container.querySelector(`[data-week-date="${date}"]`)?.getAttribute("data-week-rate"),"85");
+  await act(async()=>respond(new Response(null,{status:503})));assert.equal(t.container.querySelector(`[data-week-date="${date}"]`)?.getAttribute("data-week-rate"),"0");assert.equal(tile.querySelector("strong")?.textContent,"1");
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });

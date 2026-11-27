@@ -1,9 +1,9 @@
-import { projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, recoveryCreditR367, canRecoverDueDate, RECOVERY_LOOKBACK_DAYS, completedShareR331, prayerHabitCandidateR334, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
+import { measuredRecoveryTargetR288, measuredRecoveryRemainingR288, measuredRecoveryScoreR288, measuredRecoveryBaselineR288, projectPrayerAchievementPeriodR334, parsePrayerScoreApprovalR334,issuePrayerScoreSnapshotR334,ordinaryWeightPermittedR334,type PrayerScoreApprovalR334,type PrayerScoreSnapshotR334,prayerScoreFromTrustedDayR334, validPrayerScoreSnapshotR334, type PrayerDayScoreR334, R331_PRAYERS, recoveryCreditR331, recoveryCreditR367, canRecoverDueDate, RECOVERY_LOOKBACK_DAYS, completedShareR331, prayerHabitCandidateR334, validPrayerRecordR331, type PrayerKeyR331, type PrayerModeR331, type PrayerTimingR331, type PrayerRecordR331 } from "../domain/completion-r331.js";
 const DEFAULT_PERSONAL_CATEGORIES=["الصحة والرياضة","العبادات","العمل","التعلم","الأسرة","الشؤون الشخصية","الأدوية والمكملات الغذائية"] as const;
 import { IntlTimeZoneAdapter } from "../domain/time.js";
 import { validPersonalAvatar } from "../domain/personal-records.js";
 import {parseNoorReminderPlanR314,type NoorReminderPlanR314} from "../domain/reminder-plan-r314.js";
-import { prepareTaskSessionPlan, sessionProgress, sessionStatus, sessionQuantity, sessionDayCredit, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate, recordedSessionAchievement, isPageUnit, validSessionDateR286, assertTaskSessionDatesMatchParentR286, sessionScheduledOnDateR286, type TaskSessionPlanDraft } from "../domain/task-sessions.js";
+import { taskSessionRecoveryDueR288, prepareTaskSessionPlan, sessionProgress, sessionStatus, sessionQuantity, sessionDayCredit, sessionEventCredit, sessionAchievementShare, sessionAchievementOnDate, recordedSessionAchievement, isPageUnit, validSessionDateR286, assertTaskSessionDatesMatchParentR286, sessionScheduledOnDateR286, type TaskSessionPlanDraft } from "../domain/task-sessions.js";
 import { applyFinanceOperation, emptyFinanceLedger, parseFinanceOperation, type FinanceOperation, type FinanceLedger } from "../domain/model.js";
 import type {
     AutomationOutboxEvent,
@@ -60,7 +60,7 @@ export type PersonalCommand =
      | Readonly<{type:"set-beverage-bedtime";sleepTime:string}>
     | Readonly<{type:"set-account-location";requestId:string;expectedRevisionId:string;city:{name:string;country:string;latitude:number;longitude:number;timeZone:string}}>
     | Readonly<{type:"correct-historical-execution";executionId:string;localDate:LocalDate;expectedStatus:ExecutionStatus;completed:boolean}>
-    | Readonly<{type:"record-historical-progress";executionId:string;localDate:LocalDate;entryId:string;note:string;amount:number}>
+    | Readonly<{type:"record-historical-progress";executionId:string;localDate:LocalDate;performedOn?:LocalDate;entryId:string;note:string;amount:number}>
     | Readonly<{type:"edit-activity-note";executionId:string;entryId:string;expectedNote:string;note:string|null}>
     | Readonly<{type:"rebalance-habit-weights";changes:readonly Readonly<{definitionId:string;expectedRevisionId:string;weight:number}>[]}>
     | Readonly<{type:"reorder-display";scope:"Habit"|"Task"|"categories";expected:readonly string[];order:readonly string[]}>
@@ -125,7 +125,7 @@ export interface PersonalInsights {
     }>;
 }
 
-export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;readonly recoveryBonus?:boolean;readonly completionDate?:string;readonly recoveredWeight?:number;readonly sessionWeight?:number;}
+export interface PersonalStatisticRow {readonly id:string;readonly definitionId:string;readonly title:string;readonly kind:DefinitionKind;readonly date:string;readonly weight:number;readonly status:ExecutionStatus;readonly amount:number;readonly unit:string;readonly credit?:number;readonly nonAchievement?:boolean;readonly recoveryBonus?:boolean;readonly completionDate?:string;readonly recoveredWeight?:number;readonly sessionWeight?:number;readonly measuredRecoveryBaselineR288?:number;}
 export interface PersonalWorkspace {
     readonly profile?: PersonalProfile | null;
     readonly historicalEvents?: readonly PersonalHistoricalEvent[];
@@ -480,13 +480,13 @@ export function parsePersonalCommand(
         return {type:"correct-historical-execution",executionId:value.executionId,localDate:value.localDate as LocalDate,expectedStatus:value.expectedStatus as ExecutionStatus,completed:value.completed};
     }
     if(value.type==="record-historical-progress"){
-        if(!exactKeys(value,["type","executionId","localDate","entryId","note","amount"]) ||
+        if(!exactKeys(value,["type","executionId","localDate","entryId","note","amount",...(Object.hasOwn(value,"performedOn")?["performedOn"]:[])]) || (Object.hasOwn(value,"performedOn")&&!localDate(value.performedOn)) ||
            !boundedIdentifier(value.executionId) || !boundedIdentifier(value.entryId) ||
            !localDate(value.localDate) || typeof value.note!=="string" || value.note.length>2000 ||
            typeof value.amount!=="number" || !Number.isFinite(value.amount) || value.amount<0 || value.amount>1e9 ||
            Math.abs(value.amount*1e6-Math.round(value.amount*1e6))>0.00001 ||
-           (!value.note.trim()&&value.amount===0)) return null;
-        return {type:"record-historical-progress",executionId:value.executionId,localDate:value.localDate as LocalDate,entryId:value.entryId,note:value.note.trim(),amount:value.amount};
+           (!value.note.trim()&&value.amount===0) || (Object.hasOwn(value,"performedOn")&&value.amount<=0)) return null;
+        return {type:"record-historical-progress",executionId:value.executionId,localDate:value.localDate as LocalDate,...(typeof value.performedOn==="string"?{performedOn:value.performedOn as LocalDate}:{}),entryId:value.entryId,note:value.note.trim(),amount:value.amount};
     }
     if(value.type==="rebalance-habit-weights"){
         if(!exactKeys(value,["type","changes"])||!Array.isArray(value.changes)||value.changes.length<1||value.changes.length>500)return null;
@@ -1046,7 +1046,7 @@ export class PersonalCommandService {
                     const definition=transaction.findDefinitionById(userId,instance.definitionId);
                     if(!definition?.sessionPlan||definition.userId!==userId)throw new Error("TASK_SESSION_NOT_ENABLED");
                     const session=definition.sessionPlan.sessions.find(s=>s.id===p.taskSessionId);
-                    if(!session||session.scheduledDate!==p.localDate)throw new Error("TASK_SESSION_NOT_SCHEDULED_TODAY");
+                    if(!session||!taskSessionRecoveryDueR288(session.scheduledDate,definition.schedule.kind==="OneTime"?definition.schedule.localDate:null,p.localDate))throw new Error("TASK_SESSION_NOT_SCHEDULED_TODAY");
                     const log=definition.activityLog??[],prior=log.find(e=>e.id===p.entryId);
                     if(prior){
                         if(prior.taskSessionId!==p.taskSessionId||prior.executionId!==p.executionId||prior.localDate!==p.localDate||prior.amount!==p.amount||prior.note!==p.note||!prior.performedOnR331||(p.performedOn??null)!==(prior.achievementDateR367??null))throw new Error("TASK_SESSION_ACTIVITY_ID_CONFLICT");
@@ -1304,6 +1304,7 @@ export class PersonalCommandService {
                     if(!at||!Number.isFinite(Date.parse(at))||Date.parse(at)>Date.parse(now))throw new Error("PRAYER_NOT_STARTED");
                     const records=(day.prayerRecordsR331??[]).filter(validPrayerRecordR331);
                     const previous=records.find(x=>x.key===p.key);
+                    if(day.prayerScoreSnapshotR334?.sevenCasesR288===true&&p.mode==="group"&&p.timing==="late"&&!p.lateGroupExcuse)throw new Error("PRAYER_LATE_GROUP_EXCUSE_REQUIRED");
                     if((previous?.recordedAt??null)!==p.expectedRecordedAt)throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
                     if(habit){
                         const definition=transaction.findDefinitionById(userId,habit.definitionId);
@@ -1378,13 +1379,26 @@ export class PersonalCommandService {
                     const log=definition.activityLog??[];
                     const previous=log.find(e=>e.id===parsed.entryId);
                     if(previous){
-                        if(previous.executionId!==instance.id || previous.localDate!==parsed.localDate || previous.note!==parsed.note || previous.amount!==parsed.amount || previous.endReason!==null)
+                        if(previous.executionId!==instance.id || previous.localDate!==parsed.localDate || previous.note!==parsed.note || previous.amount!==parsed.amount || previous.endReason!==null||(previous.achievementDateR367??null)!==(parsed.performedOn??null))
                             throw new Error("HISTORICAL_ACTIVITY_ID_CONFLICT");
                         return;
                     }
                     if(log.length>=10000)throw new Error("ACTIVITY_LIMIT_REACHED");
                     if(instance.kind!=="Task"&&parsed.amount!==0)throw new Error("HABIT_NOTE_ONLY");
                     if(parsed.amount>0&&definition.sessionPlan)throw new Error("TASK_SESSIONS_REQUIRE_SESSION_PROGRESS");
+                    if(parsed.performedOn){
+                        if(instance.kind!=="Task"||definition.kind!=="Task"||definition.state!=="Active"||!definition.measurement||definition.sessionPlan||["event","appointment"].includes(definition.countdownPlan?.kind??"task")||!["Missed","Pending","Planned","InProgress"].includes(instance.status))throw new PersonalControlError("DEFINITION_STATE_CONFLICT");
+                        if(!canRecoverDueDate(parsed.localDate,civilToday)||parsed.performedOn>civilToday||recoveryCreditR367(parsed.localDate,parsed.performedOn)<=0)throw new Error("RECOVERY_DATE_OUTSIDE_WINDOW");
+                        const target=measuredRecoveryTargetR288(log,instance.id,definition.measurement.target);
+                        if(isPageUnit(definition.measurement.unit)&&!Number.isSafeInteger(parsed.amount)||parsed.amount>measuredRecoveryRemainingR288(log,instance.id,definition.measurement.target))throw new Error("PROGRESS_EXCEEDS_TARGET");
+                        const entry={id:parsed.entryId,executionId:instance.id,localDate:parsed.localDate,at:now,note:parsed.note,amount:parsed.amount,endReason:null,performedOnR331:parsed.performedOn,achievementDateR367:parsed.performedOn,taskRecoveryTargetR288:target,taskRecoveryBaselineR288:measuredRecoveryBaselineR288(log,instance.id,target,transaction.findPersonalDayById?.(userId,instance.personalDayId)?.boundary)};
+                        const next=[...log,entry],score=measuredRecoveryScoreR288(next,instance.id);
+                        if(!score)throw new Error("MEASURED_RECOVERY_INVALID");
+                        transaction.saveDefinition({...definition,activityLog:next});
+                        if(score.finished){const updated:DailyExecutionInstance={...instance,status:"Completed",version:instance.version+1,updatedAt:now};transaction.saveDailyExecution(updated);enqueueExecutionStatusEvent({transaction,idGenerator:this.dependencies.idGenerator,now,instance:updated});}
+                        return;
+                    }
+                    if(parsed.amount>0&&log.some(e=>e.executionId===instance.id&&e.taskRecoveryTargetR288!==undefined))throw new Error("MEASURED_RECOVERY_DATE_REQUIRED");
                     if(parsed.amount>0){
                         if(!definition.measurement || instance.kind!=="Task")throw new Error("MEASUREMENT_REQUIRED");
                         const total=Math.round((log.reduce((sum,e)=>sum+e.amount,0)+parsed.amount)*1e6)/1e6;
@@ -1835,6 +1849,7 @@ export function buildPersonalWorkspace(
             .at(-1)
         ?? null;
 
+    const dayBoundaries=new Map(personalDays.map(d=>[d.id,d.boundary]));
     const days=new Map(personalDays.map(d=>[d.id,d.boundary.localDate])),defs=new Map(definitions.map(d=>[d.id,d]));
     const streak = streaks(execution,currentLocalDate,defs);
     type LogEntry=NonNullable<ExecutionDefinition["activityLog"]>[number];
@@ -1856,25 +1871,29 @@ export function buildPersonalWorkspace(
         const date=days.get(e.personalDayId)??e.scheduleOccurrenceKey;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!currentLocalDate||date>currentLocalDate)return [];
         const definition=defs.get(e.definitionId);
-        if(definition?.sessionPlan?.sessions.length&&!sessionScheduledOnDateR286(definition.sessionPlan,date)&&e.status!=="Completed")return [];
         const log=logFor(definition,e.id);
+        if(definition?.sessionPlan?.sessions.length&&!sessionScheduledOnDateR286(definition.sessionPlan,date)&&e.status!=="Completed"&&!log.some(entry=>entry.taskRecoveryTargetR288!==undefined))return [];
         const weight=Number.isFinite(e.eligibility.weight)&&e.eligibility.weight>0?e.eligibility.weight:1;
         const completionDate=e.completionDateR367;
         const newestSessionRecovery=log.filter(entry=>entry.achievementDateR367).at(-1);
         const metadataDate=completionDate??newestSessionRecovery?.achievementDateR367;
         const share=completedShareR331(e);
+        const measured=measuredRecoveryScoreR288(log,e.id);
         const sessionPlan=definition?.sessionPlan;
-        const projected=sessionPlan?sessionAchievementOnDate(sessionPlan,definition.activityLog??[],date):null;
-        const recoveredSession=sessionPlan?.sessions.find(session=>session.id===newestSessionRecovery?.taskSessionId);
-        const recoveredShare=completionDate?share:recoveredSession&&newestSessionRecovery
-            ?recordedSessionAchievement(recoveredSession,newestSessionRecovery):0;
+        const projected=!measured&&sessionPlan?sessionAchievementOnDate(sessionPlan,definition.activityLog??[],date):null;
+        const recoveredShare=measured?measured.recoveredShare:completionDate?share:log.reduce((total,entry)=>{
+            if(!entry.achievementDateR367)return total;
+            const session=sessionPlan?.sessions.find(s=>s.id===entry.taskSessionId);
+            return total+(session?recordedSessionAchievement(session,entry):0);
+        },0);
         const row:PersonalStatisticRow={id:e.id,definitionId:e.definitionId,title:definition?.title??e.title,kind:e.kind,date,
             weight:weight*(projected?.scheduled||1),status:e.status,
             amount:log.reduce((n,a)=>n+a.amount,0),unit:definition?.measurement?.unit??"",
             ...(projected?{sessionWeight:weight}:{}),
+            ...(definition?.kind==="Task"&&definition.measurement&&!sessionPlan?{measuredRecoveryBaselineR288:measuredRecoveryBaselineR288(log,e.id,measuredRecoveryTargetR288(log,e.id,definition.measurement.target),dayBoundaries.get(e.personalDayId))}:{}),
             ...(projected?.scheduled===0||definition?.beveragePlan||["event","appointment"].includes(definition?.countdownPlan?.kind??"task")?{nonAchievement:true}:{}),
-            ...(metadataDate?{completionDate:metadataDate,recoveredWeight:weight*recoveredShare}:{}),
-            credit:projected?projected.scheduled?projected.earned/projected.scheduled:0:share};
+            ...(metadataDate?{completionDate:metadataDate,recoveredWeight:Math.min(weight*(projected?.scheduled||1),weight*recoveredShare)}:{}),
+            credit:measured?measured.credit:projected?projected.scheduled?projected.earned/projected.scheduled:0:share};
         return [row];
     });
     // Only owner-scoped, explicitly issued day snapshots can contribute.
