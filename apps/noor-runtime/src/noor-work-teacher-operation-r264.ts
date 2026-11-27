@@ -48,14 +48,27 @@ const textOk=(v:unknown,max:number)=>typeof v==="string"&&v.length<=max && !/[\u
 const idOk=(v:unknown)=>typeof v==="string"&&/^[A-Za-z0-9_-]{3,90}$/u.test(v);
 const dayOk=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=0&&v<=6;
 const periodOk=(v:unknown)=>typeof v==="number"&&Number.isInteger(v)&&v>=1&&v<=12;
-const dateOk=(v:unknown)=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/u.test(v)&&!Number.isNaN(Date.parse(v+"T12:00:00Z"));
+const dateOkLegacy=(v:unknown)=>typeof v==="string"&&/^\d{4}-\d{2}-\d{2}$/u.test(v)&&!Number.isNaN(Date.parse(v+"T12:00:00Z"));
+const dateOkStrict=(v:unknown)=>{
+  if(typeof v!=="string"||!dateOkLegacy(v)||v.startsWith("0000-"))return false;
+  return new Date(v+"T12:00:00Z").toISOString().slice(0,10)===v;
+};
 const clockOk=(v:unknown)=>typeof v==="string"&&(v===""||/^([01]\d|2[0-3]):[0-5]\d$/u.test(v));
-const instantOk=(v:unknown)=>typeof v==="string"&&(v===""||(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u.test(v)&&Number.isFinite(Date.parse(v))));
+const instantOkLegacy=(v:unknown)=>typeof v==="string"&&(v===""||(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u.test(v)&&Number.isFinite(Date.parse(v))));
+const instantOkStrict=(v:unknown)=>typeof v==="string"&&(v===""||
+  (instantOkLegacy(v)&&!v.startsWith("0000-")&&new Date(v).toISOString()===v));
 const scoreOk=(v:unknown)=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=1000;
 const arrayOk=(v:unknown,max:number,check:(x:Record<string,unknown>)=>boolean)=>Array.isArray(v)&&v.length<=max&&v.every(x=>isObj(x)&&check(x));
 const idsUnique=(xs:ReadonlyArray<{id:string}>)=>new Set(xs.map(x=>x.id)).size===xs.length;
 
+// Keep legacy reads available without normalizing or silently modifying stored rows.
+// Every new full-state write must satisfy the strict contract.
 export function validNoorWorkStateR264(value:unknown): value is NoorWorkStateR264 {
+  return validStateR264(value,true);
+}
+function validStateR264(value:unknown,strict:boolean): value is NoorWorkStateR264 {
+  const dateOk=strict?dateOkStrict:dateOkLegacy;
+  const instantOk=strict?instantOkStrict:instantOkLegacy;
   if(!isObj(value)||value.version!==1) return false;
   const required=["assessments","attendance","grades","preparations","students","timetable","version","workdays"];
   const optional=["assessmentChecks","lessonChecks","termStartDate"];
@@ -73,7 +86,7 @@ export function validNoorWorkStateR264(value:unknown): value is NoorWorkStateR26
   if(!arrayOk(value.workdays,900,x=>idOk(x.id)&&dateOk(x.date)&&instantOk(x.checkIn)&&instantOk(x.checkOut)))return false;
   if(!arrayOk(value.preparations,1200,x=>idOk(x.id)&&idOk(x.slotId)&&dateOk(x.date)&&textOk(x.title,150)&&textOk(x.objectives,2500)&&textOk(x.activities,2500)&&textOk(x.homework,1200)))return false;
   if(!arrayOk(value.students,600,x=>idOk(x.id)&&textOk(x.name,120)&&textOk(x.group,90)&&textOk(x.code,50)))return false;
-  if(!arrayOk(value.attendance,15000,x=>idOk(x.id)&&idOk(x.slotId)&&idOk(x.studentId)&&dateOk(x.date)&&["present","absent","late","excused"].includes(String(x.status))))return false;
+  if(!arrayOk(value.attendance,15000,x=>idOk(x.id)&&idOk(x.slotId)&&idOk(x.studentId)&&dateOk(x.date)&&(!strict||typeof x.status==="string")&&["present","absent","late","excused"].includes(String(x.status))))return false;
   if(!arrayOk(value.assessments,400,x=>idOk(x.id)&&textOk(x.group,90)&&textOk(x.title,150)&&dateOk(x.date)&&scoreOk(x.maxScore)&&Number(x.maxScore)>0))return false;
   if(!arrayOk(value.grades,16000,x=>idOk(x.id)&&idOk(x.assessmentId)&&idOk(x.studentId)&&scoreOk(x.score)))return false;
   const state=value as NoorWorkStateR264;
@@ -130,7 +143,7 @@ export class NoorWorkTeacherOperationR264 {
       if(result.error||result.data===null||result.data.length>1)return {status:503};
       const row=result.data[0];
       if(!row)return {status:200,body:{revision:0,state:emptyNoorWorkStateR264()}};
-      if(!Number.isSafeInteger(row.revision)||row.revision<0||!validNoorWorkStateR264(row.state))return {status:503};
+      if(!Number.isSafeInteger(row.revision)||row.revision<0||!validStateR264(row.state,false))return {status:503};
       return {status:200,body:{revision:row.revision,state:row.state}};
     }catch{return {status:503};}
   }

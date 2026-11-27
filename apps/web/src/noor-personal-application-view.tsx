@@ -388,6 +388,7 @@ const PAGE_STYLES = `
   .np-header-date-pair{width:100%;display:grid;grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr);align-items:center;column-gap:18px;padding-top:0;position:relative;direction:ltr}
   .np-header-date-block{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:"Al Bayan","Geeza Pro","Noto Naskh Arabic","Traditional Arabic",serif;direction:rtl}.np-header-date-block:first-child{justify-self:end}.np-header-date-block:last-child{justify-self:start}
   .np-header-date-main{color:#183b56;font-size:13px;font-weight:700;line-height:1.5;white-space:nowrap}
+  .np-header-date-accessible{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
   .np-header-date-main.hijri{color:#52677b}
   .np-header-date-caption{color:#8293a6;font-size:10px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Tahoma,Arial,sans-serif}
   .np-header-date-divider{width:1px;height:36px;background:#d7c8ae}
@@ -3802,12 +3803,12 @@ function Dashboard({ view:providedView, workspace, busy, actionError, onCommand,
         <div className="np-header-day">{weekday}</div>
         <div className="np-header-date-pair">
           <div className="np-header-date-block">
-            <span aria-label={gregorianDate} className="np-header-date-main"><span aria-hidden="true" className="np-date-full"><span className="np-date-month">{datePart(dateOnlyParts,"day")} {datePart(dateOnlyParts,"month")}</span><span className="np-date-year"> {datePart(dateOnlyParts,"year")}</span></span><span aria-hidden="true" className="np-date-compact">{compactCalendarDate("gregory")}</span></span>
+            <span className="np-header-date-main"><span className="np-header-date-accessible">{gregorianDate}</span><span aria-hidden="true" className="np-date-full"><span className="np-date-month">{datePart(dateOnlyParts,"day")} {datePart(dateOnlyParts,"month")}</span><span className="np-date-year"> {datePart(dateOnlyParts,"year")}</span></span><span aria-hidden="true" className="np-date-compact">{compactCalendarDate("gregory")}</span></span>
             <span className="np-header-date-caption">التاريخ الميلادي</span>
           </div>
           <span className="np-header-date-divider" />
           <div className="np-header-date-block">
-            <span aria-label={dates.hijri} className="np-header-date-main hijri"><span aria-hidden="true" className="np-date-full"><span className="np-date-month">{datePart(hijriDateParts,"day")} {datePart(hijriDateParts,"month")}</span><span className="np-date-year"> {datePart(hijriDateParts,"year")} هـ</span></span><span aria-hidden="true" className="np-date-compact">{compactCalendarDate("islamic-umalqura")}</span></span>
+            <span className="np-header-date-main hijri"><span className="np-header-date-accessible">{dates.hijri}</span><span aria-hidden="true" className="np-date-full"><span className="np-date-month">{datePart(hijriDateParts,"day")} {datePart(hijriDateParts,"month")}</span><span className="np-date-year"> {datePart(hijriDateParts,"year")} هـ</span></span><span aria-hidden="true" className="np-date-compact">{compactCalendarDate("islamic-umalqura")}</span></span>
             <span className="np-header-date-caption">التاريخ الهجري</span>
           </div>
         </div>

@@ -12,6 +12,29 @@ function forwarded(headers){
  const omitted=new Set([...HOP,...String(headers.connection??'').split(',').map(v=>v.trim().toLowerCase())]);
  return Object.fromEntries(Object.entries(headers).filter(([key])=>!omitted.has(key.toLowerCase())));
 }
+// The public origin is trusted server configuration, never X-Forwarded-Proto.
+export function hostedSecurityHeaders(origin){
+ return {
+  'x-content-type-options':'nosniff',
+  'x-frame-options':'DENY',
+  'referrer-policy':'strict-origin-when-cross-origin',
+  'permissions-policy':'camera=(), microphone=(), geolocation=(self)',
+  // Enforce only low-risk document restrictions; collect script/style/connect
+  // compatibility evidence before enforcing the broader report-only policy.
+  'content-security-policy':"frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+  'content-security-policy-report-only':"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; worker-src 'self' blob:; form-action 'self'",
+  ...(origin.protocol==='https:'?{'strict-transport-security':'max-age=86400'}:{})
+ };
+}
+function hostedResponseHeaders(incoming,baseline){
+ const headers=forwarded(incoming);
+ for(const [key,value] of Object.entries(baseline)){
+  const existing=headers[key];
+  // Multiple CSP policies are intersected; never discard upstream enforcement.
+  headers[key]=key.startsWith('content-security-policy')&&existing?[...([existing].flat()),value]:value;
+ }
+ return headers;
+}
 /** Release fingerprint contains only the public Git revision, never environment secrets. */
 export function publicReleaseCommit(value){
  return typeof value==='string'&&/^[a-f0-9]{40}$/i.test(value)?value.toLowerCase():null;
@@ -38,7 +61,9 @@ export async function createHostedWebServer({staticDirectory,apiOrigin,publicOri
  const root=await realpath(staticDirectory),agent=new http.Agent({keepAlive:true,maxSockets:16});
  const usernameHandler=usernameLogin&&createUsernameLoginHandler({authenticate:usernameLogin,origin:origin.origin});
  const releaseSha=publicReleaseCommit(releaseCommit);
+ const baselineHeaders=hostedSecurityHeaders(origin);
  const server=http.createServer(async(req,res)=>{
+  for(const [key,value] of Object.entries(baselineHeaders))res.setHeader(key,value);
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//'))return reply(res,400,'Invalid request.',req.method);
    const url=new URL(req.url,origin);
@@ -55,7 +80,7 @@ export async function createHostedWebServer({staticDirectory,apiOrigin,publicOri
    }
    if(url.pathname==='/api/noor'||url.pathname.startsWith('/api/noor/')){
     const upstream=http.request({hostname:api.hostname,port:api.port,method:req.method,path:req.url,headers:{...forwarded(req.headers),host:origin.host},agent},incoming=>{
-     res.writeHead(incoming.statusCode??502,forwarded(incoming.headers));incoming.on('error',()=>res.destroy());incoming.pipe(res);
+     res.writeHead(incoming.statusCode??502,hostedResponseHeaders(incoming.headers,baselineHeaders));incoming.on('error',()=>res.destroy());incoming.pipe(res);
     });
     upstream.setTimeout(30000,()=>upstream.destroy(Error('UPSTREAM_TIMEOUT')));
     upstream.once('error',()=>{if(res.destroyed)return;if(res.headersSent)res.destroy();else reply(res,503,'Service temporarily unavailable.',req.method);});

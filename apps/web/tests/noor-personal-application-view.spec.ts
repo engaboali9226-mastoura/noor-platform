@@ -844,3 +844,21 @@ test("R382 contextual help is collapsed, accessible, and does not submit forms",
   await act(async()=>button.click());await act(async()=>t.dom.window.document.querySelector<HTMLButtonElement>(".noor-help-dialog-r384 button")?.click());assert.equal(t.container.querySelector<HTMLElement>(".noor-help-copy-r382")?.hidden,true);assert.equal(submits,0);
  }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
 });
+
+test("NOOR 1.0.1 calendar header exposes one accessible date per calendar without prohibited aria-label",async()=>{
+ const t=installDom(),root=createRoot(t.container);
+ try{
+  await act(async()=>root.render(createElement(NoorPersonalApplicationView,{initialResult:today,initialWorkspace:workspace})));
+  const dates=[...t.container.querySelectorAll(".np-header-date-main")];assert.equal(dates.length,2);
+  for(const date of dates){
+   assert.equal(date.hasAttribute("aria-label"),false);
+   const accessible=date.querySelectorAll(".np-header-date-accessible");assert.equal(accessible.length,1);
+   assert.match(accessible[0]!.textContent??"",/\d{4}/);assert.equal(accessible[0]!.closest('[aria-hidden="true"]'),null);
+   for(const sel of [".np-date-full",".np-date-compact"])assert.equal(date.querySelector(sel)?.getAttribute("aria-hidden"),"true");
+  }
+  const {readFileSync}=await import('node:fs');const {createRequire}=await import('node:module');
+  const resolve=createRequire(import.meta.url);t.dom.window.eval(readFileSync(resolve.resolve('axe-core/axe.min.js'),'utf8'));
+  const result=await (t.dom.window as any).axe.run(t.container,{runOnly:{type:'rule',values:['aria-prohibited-attr']}});
+  assert.equal(result.violations.flatMap((x:any)=>x.nodes).filter((n:any)=>n.target.some((v:any)=>String(v).includes('np-header-date-main')||String(v).includes('.hijri'))).length,0);
+ }finally{await act(async()=>root.unmount());t.restore();t.dom.window.close();}
+});

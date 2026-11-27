@@ -228,6 +228,7 @@ CREATE FUNCTION noor_r386_candidate.s4_capture()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $$
 DECLARE enabled boolean; rolled boolean; facts jsonb; prior_events jsonb:='[]'::jsonb;
  prior_ids jsonb; current_ids jsonb; fact_ids jsonb; current_events jsonb; current_days jsonb;
+ extraction_executions jsonb; extraction_state jsonb;
 BEGIN
  IF current_user<>'noor_r386_s3_tx' THEN RETURN NEW; END IF;
  SELECT shadow_enabled,rollback_only INTO enabled,rolled FROM noor_r386_candidate.s3_enrollment WHERE owner_id=NEW.user_id;
@@ -254,7 +255,22 @@ BEGIN
  current_events:=NEW.state->'outbox'; current_days:=NEW.state->'personalDays';
  SELECT coalesce(jsonb_object_agg(e->>'id',true),'{}'::jsonb) INTO prior_ids FROM jsonb_array_elements(prior_events) q(e);
  SELECT coalesce(jsonb_object_agg(e->>'id',true),'{}'::jsonb) INTO current_ids FROM jsonb_array_elements(current_events) q(e);
- SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO facts FROM noor_r386_candidate.s4_extract(NEW.user_id,NEW.state) x;
+ BEGIN
+  SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO facts FROM noor_r386_candidate.s4_extract(NEW.user_id,NEW.state) x;
+ EXCEPTION WHEN raise_exception THEN
+  IF SQLERRM IS DISTINCT FROM 'R386_S4_WEIGHT' OR TG_OP IS DISTINCT FROM 'UPDATE' THEN RAISE; END IF;
+  SELECT coalesce(jsonb_agg(
+    CASE WHEN (e->'eligibility'->'weight') = '0'::jsonb
+       AND EXISTS(SELECT 1 FROM jsonb_array_elements(OLD.state->'dailyExecution') q(o) WHERE o=e)
+       AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(current_events) q(ev)
+         WHERE NOT (prior_ids ? (ev->>'id')) AND ev->>'aggregateType'='DailyExecutionInstance'
+           AND ev->>'aggregateId'=e->>'id')
+      THEN jsonb_set(e,'{eligibility,weight}','null'::jsonb,false) ELSE e END ORDER BY pos),'[]'::jsonb)
+  INTO extraction_executions FROM jsonb_array_elements(NEW.state->'dailyExecution') WITH ORDINALITY q(e,pos);
+  IF extraction_executions IS NOT DISTINCT FROM NEW.state->'dailyExecution' THEN RAISE; END IF;
+  extraction_state:=jsonb_set(NEW.state,'{dailyExecution}',extraction_executions,false);
+  SELECT coalesce(jsonb_agg(to_jsonb(x)),'[]'::jsonb) INTO facts FROM noor_r386_candidate.s4_extract(NEW.user_id,extraction_state) x;
+ END;
  IF EXISTS(SELECT 1 FROM jsonb_to_recordset(facts) AS x(fact_kind text,entity_id text,sub_id text) GROUP BY x.fact_kind,x.entity_id,x.sub_id HAVING count(*)>1)
  THEN RAISE EXCEPTION 'R386_S4_DUPLICATE'; END IF;
  SELECT coalesce(jsonb_object_agg(jsonb_build_array(x.fact_kind,x.entity_id,x.sub_id)::text,true),'{}'::jsonb) INTO fact_ids

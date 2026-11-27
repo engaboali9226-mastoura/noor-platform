@@ -184,3 +184,19 @@ test('R384 reviewed Hijri history has exact current-week anniversaries without t
  assert.equal(today.events.length,2);
  for(const day of [11,13,15,16])assert.ok((await get('hijri',6,day)).events.length>0);
 });
+
+test('NOOR 1.0.1 security headers cover static, HEAD, API and errors without changing cache/cookie contracts',()=>fixture(async({port,site})=>{
+ await fs.writeFile(path.join(site,'noor.webmanifest'),'{}');await fs.writeFile(path.join(site,'noor-service-worker.js'),'/* synthetic */');
+ for(const [url,method] of [['/','GET'],['/healthz','HEAD'],['/noor.webmanifest','HEAD'],['/noor-service-worker.js','GET'],['/missing.js','GET'],['/api/noor/session','POST']]){
+  const r=await request(port,url,{method}); const h=r.headers;
+  assert.equal(h['strict-transport-security'],'max-age=86400');assert.equal(h['x-frame-options'],'DENY');
+  assert.equal(h['referrer-policy'],'strict-origin-when-cross-origin');assert.match(h['permissions-policy'],/geolocation=\(self\)/);
+  assert.match(h['content-security-policy'],/frame-ancestors 'none'/);assert.match(h['content-security-policy-report-only'],/script-src 'self'/);
+  assert.equal(h['x-content-type-options'],'nosniff');
+  if(url!=='/api/noor/session')assert.equal(h['cache-control'],'no-store');
+  else assert.ok(h['set-cookie']?.[0]?.includes('HttpOnly'));
+ }
+}));
+test('NOOR 1.0.1 HTTP fixture cannot opt into HSTS through forwarded headers',()=>fixture(async({port})=>{
+ const r=await request(port,'/healthz',{headers:{'x-forwarded-proto':'https'}});assert.equal(r.headers['strict-transport-security'],undefined);assert.equal(r.headers['x-frame-options'],'DENY');
+},{publicOrigin:'http://noor.example'}));

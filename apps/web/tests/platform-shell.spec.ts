@@ -24,6 +24,7 @@ import {
 } from "../src/application-view-registry.js";
 import {
   PlatformShell,
+  NOOR_RELEASE_VERSION,
 } from "../src/platform-shell.js";
 import {
   projectPlatformShell,
@@ -599,3 +600,29 @@ test(
     }
   },
 );
+
+test("NOOR release version is displayed once in the shared workspace picker", async () => {
+  const env = installDom();
+  const root = createRoot(env.container);
+  try {
+    await act(async () => {
+      root.render(createElement(PlatformShell, {
+        state: {kind: "no-application-selected"},
+        navigate: () => {},
+        authenticationState: "authenticated",
+      }));
+    });
+    const labels = env.container.querySelectorAll('[data-testid="noor-release-version"]');
+    assert.equal(labels.length, 1);
+    assert.match(NOOR_RELEASE_VERSION, /^\d+\.\d+\.\d+$/u);
+    assert.equal(labels[0]?.textContent, `الإصدار ${NOOR_RELEASE_VERSION}`);
+    assert.equal(labels[0]?.querySelector("bdi")?.getAttribute("dir"), "ltr");
+    assert.equal(labels[0]?.querySelector("bdi")?.textContent, NOOR_RELEASE_VERSION);
+    assert.equal(env.container.querySelector("h1")?.textContent?.trim(), "اختر مساحتك");
+    assert.deepEqual(Array.from(env.container.querySelectorAll('.noor-space-option')).map(a=>a.getAttribute('href')), ["/personal", "/work"]);
+  } finally {
+    await act(async () => {root.unmount();});
+    env.restoreGlobals();
+    env.dom.window.close();
+  }
+});
